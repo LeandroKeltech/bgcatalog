@@ -1,0 +1,5 @@
+kivy
+kivymd
+requests
+pillow
+sqlite3

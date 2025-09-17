@@ -1,0 +1,135 @@
+#:kivy 2.1.0
+
+<HomeScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            title: 'Catalog App'
+            elevation: 10
+            left_action_items: [['menu', lambda x: app.open_settings()]]
+            right_action_items: [['plus', lambda x: app.open_new_item()]]
+        BoxLayout:
+            orientation: 'vertical'
+            padding: 10
+            spacing: 10
+            MDTextField:
+                id: search_field
+                hint_text: 'Search by title or barcode'
+                on_text: app.filter_items(self.text)
+            MDScrollView:
+                MDList:
+                    id: items_list
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 50
+                spacing: 10
+                MDRaisedButton:
+                    text: 'Review'
+                    on_release: app.root.current = 'review'
+                MDRaisedButton:
+                    text: 'Inventory'
+                    on_release: app.root.current = 'inventory'
+                MDRaisedButton:
+                    text: 'Export'
+                    on_release: app.root.current = 'export'
+
+<ItemFormScreen>:
+    name: 'item_form'
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            title: 'New Item'
+            left_action_items: [['arrow-left', lambda x: app.go_home()]]
+        ScrollView:
+            MDList:
+                MDTextField:
+                    id: title_field
+                    hint_text: 'Title*'
+                MDTextField:
+                    id: category_field
+                    hint_text: 'Category* (boardgame, furniture, kitchen, others)'
+                MDTextField:
+                    id: condition_field
+                    hint_text: 'Condition* (new, good, acceptable, poor)'
+                MDTextField:
+                    id: reference_price_field
+                    hint_text: 'Reference Price* (€)'
+                    input_filter: 'float'
+                MDTextField:
+                    id: price_rule_field
+                    hint_text: 'Price Rule (%)'
+                    text: '-50'
+                    input_filter: 'int'
+                MDTextField:
+                    id: final_price_field
+                    hint_text: 'Final Price* (€)'
+                    input_filter: 'float'
+                MDTextField:
+                    id: stock_field
+                    hint_text: 'Stock Qty*'
+                    input_filter: 'int'
+                MDTextField:
+                    id: sold_field
+                    hint_text: 'Sold Qty'
+                    input_filter: 'int'
+                MDTextField:
+                    id: notes_field
+                    hint_text: 'Notes'
+                MDRaisedButton:
+                    text: 'Save'
+                    on_release: app.save_item()
+
+<ReviewScreen>:
+    name: 'review'
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            title: 'Review Items'
+            left_action_items: [['arrow-left', lambda x: app.go_home()]]
+        MDScrollView:
+            MDList:
+                id: review_list
+
+<InventoryScreen>:
+    name: 'inventory'
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            title: 'Inventory'
+            left_action_items: [['arrow-left', lambda x: app.go_home()]]
+        MDScrollView:
+            MDList:
+                id: inventory_list
+
+<ExportScreen>:
+    name: 'export'
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            title: 'Export'
+            left_action_items: [['arrow-left', lambda x: app.go_home()]]
+        MDScrollView:
+            MDList:
+                id: export_list
+        MDRaisedButton:
+            text: 'Export to Google Sheets'
+            on_release: app.export_to_sheets()
+
+<SettingsScreen>:
+    name: 'settings'
+    BoxLayout:
+        orientation: 'vertical'
+        MDTopAppBar:
+            title: 'Settings'
+            left_action_items: [['arrow-left', lambda x: app.go_home()]]
+        MDTextField:
+            id: script_url_field
+            hint_text: 'Apps Script URL'
+        MDTextField:
+            id: image_quality_field
+            hint_text: 'Image Quality (1-100)'
+            input_filter: 'int'
+        MDRaisedButton:
+            text: 'Save Settings'
+            on_release: app.save_settings()
