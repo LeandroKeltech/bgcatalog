@@ -54,11 +54,23 @@ jobs:
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
+      - name: Configure buildozer to use system Android SDK
+        run: |
+          mkdir -p ~/.buildozer/android/platform/
+          ln -sf $ANDROID_HOME ~/.buildozer/android/platform/android-sdk
+          
+      - name: Install Android build tools
+        run: |
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.2" "platforms;android-33"
+
       - name: Initialize buildozer
         run: |
           buildozer android clean || true
 
       - name: Build APK
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
           buildozer android debug
 
