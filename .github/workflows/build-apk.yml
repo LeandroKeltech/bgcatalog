@@ -40,12 +40,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-pip python3-setuptools git zip unzip openjdk-17-jdk
           sudo apt-get install -y libncurses6 libncurses-dev libstdc++6 libffi-dev libssl-dev libsqlite3-dev zlib1g-dev
-          sudo apt-get install -y autoconf libtool pkg-config
+          sudo apt-get install -y autoconf libtool pkg-config build-essential libltdl-dev
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip wheel setuptools
           pip install buildozer cython
+
+      - name: Accept Android SDK licenses
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Initialize buildozer
         run: |
