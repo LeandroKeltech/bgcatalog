@@ -24,6 +24,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y openjdk-11-jdk unzip
+          sudo apt-get install -y build-essential autoconf automake libtool pkg-config
+          sudo apt-get install -y libssl-dev libffi-dev libncurses-dev zlib1g-dev
+          sudo apt-get install -y git zip cmake
 
       - name: Set JAVA_HOME
         run: |
