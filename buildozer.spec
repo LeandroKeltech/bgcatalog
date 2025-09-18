@@ -13,3 +13,11 @@ fullscreen = 1
 [buildozer]
 log_level = 2
 warn_on_root = 1
+
+[app:android]
+android.accept_sdk_license = True
+android.api = 33
+android.minapi = 21
+android.ndk_api = 21
+android.sdk_path = ~/.buildozer/android/platform/android-sdk
+android.ndk_path = ~/.buildozer/android/platform/android-ndk-r25b

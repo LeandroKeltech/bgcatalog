@@ -36,18 +36,10 @@ jobs:
 
       - name: Build APK with buildozer
         run: |
+          # Accept licenses automatically
+          export ANDROID_ACCEPT_SDK_LICENSE=1
+          # Build the APK
           buildozer android debug
-
-      - name: Install build-tools if missing
-        if: failure()
-        run: |
-          # If build fails due to missing build-tools, install them manually
-          cd ~/.buildozer/android/platform/android-sdk
-          if [ -d "cmdline-tools/latest" ]; then
-            echo "Installing build-tools..."
-            yes | cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.2"
-            buildozer android debug
-          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
