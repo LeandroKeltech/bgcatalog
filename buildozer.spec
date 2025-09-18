@@ -21,3 +21,10 @@ android.minapi = 21
 android.ndk_api = 21
 android.sdk_path = ~/.buildozer/android/platform/android-sdk
 android.ndk_path = ~/.buildozer/android/platform/android-ndk-r25b
+android.gradle_dependencies = 
+
+# Force specific build tools version
+android.add_compile_options = 
+android.add_gradle_repositories = 
+android.gradle_repositories = google(), mavenCentral()
+android.enable_androidx = True

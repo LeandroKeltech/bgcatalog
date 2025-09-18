@@ -34,12 +34,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install buildozer cython
 
+      - name: Accept Android licenses first
+        run: |
+          # Create directory for licenses
+          mkdir -p ~/.android/
+          echo -e "\n8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > ~/.android/repositories.cfg
+          # Set environment variables
+          export ANDROID_HOME=~/.buildozer/android/platform/android-sdk
+          export ANDROID_SDK_ROOT=~/.buildozer/android/platform/android-sdk
+
       - name: Build APK with buildozer
         run: |
-          # Accept licenses automatically
-          export ANDROID_ACCEPT_SDK_LICENSE=1
-          # Build the APK
-          buildozer android debug
+          # Build the APK with auto-accept licenses
+          echo "y" | buildozer android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
