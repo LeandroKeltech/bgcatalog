@@ -13,15 +13,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build APK with ArtiomTr/buildozer-action
-        uses: ArtiomTr/buildozer-action@v1
-        id: buildozer
-        with:
-          command: buildozer android debug
-          buildozer_version: stable
+      - name: Build APK with Docker
+        run: |
+          # Remove cache antigo se existir
+          rm -rf .buildozer || true
+          
+          # Build using official Kivy Docker image
+          docker run --rm -v "$(pwd)":/home/user/hostcwd \
+            kivy/buildozer:latest \
+            sh -c "cd /home/user/hostcwd && buildozer android debug"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: bin/*.apk
+          if-no-files-found: error
