@@ -13,19 +13,87 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build APK with Docker
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create BeeWare project structure
         run: |
-          # Remove cache antigo se existir
-          rm -rf .buildozer || true
+          # Install BeeWare
+          python -m pip install --upgrade pip
+          pip install briefcase
+
+      - name: Create pyproject.toml for BeeWare
+        run: |
+          cat > pyproject.toml << 'EOF'
+          [build-system]
+          requires = ["briefcase"]
+
+          [tool.briefcase]
+          project_name = "BGCatalog"
+          bundle = "org.example"
+          version = "0.0.1"
+          description = "BGCatalog Mobile App"
+          author = "Developer"
+          author_email = "dev@example.com"
+          url = "https://example.com"
+
+          [tool.briefcase.app.bgcatalog]
+          formal_name = "BGCatalog"
+          description = "Board Game Catalog App"
+          icon = "icon"
+          sources = ["src/bgcatalog"]
+          requires = []
+
+          [tool.briefcase.app.bgcatalog.android]
+          requires = []
+          EOF
+
+      - name: Create BeeWare app structure
+        run: |
+          mkdir -p src/bgcatalog
+          cat > src/bgcatalog/__init__.py << 'EOF'
+          # Empty init file
+          EOF
           
-          # Build using official Kivy Docker image
-          docker run --rm -v "$(pwd)":/home/user/hostcwd \
-            kivy/buildozer:latest \
-            sh -c "cd /home/user/hostcwd && buildozer android debug"
+          cat > src/bgcatalog/__main__.py << 'EOF'
+          import toga
+          from toga.style import Pack
+          from toga.style.pack import COLUMN, ROW
+
+          class BGCatalog(toga.App):
+              def startup(self):
+                  main_box = toga.Box(style=Pack(direction=COLUMN))
+                  
+                  hello_label = toga.Label(
+                      'BGCatalog - Board Game Catalog',
+                      style=Pack(padding=10, text_align='center')
+                  )
+                  
+                  main_box.add(hello_label)
+                  
+                  self.main_window = toga.MainWindow(title=self.formal_name)
+                  self.main_window.content = main_box
+                  self.main_window.show()
+
+          def main():
+              return BGCatalog()
+
+          if __name__ == '__main__':
+              app = main()
+              app.main_loop()
+          EOF
+
+      - name: Build Android APK with BeeWare
+        run: |
+          briefcase create android
+          briefcase build android
+          briefcase package android --adhoc
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: bin/*.apk
-          if-no-files-found: error
+          path: "*/android/gradle/*/build/outputs/apk/debug/*.apk"
+          if-no-files-found: warn
