@@ -7,58 +7,21 @@ on:
 
 jobs:
   build-android:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python 3.9
-        uses: actions/setup-python@v5
+      - name: Build APK with ArtiomTr/buildozer-action
+        uses: ArtiomTr/buildozer-action@v1
+        id: buildozer
         with:
-          python-version: '3.9'
-
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y \
-            build-essential \
-            git \
-            ffmpeg \
-            libsdl2-dev \
-            libsdl2-image-dev \
-            libsdl2-mixer-dev \
-            libsdl2-ttf-dev \
-            libportmidi-dev \
-            libswscale-dev \
-            libavformat-dev \
-            libavcodec-dev \
-            zlib1g-dev \
-            libgstreamer1.0 \
-            gstreamer1.0-plugins-base \
-            gstreamer1.0-plugins-good \
-            openjdk-8-jdk \
-            autoconf \
-            libtool \
-            pkg-config
-
-      - name: Setup Java environment
-        run: |
-          echo "JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64" >> $GITHUB_ENV
-
-      - name: Install Buildozer
-        run: |
-          python -m pip install --upgrade pip wheel setuptools
-          python -m pip install buildozer==1.5.0 cython
-
-      - name: Build with Buildozer
-        run: |
-          echo -e "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n" | buildozer android debug
-        env:
-          JAVA_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+          command: buildozer android debug
+          buildozer_version: stable
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: bin/*.apk
+          path: ${{ steps.buildozer.outputs.filename }}
