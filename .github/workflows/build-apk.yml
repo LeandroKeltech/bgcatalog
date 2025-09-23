@@ -38,16 +38,18 @@ jobs:
           author = "Developer"
           author_email = "dev@example.com"
           url = "https://example.com"
+          license = "MIT"
 
           [tool.briefcase.app.bgcatalog]
           formal_name = "BGCatalog"
           description = "Board Game Catalog App"
-          icon = "icon"
           sources = ["src/bgcatalog"]
           requires = []
+          license = "MIT"
 
           [tool.briefcase.app.bgcatalog.android]
           requires = []
+          build_gradle_dependencies = []
           EOF
 
       - name: Create BeeWare app structure
