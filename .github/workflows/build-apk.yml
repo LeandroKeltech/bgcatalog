@@ -42,6 +42,8 @@ jobs:
       - name: Create app content
         run: |
           cd bgcatalog-app/www
+          
+          # Create main HTML
           cat > index.html << 'EOF'
           <!DOCTYPE html>
           <html>
@@ -49,75 +51,533 @@ jobs:
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
               <title>BGCatalog</title>
-              <style>
-                  body {
-                      font-family: Arial, sans-serif;
-                      margin: 0;
-                      padding: 20px;
-                      background-color: #f5f5f5;
-                  }
-                  .container {
-                      max-width: 400px;
-                      margin: 0 auto;
-                      background: white;
-                      padding: 20px;
-                      border-radius: 10px;
-                      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                  }
-                  h1 {
-                      text-align: center;
-                      color: #333;
-                      margin-bottom: 30px;
-                  }
-                  .feature {
-                      padding: 15px;
-                      margin: 10px 0;
-                      background: #e8f4fd;
-                      border-radius: 5px;
-                      border-left: 4px solid #2196F3;
-                  }
-                  button {
-                      width: 100%;
-                      padding: 15px;
-                      background: #2196F3;
-                      color: white;
-                      border: none;
-                      border-radius: 5px;
-                      font-size: 16px;
-                      margin: 10px 0;
-                      cursor: pointer;
-                  }
-                  button:hover {
-                      background: #1976D2;
-                  }
-              </style>
+              <link rel="stylesheet" href="css/index.css">
+              <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
           </head>
           <body>
-              <div class="container">
-                  <h1>🎲 BGCatalog</h1>
-                  <p style="text-align: center; color: #666;">Board Game Catalog App</p>
+              <!-- Home Screen -->
+              <div id="home-screen" class="screen">
+                  <header class="top-bar">
+                      <button class="icon-btn" onclick="showScreen('settings')">
+                          <span class="material-icons">menu</span>
+                      </button>
+                      <h1>BGCatalog</h1>
+                      <button class="icon-btn" onclick="showScreen('item-form')">
+                          <span class="material-icons">add</span>
+                      </button>
+                  </header>
                   
-                  <div class="feature">
-                      <h3>📱 Mobile Ready</h3>
-                      <p>App instalado com sucesso no seu dispositivo!</p>
+                  <div class="content">
+                      <input type="text" id="search-field" placeholder="Search by title or barcode" oninput="filterItems(this.value)">
+                      
+                      <div id="items-list" class="items-list">
+                          <!-- Items will be dynamically added here -->
+                      </div>
+                      
+                      <div class="bottom-buttons">
+                          <button onclick="showScreen('review')">Review</button>
+                          <button onclick="showScreen('inventory')">Inventory</button>
+                          <button onclick="showScreen('export')">Export</button>
+                      </div>
                   </div>
-                  
-                  <div class="feature">
-                      <h3>🎯 Funcionalidades</h3>
-                      <p>• Catalogar jogos<br>• Barcode scanner<br>• Export/Import<br>• Inventário</p>
-                  </div>
-                  
-                  <button onclick="alert('BGCatalog funcionando!')">Testar App</button>
-                  <button onclick="window.location.href='tel:+5511999999999'">Contato</button>
               </div>
-              
-              <script>
-                  document.addEventListener('deviceready', function() {
-                      console.log('Cordova is ready');
-                  }, false);
-              </script>
+
+              <!-- Item Form Screen -->
+              <div id="item-form" class="screen hidden">
+                  <header class="top-bar">
+                      <button class="icon-btn" onclick="showScreen('home-screen')">
+                          <span class="material-icons">arrow_back</span>
+                      </button>
+                      <h1>New Item</h1>
+                  </header>
+                  
+                  <div class="content">
+                      <div class="form-group">
+                          <input type="text" id="title" placeholder="Title*" required>
+                          <select id="category" required>
+                              <option value="">Category*</option>
+                              <option value="boardgame">Board Game</option>
+                              <option value="furniture">Furniture</option>
+                              <option value="kitchen">Kitchen</option>
+                              <option value="others">Others</option>
+                          </select>
+                          <select id="condition" required>
+                              <option value="">Condition*</option>
+                              <option value="new">New</option>
+                              <option value="good">Good</option>
+                              <option value="acceptable">Acceptable</option>
+                              <option value="poor">Poor</option>
+                          </select>
+                          <input type="number" id="reference-price" placeholder="Reference Price* (€)" step="0.01" required>
+                          <input type="number" id="price-rule" placeholder="Price Rule (%)" value="-50">
+                          <input type="number" id="final-price" placeholder="Final Price* (€)" step="0.01" required>
+                          <input type="number" id="stock" placeholder="Stock Qty*" required>
+                          <input type="number" id="sold" placeholder="Sold Qty" value="0">
+                          <textarea id="notes" placeholder="Notes"></textarea>
+                          <button onclick="saveItem()" class="save-btn">Save Item</button>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Review Screen -->
+              <div id="review" class="screen hidden">
+                  <header class="top-bar">
+                      <button class="icon-btn" onclick="showScreen('home-screen')">
+                          <span class="material-icons">arrow_back</span>
+                      </button>
+                      <h1>Review Items</h1>
+                  </header>
+                  
+                  <div class="content">
+                      <div id="review-list" class="items-list">
+                          <!-- Review items will be shown here -->
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Inventory Screen -->
+              <div id="inventory" class="screen hidden">
+                  <header class="top-bar">
+                      <button class="icon-btn" onclick="showScreen('home-screen')">
+                          <span class="material-icons">arrow_back</span>
+                      </button>
+                      <h1>Inventory</h1>
+                  </header>
+                  
+                  <div class="content">
+                      <div id="inventory-list" class="items-list">
+                          <!-- Inventory items will be shown here -->
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Export Screen -->
+              <div id="export" class="screen hidden">
+                  <header class="top-bar">
+                      <button class="icon-btn" onclick="showScreen('home-screen')">
+                          <span class="material-icons">arrow_back</span>
+                      </button>
+                      <h1>Export</h1>
+                  </header>
+                  
+                  <div class="content">
+                      <div class="export-options">
+                          <button onclick="exportToSheets()" class="export-btn">Export to Google Sheets</button>
+                          <button onclick="exportToJSON()" class="export-btn">Export to JSON</button>
+                          <button onclick="importFromJSON()" class="export-btn">Import from JSON</button>
+                      </div>
+                      <div id="export-status"></div>
+                  </div>
+              </div>
+
+              <!-- Settings Screen -->
+              <div id="settings" class="screen hidden">
+                  <header class="top-bar">
+                      <button class="icon-btn" onclick="showScreen('home-screen')">
+                          <span class="material-icons">arrow_back</span>
+                      </button>
+                      <h1>Settings</h1>
+                  </header>
+                  
+                  <div class="content">
+                      <div class="form-group">
+                          <input type="url" id="script-url" placeholder="Apps Script URL">
+                          <input type="number" id="image-quality" placeholder="Image Quality (1-100)" min="1" max="100" value="80">
+                          <button onclick="saveSettings()" class="save-btn">Save Settings</button>
+                      </div>
+                  </div>
+              </div>
+
+              <script src="cordova.js"></script>
+              <script src="js/index.js"></script>
           </body>
           </html>
+          EOF
+
+          # Create CSS
+          mkdir -p css
+          cat > css/index.css << 'EOF'
+          * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+          }
+
+          body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              background: #f5f5f5;
+              height: 100vh;
+              overflow-x: hidden;
+          }
+
+          .screen {
+              height: 100vh;
+              display: flex;
+              flex-direction: column;
+              background: white;
+          }
+
+          .screen.hidden {
+              display: none;
+          }
+
+          .top-bar {
+              background: #2196F3;
+              color: white;
+              padding: 15px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+
+          .top-bar h1 {
+              font-size: 20px;
+              font-weight: 500;
+          }
+
+          .icon-btn {
+              background: none;
+              border: none;
+              color: white;
+              padding: 8px;
+              border-radius: 50%;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+          }
+
+          .icon-btn:hover {
+              background: rgba(255,255,255,0.1);
+          }
+
+          .content {
+              flex: 1;
+              padding: 20px;
+              overflow-y: auto;
+          }
+
+          #search-field {
+              width: 100%;
+              padding: 15px;
+              border: 1px solid #ddd;
+              border-radius: 8px;
+              font-size: 16px;
+              margin-bottom: 20px;
+          }
+
+          .items-list {
+              margin-bottom: 20px;
+          }
+
+          .item-card {
+              background: white;
+              border: 1px solid #e0e0e0;
+              border-radius: 8px;
+              padding: 15px;
+              margin-bottom: 10px;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          }
+
+          .item-title {
+              font-weight: bold;
+              color: #333;
+              margin-bottom: 5px;
+          }
+
+          .item-details {
+              color: #666;
+              font-size: 14px;
+          }
+
+          .bottom-buttons {
+              display: flex;
+              gap: 10px;
+              margin-top: auto;
+          }
+
+          .bottom-buttons button {
+              flex: 1;
+              padding: 15px;
+              background: #2196F3;
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-size: 16px;
+              cursor: pointer;
+          }
+
+          .bottom-buttons button:hover {
+              background: #1976D2;
+          }
+
+          .form-group {
+              display: flex;
+              flex-direction: column;
+              gap: 15px;
+          }
+
+          .form-group input,
+          .form-group select,
+          .form-group textarea {
+              padding: 15px;
+              border: 1px solid #ddd;
+              border-radius: 8px;
+              font-size: 16px;
+          }
+
+          .form-group textarea {
+              min-height: 100px;
+              resize: vertical;
+          }
+
+          .save-btn,
+          .export-btn {
+              background: #4CAF50;
+              color: white;
+              padding: 15px;
+              border: none;
+              border-radius: 8px;
+              font-size: 16px;
+              cursor: pointer;
+              margin-top: 10px;
+          }
+
+          .save-btn:hover,
+          .export-btn:hover {
+              background: #45a049;
+          }
+
+          .export-options {
+              display: flex;
+              flex-direction: column;
+              gap: 15px;
+          }
+
+          #export-status {
+              margin-top: 20px;
+              padding: 15px;
+              border-radius: 8px;
+              background: #e8f5e8;
+              color: #2e7d32;
+              display: none;
+          }
+
+          .empty-state {
+              text-align: center;
+              color: #666;
+              padding: 40px;
+          }
+          EOF
+
+          # Create JavaScript
+          mkdir -p js
+          cat > js/index.js << 'EOF'
+          // Global variables
+          let items = [];
+          let settings = {
+              scriptUrl: '',
+              imageQuality: 80
+          };
+
+          // Initialize app
+          document.addEventListener('deviceready', onDeviceReady, false);
+
+          function onDeviceReady() {
+              loadData();
+              showItems();
+          }
+
+          // Screen navigation
+          function showScreen(screenId) {
+              // Hide all screens
+              document.querySelectorAll('.screen').forEach(screen => {
+                  screen.classList.add('hidden');
+              });
+              
+              // Show selected screen
+              document.getElementById(screenId).classList.remove('hidden');
+              
+              // Update screen content
+              if (screenId === 'home-screen') showItems();
+              if (screenId === 'review') showReviewItems();
+              if (screenId === 'inventory') showInventoryItems();
+          }
+
+          // Item management
+          function saveItem() {
+              const title = document.getElementById('title').value;
+              const category = document.getElementById('category').value;
+              const condition = document.getElementById('condition').value;
+              const refPrice = parseFloat(document.getElementById('reference-price').value);
+              const priceRule = parseInt(document.getElementById('price-rule').value);
+              const finalPrice = parseFloat(document.getElementById('final-price').value);
+              const stock = parseInt(document.getElementById('stock').value);
+              const sold = parseInt(document.getElementById('sold').value) || 0;
+              const notes = document.getElementById('notes').value;
+
+              if (!title || !category || !condition || !refPrice || !finalPrice || !stock) {
+                  alert('Please fill all required fields');
+                  return;
+              }
+
+              const item = {
+                  id: Date.now(),
+                  title,
+                  category,
+                  condition,
+                  referencePrice: refPrice,
+                  priceRule,
+                  finalPrice,
+                  stock,
+                  sold,
+                  notes,
+                  createdAt: new Date().toISOString()
+              };
+
+              items.push(item);
+              saveData();
+              clearForm();
+              showScreen('home-screen');
+              alert('Item saved successfully!');
+          }
+
+          function clearForm() {
+              document.getElementById('title').value = '';
+              document.getElementById('category').value = '';
+              document.getElementById('condition').value = '';
+              document.getElementById('reference-price').value = '';
+              document.getElementById('price-rule').value = '-50';
+              document.getElementById('final-price').value = '';
+              document.getElementById('stock').value = '';
+              document.getElementById('sold').value = '0';
+              document.getElementById('notes').value = '';
+          }
+
+          function showItems() {
+              const itemsList = document.getElementById('items-list');
+              
+              if (items.length === 0) {
+                  itemsList.innerHTML = '<div class="empty-state">No items added yet. Tap + to add your first item!</div>';
+                  return;
+              }
+
+              itemsList.innerHTML = items.map(item => `
+                  <div class="item-card">
+                      <div class="item-title">${item.title}</div>
+                      <div class="item-details">
+                          ${item.category} • ${item.condition} • €${item.finalPrice}<br>
+                          Stock: ${item.stock} | Sold: ${item.sold}
+                      </div>
+                  </div>
+              `).join('');
+          }
+
+          function showReviewItems() {
+              const reviewList = document.getElementById('review-list');
+              const reviewItems = items.filter(item => item.stock > 0);
+              
+              if (reviewItems.length === 0) {
+                  reviewList.innerHTML = '<div class="empty-state">No items to review</div>';
+                  return;
+              }
+
+              reviewList.innerHTML = reviewItems.map(item => `
+                  <div class="item-card">
+                      <div class="item-title">${item.title}</div>
+                      <div class="item-details">
+                          Price: €${item.referencePrice} → €${item.finalPrice}<br>
+                          Available: ${item.stock - item.sold} units
+                      </div>
+                  </div>
+              `).join('');
+          }
+
+          function showInventoryItems() {
+              const inventoryList = document.getElementById('inventory-list');
+              
+              if (items.length === 0) {
+                  inventoryList.innerHTML = '<div class="empty-state">No inventory items</div>';
+                  return;
+              }
+
+              const totalValue = items.reduce((sum, item) => sum + (item.finalPrice * item.stock), 0);
+              
+              inventoryList.innerHTML = `
+                  <div class="item-card">
+                      <div class="item-title">Total Inventory Value</div>
+                      <div class="item-details">€${totalValue.toFixed(2)}</div>
+                  </div>
+                  ${items.map(item => `
+                      <div class="item-card">
+                          <div class="item-title">${item.title}</div>
+                          <div class="item-details">
+                              Stock: ${item.stock} | Value: €${(item.finalPrice * item.stock).toFixed(2)}
+                          </div>
+                      </div>
+                  `).join('')}
+              `;
+          }
+
+          function filterItems(searchText) {
+              // This would filter items based on search text
+              // For now, just show all items
+              showItems();
+          }
+
+          // Export/Import functions
+          function exportToSheets() {
+              if (!settings.scriptUrl) {
+                  alert('Please set Google Apps Script URL in settings first');
+                  return;
+              }
+              
+              // This would export to Google Sheets
+              alert('Export to Google Sheets functionality - coming soon!');
+          }
+
+          function exportToJSON() {
+              const dataStr = JSON.stringify(items, null, 2);
+              const dataBlob = new Blob([dataStr], {type:'application/json'});
+              
+              // This would download the JSON file
+              alert('Export to JSON - Data prepared!\n\nItems: ' + items.length);
+          }
+
+          function importFromJSON() {
+              // This would import from JSON file
+              alert('Import from JSON functionality - coming soon!');
+          }
+
+          // Settings
+          function saveSettings() {
+              settings.scriptUrl = document.getElementById('script-url').value;
+              settings.imageQuality = parseInt(document.getElementById('image-quality').value);
+              
+              localStorage.setItem('bgcatalog_settings', JSON.stringify(settings));
+              alert('Settings saved!');
+              showScreen('home-screen');
+          }
+
+          // Data persistence
+          function saveData() {
+              localStorage.setItem('bgcatalog_items', JSON.stringify(items));
+          }
+
+          function loadData() {
+              const savedItems = localStorage.getItem('bgcatalog_items');
+              if (savedItems) {
+                  items = JSON.parse(savedItems);
+              }
+              
+              const savedSettings = localStorage.getItem('bgcatalog_settings');
+              if (savedSettings) {
+                  settings = JSON.parse(savedSettings);
+                  document.getElementById('script-url').value = settings.scriptUrl || '';
+                  document.getElementById('image-quality').value = settings.imageQuality || 80;
+              }
+          }
           EOF
 
       - name: Build APK (debug first)
