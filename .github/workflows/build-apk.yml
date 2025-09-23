@@ -13,89 +13,119 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
+          node-version: '18'
 
-      - name: Create BeeWare project structure
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Cordova
         run: |
-          # Install BeeWare
-          python -m pip install --upgrade pip
-          pip install briefcase
+          npm install -g cordova
 
-      - name: Create pyproject.toml for BeeWare
+      - name: Create Cordova project
         run: |
-          cat > pyproject.toml << 'EOF'
-          [build-system]
-          requires = ["briefcase"]
+          cordova create bgcatalog-app org.example.bgcatalog BGCatalog
+          cd bgcatalog-app
+          cordova platform add android
 
-          [tool.briefcase]
-          project_name = "BGCatalog"
-          bundle = "org.example"
-          version = "0.0.1"
-          description = "BGCatalog Mobile App"
-          author = "Developer"
-          author_email = "dev@example.com"
-          url = "https://example.com"
-          license = "MIT"
-
-          [tool.briefcase.app.bgcatalog]
-          formal_name = "BGCatalog"
-          description = "Board Game Catalog App"
-          sources = ["src/bgcatalog"]
-          requires = []
-          license = "MIT"
-
-          [tool.briefcase.app.bgcatalog.android]
-          requires = []
-          build_gradle_dependencies = []
+      - name: Create app content
+        run: |
+          cd bgcatalog-app/www
+          cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <meta charset="utf-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1">
+              <title>BGCatalog</title>
+              <style>
+                  body {
+                      font-family: Arial, sans-serif;
+                      margin: 0;
+                      padding: 20px;
+                      background-color: #f5f5f5;
+                  }
+                  .container {
+                      max-width: 400px;
+                      margin: 0 auto;
+                      background: white;
+                      padding: 20px;
+                      border-radius: 10px;
+                      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                  }
+                  h1 {
+                      text-align: center;
+                      color: #333;
+                      margin-bottom: 30px;
+                  }
+                  .feature {
+                      padding: 15px;
+                      margin: 10px 0;
+                      background: #e8f4fd;
+                      border-radius: 5px;
+                      border-left: 4px solid #2196F3;
+                  }
+                  button {
+                      width: 100%;
+                      padding: 15px;
+                      background: #2196F3;
+                      color: white;
+                      border: none;
+                      border-radius: 5px;
+                      font-size: 16px;
+                      margin: 10px 0;
+                      cursor: pointer;
+                  }
+                  button:hover {
+                      background: #1976D2;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>🎲 BGCatalog</h1>
+                  <p style="text-align: center; color: #666;">Board Game Catalog App</p>
+                  
+                  <div class="feature">
+                      <h3>📱 Mobile Ready</h3>
+                      <p>App instalado com sucesso no seu dispositivo!</p>
+                  </div>
+                  
+                  <div class="feature">
+                      <h3>🎯 Funcionalidades</h3>
+                      <p>• Catalogar jogos<br>• Barcode scanner<br>• Export/Import<br>• Inventário</p>
+                  </div>
+                  
+                  <button onclick="alert('BGCatalog funcionando!')">Testar App</button>
+                  <button onclick="window.location.href='tel:+5511999999999'">Contato</button>
+              </div>
+              
+              <script>
+                  document.addEventListener('deviceready', function() {
+                      console.log('Cordova is ready');
+                  }, false);
+              </script>
+          </body>
+          </html>
           EOF
 
-      - name: Create BeeWare app structure
+      - name: Build APK
         run: |
-          mkdir -p src/bgcatalog
-          cat > src/bgcatalog/__init__.py << 'EOF'
-          # Empty init file
-          EOF
-          
-          cat > src/bgcatalog/__main__.py << 'EOF'
-          import toga
-          from toga.style import Pack
-          from toga.style.pack import COLUMN, ROW
-
-          class BGCatalog(toga.App):
-              def startup(self):
-                  main_box = toga.Box(style=Pack(direction=COLUMN))
-                  
-                  hello_label = toga.Label(
-                      'BGCatalog - Board Game Catalog',
-                      style=Pack(padding=10, text_align='center')
-                  )
-                  
-                  main_box.add(hello_label)
-                  
-                  self.main_window = toga.MainWindow(title=self.formal_name)
-                  self.main_window.content = main_box
-                  self.main_window.show()
-
-          def main():
-              return BGCatalog()
-
-          if __name__ == '__main__':
-              app = main()
-              app.main_loop()
-          EOF
-
-      - name: Build Android APK with BeeWare
-        run: |
-          briefcase create android
-          briefcase build android
-          briefcase package android --adhoc
+          cd bgcatalog-app
+          cordova build android --release
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: "*/android/gradle/*/build/outputs/apk/debug/*.apk"
+          path: "bgcatalog-app/platforms/android/app/build/outputs/apk/release/*.apk"
           if-no-files-found: warn
