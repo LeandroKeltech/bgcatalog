@@ -120,14 +120,25 @@ jobs:
           </html>
           EOF
 
-      - name: Build APK
+      - name: Build APK (debug first)
         run: |
           cd bgcatalog-app
-          cordova build android --release
+          cordova build android --debug
+          
+      - name: Find generated APKs
+        run: |
+          echo "Looking for APK files..."
+          find bgcatalog-app -name "*.apk" -type f 2>/dev/null || echo "No APKs found"
+          echo "Directory structure:"
+          ls -la bgcatalog-app/platforms/android/app/build/outputs/ 2>/dev/null || echo "outputs directory not found"
+          ls -la bgcatalog-app/platforms/android/app/build/outputs/apk/ 2>/dev/null || echo "apk directory not found"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: "bgcatalog-app/platforms/android/app/build/outputs/apk/release/*.apk"
+          path: |
+            bgcatalog-app/platforms/android/app/build/outputs/apk/**/*.apk
+            bgcatalog-app/platforms/android/app/build/outputs/apk/debug/*.apk
+            bgcatalog-app/**/*.apk
           if-no-files-found: warn
