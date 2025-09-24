@@ -38,12 +38,8 @@ jobs:
           cordova create bgcatalog-app org.example.bgcatalog BGCatalog
           cd bgcatalog-app
           cordova platform add android
-          # Add barcode scanner plugin
-          cordova plugin add phonegap-plugin-barcodescanner
-          # Add camera plugin for barcode scanning
-          cordova plugin add cordova-plugin-camera
-          # Add network information plugin
-          cordova plugin add cordova-plugin-network-information
+          # Add only essential plugins
+          cordova plugin add cordova-plugin-whitelist
 
       - name: Create app content
         run: |
@@ -95,7 +91,7 @@ jobs:
                           <span class="material-icons">arrow_back</span>
                       </button>
                       <h1>New Item</h1>
-                      <button class="icon-btn" onclick="scanBarcode()">
+                      <button class="icon-btn" onclick="openBarcodeInput()">
                           <span class="material-icons">qr_code_scanner</span>
                       </button>
                   </header>
@@ -103,9 +99,9 @@ jobs:
                   <div class="content">
                       <div class="form-group">
                           <div class="barcode-section">
-                              <input type="text" id="barcode" placeholder="Barcode (scan or type)" readonly>
-                              <button type="button" onclick="scanBarcode()" class="scan-btn">
-                                  <span class="material-icons">qr_code_scanner</span> Scan Barcode
+                              <input type="text" id="barcode" placeholder="Barcode (scan or type)" oninput="onBarcodeInput(this.value)">
+                              <button type="button" onclick="openBarcodeInput()" class="scan-btn">
+                                  <span class="material-icons">qr_code_scanner</span> Quick Input
                               </button>
                               <button type="button" onclick="searchBGG()" class="bgg-btn" id="bgg-search-btn" disabled>
                                   🎲 Search BGG
@@ -512,48 +508,35 @@ jobs:
           }
 
           // Barcode Scanner Functions
-          function scanBarcode() {
-              if (typeof cordova === 'undefined') {
-                  // For testing in browser
-                  const testBarcode = prompt('Enter barcode for testing:');
-                  if (testBarcode) {
-                      handleBarcodeResult(testBarcode);
-                  }
-                  return;
+          function openBarcodeInput() {
+              const barcode = prompt('Enter or paste the barcode number:\n\n(Tip: You can scan with your camera app and paste here, or type manually)');
+              if (barcode && barcode.trim()) {
+                  handleBarcodeResult(barcode.trim());
               }
+          }
 
-              cordova.plugins.barcodeScanner.scan(
-                  function (result) {
-                      if (!result.cancelled) {
-                          handleBarcodeResult(result.text);
-                      }
-                  },
-                  function (error) {
-                      alert('Scanning failed: ' + error);
-                  },
-                  {
-                      preferFrontCamera: false,
-                      showFlipCameraButton: true,
-                      showTorchButton: true,
-                      torchOn: false,
-                      saveHistory: true,
-                      prompt: "Place a barcode inside the scan area",
-                      resultDisplayDuration: 500,
-                      formats: "QR_CODE,PDF_417,EAN_13,EAN_8,UPC_A,UPC_E,CODE_128,CODE_39,CODE_93,CODABAR,ITF,RSS14,RSS_EXPANDED",
-                      orientation: "landscape",
-                      disableAnimations: true,
-                      disableSuccessBeep: false
-                  }
-              );
+          function scanBarcode() {
+              // Fallback to manual input for now
+              openBarcodeInput();
           }
 
           function handleBarcodeResult(barcode) {
               document.getElementById('barcode').value = barcode;
-              document.getElementById('bgg-search-btn').disabled = false;
+              onBarcodeInput(barcode);
+          }
+
+          function onBarcodeInput(barcode) {
+              const searchBtn = document.getElementById('bgg-search-btn');
               
-              // Auto-search BGG if it's a board game barcode (typically 13 digits)
-              if (barcode.length >= 10) {
-                  searchBGG();
+              if (barcode && barcode.length >= 8) {
+                  searchBtn.disabled = false;
+                  // Auto-search BGG if it looks like a valid barcode
+                  if (barcode.length >= 12) {
+                      setTimeout(() => searchBGG(), 500); // Small delay for better UX
+                  }
+              } else {
+                  searchBtn.disabled = true;
+                  document.getElementById('bgg-results').classList.add('hidden');
               }
           }
 
