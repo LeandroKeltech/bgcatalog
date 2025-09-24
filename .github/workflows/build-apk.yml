@@ -38,6 +38,12 @@ jobs:
           cordova create bgcatalog-app org.example.bgcatalog BGCatalog
           cd bgcatalog-app
           cordova platform add android
+          # Add barcode scanner plugin
+          cordova plugin add phonegap-plugin-barcodescanner
+          # Add camera plugin for barcode scanning
+          cordova plugin add cordova-plugin-camera
+          # Add network information plugin
+          cordova plugin add cordova-plugin-network-information
 
       - name: Create app content
         run: |
@@ -89,10 +95,25 @@ jobs:
                           <span class="material-icons">arrow_back</span>
                       </button>
                       <h1>New Item</h1>
+                      <button class="icon-btn" onclick="scanBarcode()">
+                          <span class="material-icons">qr_code_scanner</span>
+                      </button>
                   </header>
                   
                   <div class="content">
                       <div class="form-group">
+                          <div class="barcode-section">
+                              <input type="text" id="barcode" placeholder="Barcode (scan or type)" readonly>
+                              <button type="button" onclick="scanBarcode()" class="scan-btn">
+                                  <span class="material-icons">qr_code_scanner</span> Scan Barcode
+                              </button>
+                              <button type="button" onclick="searchBGG()" class="bgg-btn" id="bgg-search-btn" disabled>
+                                  🎲 Search BGG
+                              </button>
+                          </div>
+                          <div id="bgg-loading" class="loading hidden">Searching BGG...</div>
+                          <div id="bgg-results" class="bgg-results hidden"></div>
+                          
                           <input type="text" id="title" placeholder="Title*" required>
                           <select id="category" required>
                               <option value="">Category*</option>
@@ -369,6 +390,106 @@ jobs:
               color: #666;
               padding: 40px;
           }
+
+          .barcode-section {
+              display: flex;
+              flex-direction: column;
+              gap: 10px;
+              margin-bottom: 20px;
+              padding: 15px;
+              background: #f8f9fa;
+              border-radius: 8px;
+          }
+
+          .scan-btn {
+              background: #FF9800;
+              color: white;
+              padding: 12px;
+              border: none;
+              border-radius: 8px;
+              font-size: 14px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+          }
+
+          .scan-btn:hover {
+              background: #F57C00;
+          }
+
+          .bgg-btn {
+              background: #9C27B0;
+              color: white;
+              padding: 12px;
+              border: none;
+              border-radius: 8px;
+              font-size: 14px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+          }
+
+          .bgg-btn:hover:not(:disabled) {
+              background: #7B1FA2;
+          }
+
+          .bgg-btn:disabled {
+              background: #ccc;
+              cursor: not-allowed;
+          }
+
+          .loading {
+              text-align: center;
+              padding: 20px;
+              color: #666;
+              font-style: italic;
+          }
+
+          .loading.hidden,
+          .bgg-results.hidden {
+              display: none;
+          }
+
+          .bgg-results {
+              margin: 15px 0;
+              padding: 15px;
+              background: #e8f5e8;
+              border-radius: 8px;
+              border-left: 4px solid #4CAF50;
+          }
+
+          .bgg-game {
+              margin-bottom: 10px;
+              padding: 10px;
+              background: white;
+              border-radius: 5px;
+              cursor: pointer;
+              border: 1px solid #ddd;
+          }
+
+          .bgg-game:hover {
+              background: #f5f5f5;
+          }
+
+          .bgg-game-name {
+              font-weight: bold;
+              color: #333;
+          }
+
+          .bgg-game-year {
+              color: #666;
+              font-size: 14px;
+          }
+
+          #barcode {
+              background: #f0f0f0;
+              font-family: monospace;
+              font-weight: bold;
+          }
           EOF
 
           # Create JavaScript
@@ -387,6 +508,185 @@ jobs:
           function onDeviceReady() {
               loadData();
               showItems();
+              console.log('Cordova plugins ready');
+          }
+
+          // Barcode Scanner Functions
+          function scanBarcode() {
+              if (typeof cordova === 'undefined') {
+                  // For testing in browser
+                  const testBarcode = prompt('Enter barcode for testing:');
+                  if (testBarcode) {
+                      handleBarcodeResult(testBarcode);
+                  }
+                  return;
+              }
+
+              cordova.plugins.barcodeScanner.scan(
+                  function (result) {
+                      if (!result.cancelled) {
+                          handleBarcodeResult(result.text);
+                      }
+                  },
+                  function (error) {
+                      alert('Scanning failed: ' + error);
+                  },
+                  {
+                      preferFrontCamera: false,
+                      showFlipCameraButton: true,
+                      showTorchButton: true,
+                      torchOn: false,
+                      saveHistory: true,
+                      prompt: "Place a barcode inside the scan area",
+                      resultDisplayDuration: 500,
+                      formats: "QR_CODE,PDF_417,EAN_13,EAN_8,UPC_A,UPC_E,CODE_128,CODE_39,CODE_93,CODABAR,ITF,RSS14,RSS_EXPANDED",
+                      orientation: "landscape",
+                      disableAnimations: true,
+                      disableSuccessBeep: false
+                  }
+              );
+          }
+
+          function handleBarcodeResult(barcode) {
+              document.getElementById('barcode').value = barcode;
+              document.getElementById('bgg-search-btn').disabled = false;
+              
+              // Auto-search BGG if it's a board game barcode (typically 13 digits)
+              if (barcode.length >= 10) {
+                  searchBGG();
+              }
+          }
+
+          // BGG API Functions
+          async function searchBGG() {
+              const barcode = document.getElementById('barcode').value;
+              
+              if (!barcode) {
+                  alert('Please scan or enter a barcode first');
+                  return;
+              }
+
+              showLoading(true);
+              document.getElementById('bgg-results').classList.add('hidden');
+
+              try {
+                  // First try to search by barcode in BGG database
+                  let games = await searchBGGByBarcode(barcode);
+                  
+                  // If no results, try searching by UPC/EAN
+                  if (games.length === 0) {
+                      games = await searchBGGByUPC(barcode);
+                  }
+
+                  showLoading(false);
+                  displayBGGResults(games);
+                  
+              } catch (error) {
+                  showLoading(false);
+                  console.error('BGG search error:', error);
+                  alert('Error searching BGG: ' + error.message);
+              }
+          }
+
+          async function searchBGGByBarcode(barcode) {
+              // BGG XML API search
+              const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${barcode}&type=boardgame`;
+              
+              try {
+                  const response = await fetch(searchUrl);
+                  const xmlText = await response.text();
+                  return parseBGGXML(xmlText);
+              } catch (error) {
+                  console.error('BGG API error:', error);
+                  return [];
+              }
+          }
+
+          async function searchBGGByUPC(upc) {
+              // Try alternate search methods for UPC
+              const searchUrl = `https://boardgamegeek.com/xmlapi2/search?query=${upc}&type=boardgame`;
+              
+              try {
+                  const response = await fetch(searchUrl);
+                  const xmlText = await response.text();
+                  return parseBGGXML(xmlText);
+              } catch (error) {
+                  console.error('BGG UPC search error:', error);
+                  return [];
+              }
+          }
+
+          function parseBGGXML(xmlText) {
+              try {
+                  const parser = new DOMParser();
+                  const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                  const items = xmlDoc.getElementsByTagName('item');
+                  
+                  const games = [];
+                  for (let i = 0; i < items.length && i < 5; i++) {
+                      const item = items[i];
+                      const name = item.getElementsByTagName('name')[0]?.getAttribute('value') || 'Unknown';
+                      const year = item.getElementsByTagName('yearpublished')[0]?.getAttribute('value') || '';
+                      const id = item.getAttribute('id');
+                      
+                      games.push({
+                          id: id,
+                          name: name,
+                          year: year
+                      });
+                  }
+                  
+                  return games;
+              } catch (error) {
+                  console.error('XML parsing error:', error);
+                  return [];
+              }
+          }
+
+          function showLoading(show) {
+              const loading = document.getElementById('bgg-loading');
+              if (show) {
+                  loading.classList.remove('hidden');
+              } else {
+                  loading.classList.add('hidden');
+              }
+          }
+
+          function displayBGGResults(games) {
+              const resultsDiv = document.getElementById('bgg-results');
+              
+              if (games.length === 0) {
+                  resultsDiv.innerHTML = '<p>No board games found with this barcode. You can still add the item manually.</p>';
+                  resultsDiv.classList.remove('hidden');
+                  return;
+              }
+
+              const gamesHtml = games.map(game => `
+                  <div class="bgg-game" onclick="selectBGGGame('${game.name}', '${game.year}')">
+                      <div class="bgg-game-name">${game.name}</div>
+                      <div class="bgg-game-year">${game.year ? '(' + game.year + ')' : ''}</div>
+                  </div>
+              `).join('');
+
+              resultsDiv.innerHTML = `
+                  <p><strong>Found ${games.length} game(s):</strong></p>
+                  ${gamesHtml}
+                  <p style="font-size: 12px; margin-top: 10px; color: #666;">Tap a game to auto-fill the form</p>
+              `;
+              resultsDiv.classList.remove('hidden');
+          }
+
+          function selectBGGGame(name, year) {
+              document.getElementById('title').value = name + (year ? ' (' + year + ')' : '');
+              document.getElementById('category').value = 'boardgame';
+              
+              // Hide results
+              document.getElementById('bgg-results').classList.add('hidden');
+              
+              // Focus on next field
+              document.getElementById('condition').focus();
+              
+              alert('Game info loaded! Please fill in the remaining details.');
           }
 
           // Screen navigation
@@ -444,6 +744,7 @@ jobs:
           }
 
           function clearForm() {
+              document.getElementById('barcode').value = '';
               document.getElementById('title').value = '';
               document.getElementById('category').value = '';
               document.getElementById('condition').value = '';
@@ -453,6 +754,11 @@ jobs:
               document.getElementById('stock').value = '';
               document.getElementById('sold').value = '0';
               document.getElementById('notes').value = '';
+              
+              // Reset BGG search
+              document.getElementById('bgg-search-btn').disabled = true;
+              document.getElementById('bgg-results').classList.add('hidden');
+              document.getElementById('bgg-loading').classList.add('hidden');
           }
 
           function showItems() {
