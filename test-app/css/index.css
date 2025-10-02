@@ -181,6 +181,26 @@ body {
     border-radius: 8px;
 }
 
+.barcode-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.barcode-buttons button {
+    flex: 1;
+}
+
+.barcode-hint {
+    text-align: center;
+    margin-top: 5px;
+    opacity: 0.8;
+}
+
+.barcode-hint small {
+    color: #666;
+    font-style: italic;
+}
+
 .scan-btn {
     background: #FF9800;
     color: white;

@@ -56,15 +56,20 @@
                 <div class="barcode-section">
                     <input type="text" id="barcode" placeholder="Barcode will appear here"
                         oninput="onBarcodeInput(this.value)">
-                    <button type="button" onclick="startBarcodeScanner()" class="scan-btn">
-                        <span class="material-icons">qr_code_scanner</span> Scan with Camera
-                    </button>
-                    <button type="button" onclick="openBarcodeInput()" class="manual-btn">
-                        <span class="material-icons">edit</span> Enter Manually
-                    </button>
+                    <div class="barcode-buttons">
+                        <button type="button" onclick="startBarcodeScanner()" class="scan-btn">
+                            <span class="material-icons">qr_code_scanner</span> Try Camera Scanner
+                        </button>
+                        <button type="button" onclick="openBarcodeInput()" class="manual-btn">
+                            <span class="material-icons">edit</span> Enter Manually
+                        </button>
+                    </div>
                     <button type="button" onclick="searchBGG()" class="bgg-btn" id="bgg-search-btn" disabled>
                         🎲 Search BGG
                     </button>
+                    <div class="barcode-hint">
+                        <small>💡 Tip: If camera doesn't work in browser, it will work better in the APK app!</small>
+                    </div>
                 </div>
                 <div id="bgg-loading" class="loading hidden">Searching BGG...</div>
                 <div id="bgg-results" class="bgg-results hidden"></div>

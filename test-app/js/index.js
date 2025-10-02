@@ -18,18 +18,38 @@ let videoStream = null;
 
 // Barcode Scanner Functions
 async function startBarcodeScanner() {
+    // Check if we're in a secure context (HTTPS or localhost)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Camera not available in this browser. Using manual input.');
+        openBarcodeInput();
+        return;
+    }
+
     try {
         // Show scanner modal
         document.getElementById('scanner-modal').classList.remove('hidden');
         
-        // Get camera access
-        videoStream = await navigator.mediaDevices.getUserMedia({ 
+        // Request camera permissions with fallback options
+        let constraints = { 
             video: { 
                 facingMode: 'environment', // Use back camera
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+                width: { ideal: 1280, min: 640 },
+                height: { ideal: 720, min: 480 }
             } 
-        });
+        };
+
+        // Try with environment camera first
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (envError) {
+            console.log('Environment camera failed, trying any camera...');
+            // Fallback to any available camera
+            constraints.video = { 
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            };
+            videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+        }
         
         const video = document.getElementById('scanner-video');
         video.srcObject = videoStream;
@@ -39,9 +59,23 @@ async function startBarcodeScanner() {
         
     } catch (error) {
         console.error('Camera access error:', error);
-        alert('Cannot access camera. Please check permissions or use manual input.');
         stopBarcodeScanner();
-        openBarcodeInput();
+        
+        // More user-friendly error handling
+        let errorMsg = 'Camera access failed. ';
+        if (error.name === 'NotAllowedError') {
+            errorMsg += 'Please allow camera permissions and try again.';
+        } else if (error.name === 'NotFoundError') {
+            errorMsg += 'No camera found on this device.';
+        } else if (error.name === 'NotSupportedError') {
+            errorMsg += 'Camera not supported in this browser.';
+        } else {
+            errorMsg += 'Please try manual input instead.';
+        }
+        
+        if (confirm(errorMsg + '\n\nWould you like to enter the barcode manually?')) {
+            openBarcodeInput();
+        }
     }
 }
 

@@ -98,16 +98,21 @@ jobs:
                   <div class="content">
                       <div class="form-group">
                           <div class="barcode-section">
-                                                            <input type=\"text\" id=\"barcode\" placeholder=\"Barcode will appear here\" oninput=\"onBarcodeInput(this.value)\">
-                              <button type="button" onclick="startBarcodeScanner()" class="scan-btn">
-                                  <span class="material-icons">qr_code_scanner</span> Scan with Camera
-                              </button>
-                              <button type="button" onclick="openBarcodeInput()" class="manual-btn">
-                                  <span class="material-icons">edit</span> Enter Manually
-                              </button>
+                              <input type="text" id="barcode" placeholder="Barcode will appear here" oninput="onBarcodeInput(this.value)">
+                              <div class="barcode-buttons">
+                                  <button type="button" onclick="startBarcodeScanner()" class="scan-btn">
+                                      <span class="material-icons">qr_code_scanner</span> Try Camera Scanner
+                                  </button>
+                                  <button type="button" onclick="openBarcodeInput()" class="manual-btn">
+                                      <span class="material-icons">edit</span> Enter Manually
+                                  </button>
+                              </div>
                               <button type="button" onclick="searchBGG()" class="bgg-btn" id="bgg-search-btn" disabled>
                                   🎲 Search BGG
                               </button>
+                              <div class="barcode-hint">
+                                  <small>💡 Tip: If camera doesn't work in browser, it will work better in the APK app!</small>
+                              </div>
                           </div>
                           <div id="bgg-loading" class="loading hidden">Searching BGG...</div>
                           <div id="bgg-results" class="bgg-results hidden"></div>
@@ -421,6 +426,26 @@ jobs:
               border-radius: 8px;
           }
 
+          .barcode-buttons {
+              display: flex;
+              gap: 10px;
+          }
+
+          .barcode-buttons button {
+              flex: 1;
+          }
+
+          .barcode-hint {
+              text-align: center;
+              margin-top: 5px;
+              opacity: 0.8;
+          }
+
+          .barcode-hint small {
+              color: #666;
+              font-style: italic;
+          }
+
           .scan-btn {
               background: #FF9800;
               color: white;
@@ -648,7 +673,7 @@ jobs:
           }
           EOF
 
-          # Update config.xml for network access
+          # Update config.xml for network access and camera permissions
           cat > config.xml << 'EOF'
           <?xml version='1.0' encoding='utf-8'?>
           <widget id="org.example.bgcatalog" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:cdv="http://cordova.apache.org/ns/1.0">
@@ -666,10 +691,21 @@ jobs:
               <platform name="android">
                   <allow-intent href="market:*" />
                   <preference name="AndroidXEnabled" value="true" />
+                  <!-- Camera permissions -->
+                  <uses-permission android:name="android.permission.CAMERA" />
+                  <uses-feature android:name="android.hardware.camera" android:required="false" />
+                  <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+                  <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
+                  <!-- Allow camera access in webview -->
+                  <preference name="permissions" value="none" />
+                  <preference name="AndroidInsecureFileModeEnabled" value="true" />
               </platform>
               <preference name="DisallowOverscroll" value="true" />
               <preference name="android-minSdkVersion" value="22" />
               <preference name="android-targetSdkVersion" value="33" />
+              <!-- Allow camera and microphone access -->
+              <feature name="http://api.phonegap.com/1.0/camera"/>
+              <feature name="http://api.phonegap.com/1.0/media"/>
           </widget>
           EOF
 
@@ -698,18 +734,38 @@ jobs:
 
           // Barcode Scanner Functions
           async function startBarcodeScanner() {
+              // Check if we're in a secure context (HTTPS or localhost)
+              if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                  alert('Camera not available in this browser. Using manual input.');
+                  openBarcodeInput();
+                  return;
+              }
+
               try {
                   // Show scanner modal
                   document.getElementById('scanner-modal').classList.remove('hidden');
                   
-                  // Get camera access
-                  videoStream = await navigator.mediaDevices.getUserMedia({ 
+                  // Request camera permissions with fallback options
+                  let constraints = { 
                       video: { 
                           facingMode: 'environment', // Use back camera
-                          width: { ideal: 1280 },
-                          height: { ideal: 720 }
+                          width: { ideal: 1280, min: 640 },
+                          height: { ideal: 720, min: 480 }
                       } 
-                  });
+                  };
+
+                  // Try with environment camera first
+                  try {
+                      videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                  } catch (envError) {
+                      console.log('Environment camera failed, trying any camera...');
+                      // Fallback to any available camera
+                      constraints.video = { 
+                          width: { ideal: 640 },
+                          height: { ideal: 480 }
+                      };
+                      videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+                  }
                   
                   const video = document.getElementById('scanner-video');
                   video.srcObject = videoStream;
@@ -719,9 +775,23 @@ jobs:
                   
               } catch (error) {
                   console.error('Camera access error:', error);
-                  alert('Cannot access camera. Please check permissions or use manual input.');
                   stopBarcodeScanner();
-                  openBarcodeInput();
+                  
+                  // More user-friendly error handling
+                  let errorMsg = 'Camera access failed. ';
+                  if (error.name === 'NotAllowedError') {
+                      errorMsg += 'Please allow camera permissions and try again.';
+                  } else if (error.name === 'NotFoundError') {
+                      errorMsg += 'No camera found on this device.';
+                  } else if (error.name === 'NotSupportedError') {
+                      errorMsg += 'Camera not supported in this browser.';
+                  } else {
+                      errorMsg += 'Please try manual input instead.';
+                  }
+                  
+                  if (confirm(errorMsg + '\n\nWould you like to enter the barcode manually?')) {
+                      openBarcodeInput();
+                  }
               }
           }
 
