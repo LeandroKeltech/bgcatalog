@@ -53,6 +53,7 @@ jobs:
               <title>BGCatalog</title>
               <link rel="stylesheet" href="css/index.css">
               <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+              <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
           </head>
           <body>
               <!-- Home Screen -->
@@ -89,7 +90,7 @@ jobs:
                           <span class="material-icons">arrow_back</span>
                       </button>
                       <h1>New Item</h1>
-                      <button class="icon-btn" onclick="openBarcodeInput()">
+                      <button class="icon-btn" onclick="startBarcodeScanner()">
                           <span class="material-icons">qr_code_scanner</span>
                       </button>
                   </header>
@@ -97,9 +98,12 @@ jobs:
                   <div class="content">
                       <div class="form-group">
                           <div class="barcode-section">
-                              <input type="text" id="barcode" placeholder="Barcode (scan or type)" oninput="onBarcodeInput(this.value)">
-                              <button type="button" onclick="openBarcodeInput()" class="scan-btn">
-                                  <span class="material-icons">qr_code_scanner</span> Quick Input
+                                                            <input type=\"text\" id=\"barcode\" placeholder=\"Barcode will appear here\" oninput=\"onBarcodeInput(this.value)\">
+                              <button type="button" onclick="startBarcodeScanner()" class="scan-btn">
+                                  <span class="material-icons">qr_code_scanner</span> Scan with Camera
+                              </button>
+                              <button type="button" onclick="openBarcodeInput()" class="manual-btn">
+                                  <span class="material-icons">edit</span> Enter Manually
                               </button>
                               <button type="button" onclick="searchBGG()" class="bgg-btn" id="bgg-search-btn" disabled>
                                   🎲 Search BGG
@@ -199,6 +203,28 @@ jobs:
                           <input type="url" id="script-url" placeholder="Apps Script URL">
                           <input type="number" id="image-quality" placeholder="Image Quality (1-100)" min="1" max="100" value="80">
                           <button onclick="saveSettings()" class="save-btn">Save Settings</button>
+                      </div>
+                  </div>
+              </div>
+
+              <!-- Camera Scanner Modal -->
+              <div id="scanner-modal" class="modal hidden">
+                  <div class="modal-content">
+                      <div class="scanner-header">
+                          <h3>Scan Barcode</h3>
+                          <button onclick="stopBarcodeScanner()" class="close-btn">
+                              <span class="material-icons">close</span>
+                          </button>
+                      </div>
+                      <div id="scanner-container">
+                          <video id="scanner-video" autoplay playsinline></video>
+                          <canvas id="scanner-canvas"></canvas>
+                      </div>
+                      <div class="scanner-controls">
+                          <button onclick="toggleFlash()" class="flash-btn">
+                              <span class="material-icons">flash_on</span>
+                          </button>
+                          <button onclick="stopBarcodeScanner()" class="cancel-btn">Cancel</button>
                       </div>
                   </div>
               </div>
@@ -413,6 +439,142 @@ jobs:
               background: #F57C00;
           }
 
+          .manual-btn {
+              background: #607D8B;
+              color: white;
+              padding: 12px;
+              border: none;
+              border-radius: 8px;
+              font-size: 14px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+          }
+
+          .manual-btn:hover {
+              background: #455A64;
+          }
+
+          /* Scanner Modal Styles */
+          .modal {
+              position: fixed;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              background: rgba(0, 0, 0, 0.9);
+              z-index: 1000;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+          }
+
+          .modal.hidden {
+              display: none;
+          }
+
+          .modal-content {
+              background: white;
+              border-radius: 12px;
+              overflow: hidden;
+              width: 90%;
+              max-width: 400px;
+              max-height: 90vh;
+          }
+
+          .scanner-header {
+              background: #2196F3;
+              color: white;
+              padding: 15px;
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+          }
+
+          .scanner-header h3 {
+              margin: 0;
+              font-size: 18px;
+          }
+
+          .close-btn {
+              background: none;
+              border: none;
+              color: white;
+              padding: 5px;
+              border-radius: 50%;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+          }
+
+          .close-btn:hover {
+              background: rgba(255, 255, 255, 0.1);
+          }
+
+          #scanner-container {
+              position: relative;
+              width: 100%;
+              height: 300px;
+              overflow: hidden;
+              background: #000;
+          }
+
+          #scanner-video {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+          }
+
+          #scanner-canvas {
+              position: absolute;
+              top: 0;
+              left: 0;
+              width: 100%;
+              height: 100%;
+              pointer-events: none;
+          }
+
+          .scanner-controls {
+              padding: 15px;
+              display: flex;
+              gap: 10px;
+              align-items: center;
+              justify-content: space-between;
+          }
+
+          .flash-btn {
+              background: #FFC107;
+              color: white;
+              padding: 10px;
+              border: none;
+              border-radius: 50%;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+          }
+
+          .flash-btn:hover {
+              background: #FF9800;
+          }
+
+          .cancel-btn {
+              background: #f44336;
+              color: white;
+              padding: 10px 20px;
+              border: none;
+              border-radius: 8px;
+              cursor: pointer;
+              font-size: 14px;
+          }
+
+          .cancel-btn:hover {
+              background: #d32f2f;
+          }
+
           .bgg-btn {
               background: #9C27B0;
               color: white;
@@ -530,17 +692,141 @@ jobs:
               console.log('Cordova plugins ready');
           }
 
+          // Camera Scanner Variables
+          let scannerActive = false;
+          let videoStream = null;
+
           // Barcode Scanner Functions
+          async function startBarcodeScanner() {
+              try {
+                  // Show scanner modal
+                  document.getElementById('scanner-modal').classList.remove('hidden');
+                  
+                  // Get camera access
+                  videoStream = await navigator.mediaDevices.getUserMedia({ 
+                      video: { 
+                          facingMode: 'environment', // Use back camera
+                          width: { ideal: 1280 },
+                          height: { ideal: 720 }
+                      } 
+                  });
+                  
+                  const video = document.getElementById('scanner-video');
+                  video.srcObject = videoStream;
+                  
+                  // Initialize Quagga scanner
+                  initQuaggaScanner();
+                  
+              } catch (error) {
+                  console.error('Camera access error:', error);
+                  alert('Cannot access camera. Please check permissions or use manual input.');
+                  stopBarcodeScanner();
+                  openBarcodeInput();
+              }
+          }
+
+          function initQuaggaScanner() {
+              Quagga.init({
+                  inputStream: {
+                      name: "Live",
+                      type: "LiveStream",
+                      target: document.querySelector('#scanner-video'),
+                      constraints: {
+                          width: 640,
+                          height: 480,
+                          facingMode: "environment"
+                      }
+                  },
+                  decoder: {
+                      readers: [
+                          "code_128_reader",
+                          "ean_reader",
+                          "ean_8_reader",
+                          "code_39_reader",
+                          "code_39_vin_reader",
+                          "codabar_reader",
+                          "upc_reader",
+                          "upc_e_reader",
+                          "i2of5_reader"
+                      ]
+                  },
+                  locate: true,
+                  locator: {
+                      patchSize: "medium",
+                      halfSample: true
+                  }
+              }, function(err) {
+                  if (err) {
+                      console.error('Quagga init error:', err);
+                      alert('Scanner initialization failed. Using manual input.');
+                      stopBarcodeScanner();
+                      openBarcodeInput();
+                      return;
+                  }
+                  
+                  console.log("Quagga initialization finished. Ready to start");
+                  Quagga.start();
+                  scannerActive = true;
+                  
+                  // Listen for barcode detection
+                  Quagga.onDetected(onBarcodeDetected);
+              });
+          }
+
+          function onBarcodeDetected(result) {
+              const code = result.codeResult.code;
+              console.log('Barcode detected:', code);
+              
+              // Stop scanner and process result
+              stopBarcodeScanner();
+              handleBarcodeResult(code);
+              
+              // Show success feedback
+              alert('Barcode scanned: ' + code);
+          }
+
+          function stopBarcodeScanner() {
+              // Hide modal
+              document.getElementById('scanner-modal').classList.add('hidden');
+              
+              // Stop Quagga
+              if (scannerActive) {
+                  Quagga.stop();
+                  scannerActive = false;
+              }
+              
+              // Stop video stream
+              if (videoStream) {
+                  videoStream.getTracks().forEach(track => track.stop());
+                  videoStream = null;
+              }
+          }
+
+          function toggleFlash() {
+              if (videoStream) {
+                  const track = videoStream.getVideoTracks()[0];
+                  const capabilities = track.getCapabilities();
+                  
+                  if (capabilities.torch) {
+                      const settings = track.getSettings();
+                      track.applyConstraints({
+                          advanced: [{ torch: !settings.torch }]
+                      });
+                  } else {
+                      alert('Flash not supported on this device');
+                  }
+              }
+          }
+
           function openBarcodeInput() {
-              const barcode = prompt('Enter or paste the barcode number:\n\n(Tip: You can scan with your camera app and paste here, or type manually)');
+              const barcode = prompt('Enter the barcode number manually:');
               if (barcode && barcode.trim()) {
                   handleBarcodeResult(barcode.trim());
               }
           }
 
           function scanBarcode() {
-              // Fallback to manual input for now
-              openBarcodeInput();
+              startBarcodeScanner();
           }
 
           function handleBarcodeResult(barcode) {
