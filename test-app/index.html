@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,6 +9,7 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 </head>
+
 <body>
     <!-- Home Screen -->
     <div id="home-screen" class="screen">
@@ -20,14 +22,15 @@
                 <span class="material-icons">add</span>
             </button>
         </header>
-        
+
         <div class="content">
-            <input type="text" id="search-field" placeholder="Search by title or barcode" oninput="filterItems(this.value)">
-            
+            <input type="text" id="search-field" placeholder="Search by title or barcode"
+                oninput="filterItems(this.value)">
+
             <div id="items-list" class="items-list">
                 <!-- Items will be dynamically added here -->
             </div>
-            
+
             <div class="bottom-buttons">
                 <button onclick="showScreen('review')">Review</button>
                 <button onclick="showScreen('inventory')">Inventory</button>
@@ -47,11 +50,12 @@
                 <span class="material-icons">qr_code_scanner</span>
             </button>
         </header>
-        
+
         <div class="content">
             <div class="form-group">
                 <div class="barcode-section">
-                    <input type="text" id="barcode" placeholder="Barcode will appear here" oninput="onBarcodeInput(this.value)">
+                    <input type="text" id="barcode" placeholder="Barcode will appear here"
+                        oninput="onBarcodeInput(this.value)">
                     <button type="button" onclick="startBarcodeScanner()" class="scan-btn">
                         <span class="material-icons">qr_code_scanner</span> Scan with Camera
                     </button>
@@ -64,7 +68,7 @@
                 </div>
                 <div id="bgg-loading" class="loading hidden">Searching BGG...</div>
                 <div id="bgg-results" class="bgg-results hidden"></div>
-                
+
                 <input type="text" id="title" placeholder="Title*" required>
                 <select id="category" required>
                     <option value="">Category*</option>
@@ -99,7 +103,7 @@
             </button>
             <h1>Review Items</h1>
         </header>
-        
+
         <div class="content">
             <div id="review-list" class="items-list">
                 <!-- Review items will be shown here -->
@@ -115,7 +119,7 @@
             </button>
             <h1>Inventory</h1>
         </header>
-        
+
         <div class="content">
             <div id="inventory-list" class="items-list">
                 <!-- Inventory items will be shown here -->
@@ -131,7 +135,7 @@
             </button>
             <h1>Export</h1>
         </header>
-        
+
         <div class="content">
             <div class="export-options">
                 <button onclick="exportToSheets()" class="export-btn">Export to Google Sheets</button>
@@ -150,11 +154,12 @@
             </button>
             <h1>Settings</h1>
         </header>
-        
+
         <div class="content">
             <div class="form-group">
                 <input type="url" id="script-url" placeholder="Apps Script URL">
-                <input type="number" id="image-quality" placeholder="Image Quality (1-100)" min="1" max="100" value="80">
+                <input type="number" id="image-quality" placeholder="Image Quality (1-100)" min="1" max="100"
+                    value="80">
                 <button onclick="saveSettings()" class="save-btn">Save Settings</button>
             </div>
         </div>
@@ -184,4 +189,5 @@
 
     <script src="js/index.js"></script>
 </body>
+
 </html>
