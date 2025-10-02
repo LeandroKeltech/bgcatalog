@@ -38,6 +38,14 @@ jobs:
           cordova create bgcatalog-app org.example.bgcatalog BGCatalog
           cd bgcatalog-app
           cordova platform add android
+          
+      - name: Add camera and barcode plugins
+        run: |
+          cd bgcatalog-app
+          cordova plugin add cordova-plugin-camera
+          cordova plugin add cordova-plugin-media-capture
+          cordova plugin add phonegap-plugin-barcodescanner
+          cordova plugin add cordova.plugins.diagnostic
 
       - name: Create app content
         run: |
@@ -111,8 +119,11 @@ jobs:
                                   🎲 Search BGG
                               </button>
                               <div class="barcode-hint">
-                                  <small>💡 Tip: If camera doesn't work in browser, it will work better in the APK app!</small>
+                                  <small>💡 Tip: If camera doesn't work, try the permissions button below!</small>
                               </div>
+                              <button type="button" onclick="requestPermissions()" class="permissions-btn" id="permissions-btn" style="display: none;">
+                                  <span class="material-icons">security</span> Request Camera Permission
+                              </button>
                           </div>
                           <div id="bgg-loading" class="loading hidden">Searching BGG...</div>
                           <div id="bgg-results" class="bgg-results hidden"></div>
@@ -446,6 +457,25 @@ jobs:
               font-style: italic;
           }
 
+          .permissions-btn {
+              background: #E91E63;
+              color: white;
+              padding: 12px;
+              border: none;
+              border-radius: 8px;
+              font-size: 14px;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+              margin-top: 5px;
+          }
+
+          .permissions-btn:hover {
+              background: #C2185B;
+          }
+
           .scan-btn {
               background: #FF9800;
               color: white;
@@ -676,9 +706,9 @@ jobs:
           # Update config.xml for network access and camera permissions
           cat > config.xml << 'EOF'
           <?xml version='1.0' encoding='utf-8'?>
-          <widget id="org.example.bgcatalog" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+          <widget id="org.example.bgcatalog" version="1.0.1" xmlns="http://www.w3.org/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:cdv="http://cordova.apache.org/ns/1.0">
               <name>BGCatalog</name>
-              <description>Board Game Catalog App</description>
+              <description>Board Game Catalog App with Barcode Scanner</description>
               <author email="dev@example.com" href="https://example.com">Developer</author>
               <content src="index.html" />
               <access origin="*" />
@@ -688,24 +718,43 @@ jobs:
               <allow-intent href="sms:*" />
               <allow-intent href="mailto:*" />
               <allow-intent href="geo:*" />
+              
               <platform name="android">
                   <allow-intent href="market:*" />
                   <preference name="AndroidXEnabled" value="true" />
-                  <!-- Camera permissions -->
+                  
+                  <!-- Camera and Storage permissions for barcode scanning -->
                   <uses-permission android:name="android.permission.CAMERA" />
+                  <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+                  <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+                  <uses-permission android:name="android.permission.RECORD_AUDIO" />
+                  
+                  <!-- Camera features -->
                   <uses-feature android:name="android.hardware.camera" android:required="false" />
                   <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
                   <uses-feature android:name="android.hardware.camera.flash" android:required="false" />
-                  <!-- Allow camera access in webview -->
-                  <preference name="permissions" value="none" />
+                  <uses-feature android:name="android.hardware.camera.front" android:required="false" />
+                  
+                  <!-- WebView permissions for camera access -->
                   <preference name="AndroidInsecureFileModeEnabled" value="true" />
+                  <preference name="AndroidWebViewType" value="SystemWebView" />
+                  
+                  <!-- Allow navigation to external links -->
+                  <allow-navigation href="*" />
               </platform>
+              
               <preference name="DisallowOverscroll" value="true" />
               <preference name="android-minSdkVersion" value="22" />
               <preference name="android-targetSdkVersion" value="33" />
-              <!-- Allow camera and microphone access -->
-              <feature name="http://api.phonegap.com/1.0/camera"/>
-              <feature name="http://api.phonegap.com/1.0/media"/>
+              <preference name="webviewbounce" value="false" />
+              <preference name="UIWebViewBounce" value="false" />
+              <preference name="DisallowOverscroll" value="true" />
+              
+              <!-- Plugin declarations -->
+              <plugin name="cordova-plugin-camera" spec="^7.0.0" />
+              <plugin name="cordova-plugin-media-capture" spec="^4.0.0" />
+              <plugin name="phonegap-plugin-barcodescanner" spec="^8.1.0" />
+              <plugin name="cordova.plugins.diagnostic" spec="^7.1.4" />
           </widget>
           EOF
 
@@ -721,11 +770,49 @@ jobs:
 
           // Initialize app
           document.addEventListener('deviceready', onDeviceReady, false);
+          // Fallback for browser testing
+          if (typeof cordova === 'undefined') {
+              document.addEventListener('DOMContentLoaded', onDeviceReady, false);
+          }
 
           function onDeviceReady() {
               loadData();
               showItems();
-              console.log('Cordova plugins ready');
+              console.log('App ready - Cordova plugins:', typeof cordova !== 'undefined' ? 'available' : 'not available');
+              
+              // Check if barcode scanner is available
+              if (typeof cordova !== 'undefined' && cordova.plugins && cordova.plugins.barcodeScanner) {
+                  console.log('Barcode scanner plugin available');
+              } else {
+                  console.log('Using WebRTC fallback for barcode scanning');
+              }
+              
+              // Show permission button if in Cordova app
+              if (typeof cordova !== 'undefined') {
+                  const permBtn = document.getElementById('permissions-btn');
+                  if (permBtn) permBtn.style.display = 'block';
+              }
+          }
+
+          // Request camera permissions
+          function requestPermissions() {
+              if (typeof cordova !== 'undefined' && cordova.plugins && cordova.plugins.diagnostic) {
+                  cordova.plugins.diagnostic.requestCameraAuthorization(
+                      function(status) {
+                          if (status === cordova.plugins.diagnostic.permissionStatus.GRANTED) {
+                              alert('Camera permission granted! You can now use the barcode scanner.');
+                          } else {
+                              alert('Camera permission denied. Please enable it in app settings.');
+                          }
+                      },
+                      function(error) {
+                          console.error('Permission request error:', error);
+                          alert('Please enable camera permission in your device settings for this app.');
+                      }
+                  );
+              } else {
+                  alert('Please enable camera permission in your device settings for this app.');
+              }
           }
 
           // Camera Scanner Variables
@@ -734,9 +821,42 @@ jobs:
 
           // Barcode Scanner Functions
           async function startBarcodeScanner() {
-              // Check if we're in a secure context (HTTPS or localhost)
+              // Check if we're in Cordova app first
+              if (typeof cordova !== 'undefined' && cordova.plugins && cordova.plugins.barcodeScanner) {
+                  // Use Cordova barcode scanner plugin if available
+                  cordova.plugins.barcodeScanner.scan(
+                      function (result) {
+                          if (!result.cancelled) {
+                              handleBarcodeResult(result.text);
+                              alert('Barcode scanned: ' + result.text);
+                          }
+                      },
+                      function (error) {
+                          console.error('Scan failed: ' + error);
+                          if (confirm('Barcode scanner failed. Would you like to enter manually?')) {
+                              openBarcodeInput();
+                          }
+                      },
+                      {
+                          preferFrontCamera: false,
+                          showFlipCameraButton: true,
+                          showTorchButton: true,
+                          torchOn: false,
+                          saveHistory: false,
+                          prompt: "Place a barcode inside the scan area",
+                          resultDisplayDuration: 500,
+                          formats: "QR_CODE,PDF_417,EAN_13,EAN_8,UPC_A,UPC_E,CODE_128,CODE_39,CODE_93,CODABAR,ITF,RSS14,RSS_EXPANDED",
+                          orientation: "portrait",
+                          disableAnimations: true,
+                          disableSuccessBeep: false
+                      }
+                  );
+                  return;
+              }
+
+              // Fallback to WebRTC for browsers
               if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                  alert('Camera not available in this browser. Using manual input.');
+                  alert('Camera not available. Using manual input.');
                   openBarcodeInput();
                   return;
               }
@@ -780,11 +900,11 @@ jobs:
                   // More user-friendly error handling
                   let errorMsg = 'Camera access failed. ';
                   if (error.name === 'NotAllowedError') {
-                      errorMsg += 'Please allow camera permissions and try again.';
+                      errorMsg += 'Please allow camera permissions in app settings and try again.';
                   } else if (error.name === 'NotFoundError') {
                       errorMsg += 'No camera found on this device.';
                   } else if (error.name === 'NotSupportedError') {
-                      errorMsg += 'Camera not supported in this browser.';
+                      errorMsg += 'Camera not supported.';
                   } else {
                       errorMsg += 'Please try manual input instead.';
                   }

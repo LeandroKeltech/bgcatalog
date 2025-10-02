@@ -201,6 +201,25 @@ body {
     font-style: italic;
 }
 
+.permissions-btn {
+    background: #E91E63;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.permissions-btn:hover {
+    background: #C2185B;
+}
+
 .scan-btn {
     background: #FF9800;
     color: white;

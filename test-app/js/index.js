@@ -6,11 +6,51 @@ let settings = {
 };
 
 // Initialize app
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('deviceready', onDeviceReady, false);
+// Fallback for browser testing
+if (typeof cordova === 'undefined') {
+    document.addEventListener('DOMContentLoaded', onDeviceReady, false);
+}
+
+function onDeviceReady() {
     loadData();
     showItems();
-    console.log('App initialized');
-});
+    console.log('App ready - Cordova plugins:', typeof cordova !== 'undefined' ? 'available' : 'not available');
+    
+    // Check if barcode scanner is available
+    if (typeof cordova !== 'undefined' && cordova.plugins && cordova.plugins.barcodeScanner) {
+        console.log('Barcode scanner plugin available');
+    } else {
+        console.log('Using WebRTC fallback for barcode scanning');
+    }
+    
+    // Show permission button if in Cordova app
+    if (typeof cordova !== 'undefined') {
+        const permBtn = document.getElementById('permissions-btn');
+        if (permBtn) permBtn.style.display = 'block';
+    }
+}
+
+// Request camera permissions
+function requestPermissions() {
+    if (typeof cordova !== 'undefined' && cordova.plugins && cordova.plugins.diagnostic) {
+        cordova.plugins.diagnostic.requestCameraAuthorization(
+            function(status) {
+                if (status === cordova.plugins.diagnostic.permissionStatus.GRANTED) {
+                    alert('Camera permission granted! You can now use the barcode scanner.');
+                } else {
+                    alert('Camera permission denied. Please enable it in app settings.');
+                }
+            },
+            function(error) {
+                console.error('Permission request error:', error);
+                alert('Please enable camera permission in your device settings for this app.');
+            }
+        );
+    } else {
+        alert('Please enable camera permission in your device settings for this app.');
+    }
+}
 
 // Camera Scanner Variables
 let scannerActive = false;
@@ -18,9 +58,42 @@ let videoStream = null;
 
 // Barcode Scanner Functions
 async function startBarcodeScanner() {
-    // Check if we're in a secure context (HTTPS or localhost)
+    // Check if we're in Cordova app first
+    if (typeof cordova !== 'undefined' && cordova.plugins && cordova.plugins.barcodeScanner) {
+        // Use Cordova barcode scanner plugin if available
+        cordova.plugins.barcodeScanner.scan(
+            function (result) {
+                if (!result.cancelled) {
+                    handleBarcodeResult(result.text);
+                    alert('Barcode scanned: ' + result.text);
+                }
+            },
+            function (error) {
+                console.error('Scan failed: ' + error);
+                if (confirm('Barcode scanner failed. Would you like to enter manually?')) {
+                    openBarcodeInput();
+                }
+            },
+            {
+                preferFrontCamera: false,
+                showFlipCameraButton: true,
+                showTorchButton: true,
+                torchOn: false,
+                saveHistory: false,
+                prompt: "Place a barcode inside the scan area",
+                resultDisplayDuration: 500,
+                formats: "QR_CODE,PDF_417,EAN_13,EAN_8,UPC_A,UPC_E,CODE_128,CODE_39,CODE_93,CODABAR,ITF,RSS14,RSS_EXPANDED",
+                orientation: "portrait",
+                disableAnimations: true,
+                disableSuccessBeep: false
+            }
+        );
+        return;
+    }
+
+    // Fallback to WebRTC for browsers
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert('Camera not available in this browser. Using manual input.');
+        alert('Camera not available. Using manual input.');
         openBarcodeInput();
         return;
     }
@@ -64,11 +137,11 @@ async function startBarcodeScanner() {
         // More user-friendly error handling
         let errorMsg = 'Camera access failed. ';
         if (error.name === 'NotAllowedError') {
-            errorMsg += 'Please allow camera permissions and try again.';
+            errorMsg += 'Please allow camera permissions in app settings and try again.';
         } else if (error.name === 'NotFoundError') {
             errorMsg += 'No camera found on this device.';
         } else if (error.name === 'NotSupportedError') {
-            errorMsg += 'Camera not supported in this browser.';
+            errorMsg += 'Camera not supported.';
         } else {
             errorMsg += 'Please try manual input instead.';
         }

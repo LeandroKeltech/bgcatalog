@@ -68,8 +68,11 @@
                         🎲 Search BGG
                     </button>
                     <div class="barcode-hint">
-                        <small>💡 Tip: If camera doesn't work in browser, it will work better in the APK app!</small>
+                        <small>💡 Tip: If camera doesn't work, try the permissions button below!</small>
                     </div>
+                    <button type="button" onclick="requestPermissions()" class="permissions-btn" id="permissions-btn" style="display: none;">
+                        <span class="material-icons">security</span> Request Camera Permission
+                    </button>
                 </div>
                 <div id="bgg-loading" class="loading hidden">Searching BGG...</div>
                 <div id="bgg-results" class="bgg-results hidden"></div>
