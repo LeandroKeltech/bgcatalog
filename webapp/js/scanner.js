@@ -89,42 +89,40 @@ class BarcodeScanner {
     // Initialize Quagga barcode scanner
     async initQuagga() {
         return new Promise((resolve, reject) => {
+            console.log('Initializing Quagga scanner...');
+            
             Quagga.init({
                 inputStream: {
                     name: "Live",
                     type: "LiveStream",
                     target: document.querySelector('#scanner-video'),
                     constraints: {
-                        width: { min: 640, ideal: 1280 },
-                        height: { min: 480, ideal: 720 },
+                        width: { min: 640, ideal: 1280, max: 1920 },
+                        height: { min: 480, ideal: 720, max: 1080 },
                         facingMode: "environment"
                     }
                 },
                 decoder: {
                     readers: [
-                        "code_128_reader",
-                        "ean_reader",
-                        "ean_8_reader", 
-                        "code_39_reader",
-                        "code_39_vin_reader",
-                        "codabar_reader",
-                        "upc_reader",
-                        "upc_e_reader",
-                        "i2of5_reader",
-                        "2of5_reader"
+                        "ean_reader",      // EAN-13, EAN-8 (mais comum)
+                        "upc_reader",      // UPC-A
+                        "upc_e_reader",    // UPC-E
+                        "code_128_reader", // Code 128
+                        "code_39_reader",  // Code 39
+                        "i2of5_reader"     // Interleaved 2 of 5
                     ],
                     debug: {
-                        drawBoundingBox: false,
+                        drawBoundingBox: true,  // Mostrar área detectada
                         showFrequency: false,
-                        drawScanline: false,
+                        drawScanline: true,     // Mostrar linha de scan
                         showPattern: false
                     }
                 },
                 locate: true,
                 locator: {
-                    patchSize: "medium",
-                    halfSample: true,
-                    showCanvas: false,
+                    patchSize: "large",     // Patches maiores para melhor detecção
+                    halfSample: false,      // Não reduzir qualidade
+                    showCanvas: true,       // Mostrar canvas de debug
                     showPatches: false,
                     showFoundPatches: false,
                     showSkeleton: false,
@@ -132,18 +130,18 @@ class BarcodeScanner {
                     showPatchLabels: false,
                     showRemainingPatchLabels: false,
                     boxFromPatches: {
-                        showTransformed: false,
-                        showTransformedBox: false,
-                        showBB: false
+                        showTransformed: true,
+                        showTransformedBox: true,
+                        showBB: true
                     }
                 },
-                numOfWorkers: 2,
-                frequency: 10,
+                numOfWorkers: 1,        // Reduzir workers para evitar conflitos
+                frequency: 20,          // Aumentar frequência de scan
                 area: {
-                    top: "20%",
-                    right: "20%",
-                    left: "20%",
-                    bottom: "20%"
+                    top: "10%",
+                    right: "10%", 
+                    left: "10%",
+                    bottom: "10%"
                 }
             }, (err) => {
                 if (err) {
@@ -167,39 +165,95 @@ class BarcodeScanner {
     handleBarcodeDetection(result) {
         const code = result.codeResult.code;
         
-        // Validate barcode (basic validation)
+        // Update UI to show detection attempt
+        this.updateScannerStatus('🔍 Código detectado: ' + code, 'scanning');
+        
+        // Validate barcode
         if (this.isValidBarcode(code)) {
-            console.log('Valid barcode detected:', code);
+            console.log('✅ Valid barcode detected:', code);
             
-            // Stop scanning
-            this.stopScanning();
+            // Show success status
+            this.updateScannerStatus('✅ Código válido: ' + code, 'success');
             
-            // Call callback
-            if (this.onBarcodeDetected) {
-                this.onBarcodeDetected(code);
-            }
+            // Stop scanning after short delay
+            setTimeout(() => {
+                this.stopScanning();
+                
+                // Call callback
+                if (this.onBarcodeDetected) {
+                    this.onBarcodeDetected(code);
+                }
+            }, 800);
+            
         } else {
-            console.log('Invalid barcode detected, continuing scan:', code);
+            console.log('❌ Invalid barcode detected, continuing scan:', code);
+            
+            // Show error status briefly
+            this.updateScannerStatus('❌ Código inválido, tentando novamente...', 'error');
+            
+            // Reset to scanning state after 1 second
+            setTimeout(() => {
+                this.updateScannerStatus('📱 Posicione o código de barras no quadro', '');
+            }, 1500);
+        }
+    }
+    
+    // Update scanner status display
+    updateScannerStatus(message, type = '') {
+        const statusElement = document.getElementById('scanner-status');
+        const hintElement = statusElement?.querySelector('.scanner-hint');
+        
+        if (hintElement) {
+            hintElement.textContent = message;
+            hintElement.className = `scanner-hint ${type}`;
         }
     }
 
     // Basic barcode validation
     isValidBarcode(code) {
-        // Remove any non-digit characters for validation
-        const digits = code.replace(/\D/g, '');
+        if (!code || typeof code !== 'string') return false;
         
-        // Check minimum length (most barcodes are at least 8 digits)
-        if (digits.length < 8) {
+        // Clean the code
+        const cleanCode = code.trim();
+        
+        // Check if it's mostly digits (allow some letters for Code 39, Code 128)
+        const digitCount = (cleanCode.match(/\d/g) || []).length;
+        const totalLength = cleanCode.length;
+        
+        // Must be at least 50% digits
+        if (digitCount < totalLength * 0.5) {
+            console.log('Barcode validation failed: not enough digits', code);
             return false;
         }
         
-        // Check maximum length (prevent extremely long false positives)
-        if (digits.length > 18) {
+        // Length validation (most barcodes are 6-18 characters)
+        if (totalLength < 6) {
+            console.log('Barcode validation failed: too short', code);
             return false;
         }
         
-        // Additional validation could include checksum verification
-        return true;
+        if (totalLength > 20) {
+            console.log('Barcode validation failed: too long', code);
+            return false;
+        }
+        
+        // Common barcode patterns
+        const patterns = [
+            /^\d{8}$/,          // EAN-8
+            /^\d{12}$/,         // UPC-A
+            /^\d{13}$/,         // EAN-13
+            /^[\dA-Z\-\. ]+$/   // Code 39/128 (alphanumeric)
+        ];
+        
+        const isValid = patterns.some(pattern => pattern.test(cleanCode));
+        
+        if (isValid) {
+            console.log('✅ Valid barcode detected:', code);
+        } else {
+            console.log('❌ Invalid barcode pattern:', code);
+        }
+        
+        return isValid;
     }
 
     // Stop barcode scanning
@@ -338,6 +392,36 @@ function manualBarcodeInput() {
     if (barcode) {
         handleBarcodeResult(barcode);
     }
+}
+
+function showBarcodeHelp() {
+    const helpText = `
+📱 DICAS PARA SCANNER DE CÓDIGO DE BARRAS:
+
+✅ CÓDIGOS QUE FUNCIONAM:
+• EAN-13 (13 dígitos) - mais comum
+• EAN-8 (8 dígitos)
+• UPC-A (12 dígitos)
+• UPC-E (6-8 dígitos)
+• Code 128, Code 39
+
+📸 DICAS DE ESCANEAMENTO:
+• Use boa iluminação
+• Mantenha código reto (sem inclinação)
+• Distância: 10-30cm da câmera
+• Evite reflexos e sombras
+• Limpe a lente da câmera
+
+⚠️ SE NÃO FUNCIONAR:
+• Use Chrome ou Safari (recomendado)
+• Permita acesso à câmera
+• Tente "Digitar Manualmente"
+• Verifique se está em HTTPS
+
+💡 Teste com código de barras de livro, produto ou jogo!
+    `;
+    
+    alert(helpText);
 }
 
 // Handle barcode result (to be implemented in main app)

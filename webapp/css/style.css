@@ -721,14 +721,53 @@ body {
     border-top: none;
 }
 
+.scanner-status {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+}
+
 .scanner-hint {
     color: white;
-    margin-top: 1rem;
-    text-align: center;
-    background: rgba(0,0,0,0.7);
-    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    font-weight: 500;
+    background: rgba(0,0,0,0.8);
+    padding: 0.75rem 1rem;
     border-radius: var(--radius);
-    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.scanner-tips {
+    color: rgba(255,255,255,0.9);
+    font-size: 0.75rem;
+    background: rgba(0,0,0,0.6);
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    text-align: left;
+    max-width: 280px;
+    line-height: 1.4;
+}
+
+.scanner-hint.scanning {
+    background: rgba(33, 150, 243, 0.9);
+    animation: pulse 1.5s infinite;
+}
+
+.scanner-hint.success {
+    background: rgba(76, 175, 80, 0.9);
+}
+
+.scanner-hint.error {
+    background: rgba(244, 67, 54, 0.9);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
 }
 
 .scanner-controls {

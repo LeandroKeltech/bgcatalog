@@ -254,7 +254,14 @@
                 <canvas id="scanner-canvas"></canvas>
                 <div class="scanner-overlay">
                     <div class="scanner-frame"></div>
-                    <p class="scanner-hint">Posicione o código de barras dentro do quadro</p>
+                    <div class="scanner-status" id="scanner-status">
+                        <div class="scanner-hint">📱 Posicione o código de barras no quadro</div>
+                        <div class="scanner-tips">
+                            • Mantenha o código reto e bem iluminado<br>
+                            • Aproxime ou afaste para focar<br>
+                            • Tente diferentes ângulos se não funcionar
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -266,6 +273,10 @@
                 <button type="button" onclick="manualBarcodeInput()" class="btn-secondary">
                     <span class="material-icons">edit</span>
                     Digitar Manualmente
+                </button>
+                <button type="button" onclick="showBarcodeHelp()" class="btn-icon">
+                    <span class="material-icons">help</span>
+                    Ajuda
                 </button>
                 <button type="button" onclick="stopBarcodeScanner()" class="btn-primary">
                     Cancelar
