@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BGCatalog - Web App</title>
+    <meta name="description" content="Catálogo de jogos de tabuleiro com scanner de código de barras">
+    <meta name="theme-color" content="#2196F3">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+
+    <!-- Icons -->
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+    <!-- QuaggaJS for barcode scanning -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+</head>
+
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-logo">🎲</div>
+            <h2>BGCatalog</h2>
+            <div class="loading-spinner"></div>
+            <p>Carregando...</p>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app" class="app hidden">
+        <!-- Navigation Bar -->
+        <nav class="navbar">
+            <div class="nav-brand">
+                <span class="nav-logo">🎲</span>
+                <span class="nav-title">BGCatalog</span>
+            </div>
+            <div class="nav-actions">
+                <button class="icon-btn" onclick="showAddItem()" title="Adicionar Item">
+                    <span class="material-icons">add</span>
+                </button>
+                <button class="icon-btn" onclick="showSettings()" title="Configurações">
+                    <span class="material-icons">settings</span>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Search Bar -->
+            <div class="search-container">
+                <div class="search-box">
+                    <span class="material-icons">search</span>
+                    <input type="text" id="search-input" placeholder="Buscar por título ou código de barras..."
+                        oninput="handleSearch(this.value)">
+                </div>
+                <div class="search-filters">
+                    <select id="category-filter" onchange="applyFilters()">
+                        <option value="">Todas as categorias</option>
+                        <option value="boardgame">Jogos de Tabuleiro</option>
+                        <option value="furniture">Móveis</option>
+                        <option value="kitchen">Cozinha</option>
+                        <option value="others">Outros</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div id="stats-container" class="stats-container">
+                <div class="stat-card">
+                    <span class="material-icons">inventory</span>
+                    <div class="stat-info">
+                        <div class="stat-number" id="total-items">0</div>
+                        <div class="stat-label">Total de Itens</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="material-icons">euro_symbol</span>
+                    <div class="stat-info">
+                        <div class="stat-number" id="total-value">€0</div>
+                        <div class="stat-label">Valor Total</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="material-icons">trending_up</span>
+                    <div class="stat-info">
+                        <div class="stat-number" id="total-sold">0</div>
+                        <div class="stat-label">Vendidos</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items List -->
+            <div id="items-container" class="items-container">
+                <div id="empty-state" class="empty-state">
+                    <span class="material-icons">inventory_2</span>
+                    <h3>Nenhum item encontrado</h3>
+                    <p>Adicione seu primeiro item clicando no botão +</p>
+                </div>
+                <div id="items-list" class="items-list"></div>
+            </div>
+        </main>
+
+        <!-- Floating Action Button -->
+        <button class="fab" onclick="showAddItem()" title="Adicionar Item">
+            <span class="material-icons">add</span>
+        </button>
+    </div>
+
+    <!-- Add/Edit Item Modal -->
+    <div id="item-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Novo Item</h3>
+                <button class="close-btn" onclick="closeItemModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+
+            <form id="item-form" class="item-form">
+                <!-- Barcode Section -->
+                <div class="form-section">
+                    <label>Código de Barras</label>
+                    <div class="barcode-input-group">
+                        <input type="text" id="barcode" placeholder="Escaneie ou digite o código">
+                        <button type="button" class="scan-btn" onclick="startBarcodeScanner()">
+                            <span class="material-icons">qr_code_scanner</span>
+                            Scanner
+                        </button>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="bgg-search-btn" class="bgg-btn" onclick="searchBGG()" disabled>
+                            🎲 Buscar no BGG
+                        </button>
+                    </div>
+                    <div id="bgg-loading" class="loading-message hidden">
+                        <span class="material-icons spinning">refresh</span>
+                        Buscando na BoardGameGeek...
+                    </div>
+                    <div id="bgg-results" class="bgg-results hidden"></div>
+                </div>
+
+                <!-- Basic Info -->
+                <div class="form-section">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="title">Título *</label>
+                            <input type="text" id="title" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="category">Categoria *</label>
+                            <select id="category" required>
+                                <option value="">Selecione...</option>
+                                <option value="boardgame">Jogo de Tabuleiro</option>
+                                <option value="furniture">Móveis</option>
+                                <option value="kitchen">Cozinha</option>
+                                <option value="others">Outros</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="condition">Condição *</label>
+                            <select id="condition" required>
+                                <option value="">Selecione...</option>
+                                <option value="new">Novo</option>
+                                <option value="good">Bom</option>
+                                <option value="acceptable">Aceitável</option>
+                                <option value="poor">Ruim</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pricing -->
+                <div class="form-section">
+                    <h4>Preços</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="reference-price">Preço de Referência (€) *</label>
+                            <input type="number" id="reference-price" step="0.01" required
+                                oninput="calculateFinalPrice()">
+                        </div>
+                        <div class="form-group">
+                            <label for="price-rule">Regra de Preço (%) *</label>
+                            <input type="number" id="price-rule" value="-50" oninput="calculateFinalPrice()">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="final-price">Preço Final (€) *</label>
+                            <input type="number" id="final-price" step="0.01" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock -->
+                <div class="form-section">
+                    <h4>Estoque</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="stock">Quantidade em Estoque *</label>
+                            <input type="number" id="stock" min="0" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sold">Quantidade Vendida</label>
+                            <input type="number" id="sold" min="0" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="notes">Observações</label>
+                        <textarea id="notes" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeItemModal()">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        <span class="material-icons">save</span>
+                        Salvar Item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Barcode Scanner Modal -->
+    <div id="scanner-modal" class="modal">
+        <div class="modal-content scanner-modal">
+            <div class="modal-header">
+                <h3>Scanner de Código de Barras</h3>
+                <button class="close-btn" onclick="stopBarcodeScanner()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+
+            <div class="scanner-container">
+                <video id="scanner-video" autoplay playsinline muted></video>
+                <canvas id="scanner-canvas"></canvas>
+                <div class="scanner-overlay">
+                    <div class="scanner-frame"></div>
+                    <p class="scanner-hint">Posicione o código de barras dentro do quadro</p>
+                </div>
+            </div>
+
+            <div class="scanner-controls">
+                <button type="button" onclick="toggleFlashlight()" class="btn-icon">
+                    <span class="material-icons">flash_on</span>
+                    Flash
+                </button>
+                <button type="button" onclick="manualBarcodeInput()" class="btn-secondary">
+                    <span class="material-icons">edit</span>
+                    Digitar Manualmente
+                </button>
+                <button type="button" onclick="stopBarcodeScanner()" class="btn-primary">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Configurações</h3>
+                <button class="close-btn" onclick="closeSettings()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+
+            <div class="settings-content">
+                <!-- Google Sheets Configuration -->
+                <div class="settings-section">
+                    <h4>🔗 Configuração Google Sheets</h4>
+                    <p class="settings-description">Configure o Google Sheets como seu banco de dados na nuvem.</p>
+
+                    <div class="form-group">
+                        <label for="sheets-api-key">Google Sheets API Key</label>
+                        <input type="text" id="sheets-api-key" placeholder="Digite sua API Key do Google">
+                        <small>Crie uma API Key no <a href="https://console.developers.google.com"
+                                target="_blank">Google Cloud Console</a></small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spreadsheet-id">ID da Planilha</label>
+                        <input type="text" id="spreadsheet-id" placeholder="ID da sua planilha Google Sheets">
+                        <small>Copie da URL:
+                            https://docs.google.com/spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sheet-name">Nome da Aba (opcional)</label>
+                        <input type="text" id="sheet-name" placeholder="BGCatalog" value="BGCatalog">
+                    </div>
+
+                    <div class="settings-actions">
+                        <button onclick="testGoogleSheets()" class="btn-secondary">
+                            <span class="material-icons">cloud_sync</span>
+                            Testar Conexão
+                        </button>
+                        <button onclick="saveGoogleSheetsConfig()" class="btn-primary">
+                            <span class="material-icons">save</span>
+                            Salvar Configuração
+                        </button>
+                    </div>
+
+                    <div id="sheets-status" class="sync-status"></div>
+                </div>
+
+                <!-- Sync Status -->
+                <div class="settings-section">
+                    <h4>📊 Status da Sincronização</h4>
+                    <div id="sync-info" class="sync-info">
+                        <div class="sync-item">
+                            <span class="sync-label">Status:</span>
+                            <span id="sync-online-status" class="sync-value">Verificando...</span>
+                        </div>
+                        <div class="sync-item">
+                            <span class="sync-label">Última Sync:</span>
+                            <span id="sync-last-time" class="sync-value">Nunca</span>
+                        </div>
+                        <div class="sync-item">
+                            <span class="sync-label">Itens Locais:</span>
+                            <span id="sync-items-count" class="sync-value">0</span>
+                        </div>
+                    </div>
+                    <div class="settings-actions">
+                        <button onclick="manualSync()" class="btn-secondary">
+                            <span class="material-icons">sync</span>
+                            Sincronizar Agora
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Export/Import -->
+                <div class="settings-section">
+                    <h4>💾 Backup Local</h4>
+                    <div class="settings-actions">
+                        <button onclick="exportData()" class="btn-secondary">
+                            <span class="material-icons">download</span>
+                            Exportar Dados (JSON)
+                        </button>
+                        <button onclick="importData()" class="btn-secondary">
+                            <span class="material-icons">upload</span>
+                            Importar Dados
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Clear Data -->
+                <div class="settings-section">
+                    <h4>Dados</h4>
+                    <div class="settings-actions">
+                        <button onclick="clearAllData()" class="btn-danger">
+                            <span class="material-icons">delete_forever</span>
+                            Limpar Todos os Dados
+                        </button>
+                    </div>
+                </div>
+
+                <!-- About -->
+                <div class="settings-section">
+                    <h4>Sobre</h4>
+                    <div class="about-info">
+                        <p><strong>BGCatalog WebApp</strong></p>
+                        <p>Versão 1.0.0</p>
+                        <p>Catálogo de jogos de tabuleiro com scanner de código de barras</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/database-sheets.js"></script>
+    <script src="js/scanner.js"></script>
+    <script src="js/bgg-api.js"></script>
+    <script src="js/app.js"></script>
+
+    <!-- PWA Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => console.log('SW registered'))
+                    .catch(error => console.log('SW registration failed'));
+            });
+        }
+    </script>
+</body>
+
+</html>
