@@ -526,19 +526,60 @@
         }
 
         function startEANTest() {
+            console.log('🚀 Iniciando teste EAN...');
             showToast('🎯 Iniciando scanner EAN otimizado...', 'success');
 
+            // Debug: verificar o que está disponível
+            console.log('Funções disponíveis:', {
+                startEANScanner: typeof startEANScanner,
+                startBarcodeScanner: typeof startBarcodeScanner,
+                eanBarcodeScanner: typeof eanBarcodeScanner,
+                Quagga: typeof Quagga
+            });
+
+            // Tentar diferentes métodos
             if (typeof startEANScanner === 'function') {
+                console.log('✅ Usando startEANScanner');
                 startEANScanner();
+            } else if (typeof startBarcodeScanner === 'function') {
+                console.log('✅ Usando startBarcodeScanner (fallback)');
+                startBarcodeScanner();
+            } else if (typeof eanBarcodeScanner !== 'undefined') {
+                console.log('✅ Usando eanBarcodeScanner.startScanning');
+                eanBarcodeScanner.startScanning((code) => {
+                    displayResult(code);
+                });
             } else {
-                displayError('Scanner EAN não carregado. Verifique a conexão.');
+                console.error('❌ Nenhuma função de scanner encontrada');
+                displayError('Scanner EAN não carregado. Verifique o console para detalhes.');
+
+                // Tentar carregar manualmente
+                setTimeout(() => {
+                    if (typeof Quagga !== 'undefined') {
+                        console.log('🔧 QuaggaJS disponível, tentando inicializar manualmente...');
+                        startManualEANScanner();
+                    } else {
+                        showToast('❌ QuaggaJS não carregado', 'error');
+                    }
+                }, 500);
             }
         }
 
         function stopEANTest() {
+            console.log('🛑 Parando scanner EAN...');
+
+            // Tentar múltiplos métodos de parada
             if (typeof stopBarcodeScanner === 'function') {
                 stopBarcodeScanner();
             }
+
+            if (typeof eanBarcodeScanner !== 'undefined' && eanBarcodeScanner.stopScanning) {
+                eanBarcodeScanner.stopScanning();
+            }
+
+            // Parada manual como backup
+            stopManualScanner();
+
             showToast('Scanner EAN fechado', 'success');
         }
 
@@ -600,9 +641,157 @@
             displayResult(code);
         }
 
+        // ================================
+        // SCANNER MANUAL DE EMERGÊNCIA
+        // ================================
+
+        function startManualEANScanner() {
+            console.log('🔧 Iniciando scanner manual de emergência...');
+
+            const modal = document.getElementById('scanner-modal');
+            const video = document.getElementById('scanner-video');
+
+            if (!modal || !video) {
+                displayError('Elementos do modal não encontrados');
+                return;
+            }
+
+            modal.classList.add('active');
+
+            // Atualizar status
+            const statusHint = document.querySelector('.scanner-hint');
+            if (statusHint) {
+                statusHint.textContent = '📹 Iniciando câmera...';
+            }
+
+            // Iniciar câmera
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            })
+                .then(stream => {
+                    console.log('✅ Câmera iniciada');
+                    video.srcObject = stream;
+
+                    if (statusHint) {
+                        statusHint.textContent = '🔍 Inicializando detector...';
+                    }
+
+                    video.onloadedmetadata = () => {
+                        console.log('✅ Vídeo carregado:', video.videoWidth + 'x' + video.videoHeight);
+
+                        // Inicializar Quagga
+                        const config = {
+                            inputStream: {
+                                name: "Live",
+                                type: "LiveStream",
+                                target: video,
+                                constraints: {
+                                    width: { min: 640, ideal: 1280 },
+                                    height: { min: 480, ideal: 720 },
+                                    facingMode: "environment"
+                                }
+                            },
+                            decoder: {
+                                readers: ["ean_reader", "upc_reader", "upc_e_reader"],
+                                debug: {
+                                    drawBoundingBox: true,
+                                    drawScanline: true
+                                }
+                            },
+                            locate: true,
+                            locator: {
+                                patchSize: "medium",
+                                halfSample: true
+                            },
+                            numOfWorkers: 2,
+                            frequency: 25
+                        };
+
+                        Quagga.init(config, (err) => {
+                            if (err) {
+                                console.error('❌ Erro Quagga:', err);
+                                displayError('Erro ao inicializar detector: ' + err.message);
+                                return;
+                            }
+
+                            console.log('✅ Quagga inicializado');
+                            if (statusHint) {
+                                statusHint.textContent = '🎯 Posicione o código EAN no quadro';
+                            }
+
+                            // Configurar detecção
+                            Quagga.onDetected((result) => {
+                                const code = result.codeResult.code;
+                                console.log('🎯 Código detectado:', code);
+
+                                // Validar EAN básico
+                                if (/^\d{8}$|^\d{12,13}$/.test(code)) {
+                                    console.log('✅ EAN válido:', code);
+
+                                    // Parar scanner
+                                    Quagga.stop();
+                                    stream.getTracks().forEach(track => track.stop());
+                                    modal.classList.remove('active');
+
+                                    // Mostrar resultado
+                                    displayResult(code);
+                                }
+                            });
+
+                            Quagga.start();
+                            showToast('✅ Scanner EAN ativo!', 'success');
+                        });
+                    };
+                })
+                .catch(error => {
+                    console.error('❌ Erro de câmera:', error);
+                    displayError('Erro ao acessar câmera: ' + error.message);
+                    modal.classList.remove('active');
+                });
+        }
+
+        function stopManualScanner() {
+            try {
+                if (typeof Quagga !== 'undefined') {
+                    Quagga.stop();
+                    Quagga.offDetected();
+                }
+
+                const video = document.getElementById('scanner-video');
+                if (video && video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+
+                const modal = document.getElementById('scanner-modal');
+                if (modal) {
+                    modal.classList.remove('active');
+                }
+
+                console.log('✅ Scanner manual parado');
+            } catch (error) {
+                console.error('Erro ao parar scanner:', error);
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             showToast('🎯 Scanner EAN carregado e pronto!', 'success');
+
+            // Verificar dependências
+            setTimeout(() => {
+                console.log('🔍 Verificando dependências...');
+                console.log('QuaggaJS:', typeof Quagga !== 'undefined' ? '✅' : '❌');
+                console.log('Camera API:', !!navigator.mediaDevices?.getUserMedia ? '✅' : '❌');
+                console.log('Modal elements:', {
+                    modal: !!document.getElementById('scanner-modal'),
+                    video: !!document.getElementById('scanner-video')
+                });
+            }, 1000);
         });
     </script>
 

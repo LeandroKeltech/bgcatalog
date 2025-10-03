@@ -1,33 +1,42 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎯 Teste Scanner EAN - BGCatalog</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
             min-height: 100vh;
             padding: 20px;
         }
+
         .container {
             max-width: 700px;
             margin: 0 auto;
             background: white;
             border-radius: 15px;
             padding: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
         }
-        h1 { 
-            text-align: center; 
-            color: #28a745; 
+
+        h1 {
+            text-align: center;
+            color: #28a745;
             margin-bottom: 25px;
             font-size: 2.2rem;
             border-bottom: 3px solid #28a745;
             padding-bottom: 15px;
         }
+
         .ean-info {
             background: #e8f5e8;
             padding: 20px;
@@ -35,16 +44,19 @@
             margin-bottom: 25px;
             border-left: 5px solid #28a745;
         }
+
         .ean-info h3 {
             color: #155724;
             margin-bottom: 15px;
         }
+
         .ean-examples {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin: 20px 0;
         }
+
         .ean-card {
             background: white;
             padding: 15px;
@@ -52,10 +64,12 @@
             border: 2px solid #28a745;
             text-align: center;
         }
+
         .ean-card h4 {
             color: #28a745;
             margin-bottom: 10px;
         }
+
         .ean-code {
             font-family: 'Courier New', monospace;
             font-size: 18px;
@@ -66,6 +80,7 @@
             border-radius: 4px;
             margin: 10px 0;
         }
+
         .btn {
             background: #28a745;
             color: white;
@@ -81,29 +96,34 @@
             gap: 10px;
             box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
         }
-        .btn:hover { 
-            background: #218838; 
+
+        .btn:hover {
+            background: #218838;
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
         }
-        .btn-secondary { 
-            background: #6c757d; 
+
+        .btn-secondary {
+            background: #6c757d;
             box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
         }
-        .btn-secondary:hover { 
-            background: #5a6268; 
+
+        .btn-secondary:hover {
+            background: #5a6268;
             box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
         }
-        .btn-warning { 
-            background: #ffc107; 
+
+        .btn-warning {
+            background: #ffc107;
             color: #212529;
             box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
         }
-        .btn-warning:hover { 
-            background: #e0a800; 
+
+        .btn-warning:hover {
+            background: #e0a800;
             box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
         }
-        
+
         .test-section {
             background: #f8f9fa;
             padding: 25px;
@@ -111,6 +131,7 @@
             margin: 20px 0;
             text-align: center;
         }
+
         .result-display {
             margin-top: 25px;
             padding: 20px;
@@ -122,23 +143,26 @@
             font-size: 16px;
             line-height: 1.5;
         }
+
         .result-display.success {
             background: #d4edda;
             border-color: #28a745;
             color: #155724;
         }
+
         .result-display.error {
             background: #f8d7da;
             border-color: #dc3545;
             color: #721c24;
         }
-        
+
         .features-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin: 25px 0;
         }
+
         .feature-item {
             text-align: center;
             padding: 20px;
@@ -146,12 +170,13 @@
             border-radius: 10px;
             border: 1px solid #dee2e6;
         }
+
         .feature-icon {
             font-size: 48px;
             margin-bottom: 15px;
             display: block;
         }
-        
+
         /* Toast */
         .toast-container {
             position: fixed;
@@ -159,23 +184,38 @@
             right: 20px;
             z-index: 10000;
         }
+
         .toast {
             background: #28a745;
             color: white;
             padding: 15px 20px;
             border-radius: 8px;
             margin-bottom: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             animation: slideIn 0.3s ease;
         }
-        .toast.error { background: #dc3545; }
-        .toast.warning { background: #ffc107; color: #212529; }
-        
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+
+        .toast.error {
+            background: #dc3545;
         }
-        
+
+        .toast.warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
         /* Modal Styles */
         .modal {
             display: none;
@@ -184,12 +224,16 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0, 0, 0, 0.9);
             z-index: 1000;
             align-items: center;
             justify-content: center;
         }
-        .modal.active { display: flex; }
+
+        .modal.active {
+            display: flex;
+        }
+
         .modal-content {
             background: white;
             border-radius: 15px;
@@ -197,6 +241,7 @@
             max-height: 90vh;
             overflow-y: auto;
         }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -204,10 +249,12 @@
             padding: 25px;
             border-bottom: 2px solid #eee;
         }
+
         .modal-header h3 {
             color: #28a745;
             margin: 0;
         }
+
         .modal-footer {
             padding: 25px;
             border-top: 2px solid #eee;
@@ -215,6 +262,7 @@
             gap: 15px;
             justify-content: center;
         }
+
         .close-btn {
             background: none;
             border: none;
@@ -225,22 +273,26 @@
             border-radius: 50%;
             transition: all 0.2s;
         }
+
         .close-btn:hover {
             background: #f8f9fa;
             color: #28a745;
         }
+
         .scanner-container {
             position: relative;
             background: black;
             overflow: hidden;
             padding: 25px;
         }
+
         #scanner-video {
             width: 100%;
             height: 350px;
             object-fit: cover;
             border-radius: 10px;
         }
+
         .scanner-overlay {
             position: absolute;
             top: 50%;
@@ -249,6 +301,7 @@
             text-align: center;
             pointer-events: none;
         }
+
         .scanner-frame {
             width: 250px;
             height: 120px;
@@ -258,6 +311,7 @@
             position: relative;
             background: rgba(40, 167, 69, 0.1);
         }
+
         .scanner-frame::before,
         .scanner-frame::after {
             content: '';
@@ -266,30 +320,35 @@
             height: 30px;
             border: 4px solid #fff;
         }
+
         .scanner-frame::before {
             top: -4px;
             left: -4px;
             border-right: none;
             border-bottom: none;
         }
+
         .scanner-frame::after {
             bottom: -4px;
             right: -4px;
             border-left: none;
             border-top: none;
         }
+
         .scanner-status {
             color: white;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.8);
             padding: 15px 25px;
             border-radius: 10px;
             max-width: 350px;
         }
+
         .scanner-hint {
             font-size: 16px;
             font-weight: 500;
             margin-bottom: 10px;
         }
+
         .scanner-tips {
             font-size: 14px;
             opacity: 0.9;
@@ -301,14 +360,16 @@
     <!-- QuaggaJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 </head>
+
 <body>
     <div class="container">
         <h1>🎯 Scanner EAN Otimizado</h1>
-        
+
         <div class="ean-info">
             <h3>📊 Sobre Códigos EAN</h3>
-            <p><strong>EAN (European Article Number)</strong> são os códigos de barras mais usados em produtos comerciais no mundo todo.</p>
-            
+            <p><strong>EAN (European Article Number)</strong> são os códigos de barras mais usados em produtos
+                comerciais no mundo todo.</p>
+
             <div class="ean-examples">
                 <div class="ean-card">
                     <h4>EAN-13</h4>
@@ -327,27 +388,27 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="test-section">
             <h3>🚀 Testar Scanner EAN</h3>
             <p>Scanner otimizado especificamente para códigos EAN com validação de checksum</p>
-            
+
             <button class="btn" onclick="startEANTest()">
                 <span class="material-icons">qr_code_scanner</span>
                 Iniciar Scanner EAN
             </button>
-            
+
             <button class="btn btn-warning" onclick="manualEANInput()">
                 <span class="material-icons">keyboard</span>
                 Entrada Manual EAN
             </button>
-            
+
             <button class="btn btn-secondary" onclick="showEANHelp()">
                 <span class="material-icons">help</span>
                 Ajuda EAN
             </button>
         </div>
-        
+
         <div class="features-grid">
             <div class="feature-item">
                 <span class="feature-icon">🎯</span>
@@ -370,7 +431,7 @@
                 <p>Som diferenciado quando detecta EAN válido</p>
             </div>
         </div>
-        
+
         <div class="result-display" id="result-display">
             Aguardando teste do scanner EAN...
         </div>
@@ -417,15 +478,15 @@
         // ================================
         // SISTEMA DE TOAST
         // ================================
-        
+
         function showToast(message, type = 'success') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.textContent = message;
-            
+
             container.appendChild(toast);
-            
+
             setTimeout(() => {
                 toast.remove();
             }, 4000);
@@ -434,18 +495,18 @@
         // ================================
         // FUNÇÕES DE TESTE
         // ================================
-        
+
         function displayResult(code, format = 'EAN') {
             const display = document.getElementById('result-display');
             const timestamp = new Date().toLocaleTimeString();
-            
+
             // Determinar tipo de EAN
             let eanType = 'EAN';
             if (code.length === 8) eanType = 'EAN-8';
             else if (code.length === 13) eanType = 'EAN-13';
             else if (code.length === 12) eanType = 'UPC-A';
             else if (code.length >= 6 && code.length <= 8) eanType = 'UPC-E';
-            
+
             display.className = 'result-display success';
             display.innerHTML = `
                 <strong>✅ ${eanType} DETECTADO COM SUCESSO!</strong><br>
@@ -453,10 +514,10 @@
                 ⏰ Horário: ${timestamp}<br>
                 🎯 Validação: Checksum OK
             `;
-            
+
             showToast(`✅ ${eanType} detectado: ${code}`, 'success');
         }
-        
+
         function displayError(message) {
             const display = document.getElementById('result-display');
             display.className = 'result-display error';
@@ -465,28 +526,69 @@
         }
 
         function startEANTest() {
+            console.log('🚀 Iniciando teste EAN...');
             showToast('🎯 Iniciando scanner EAN otimizado...', 'success');
-            
+
+            // Debug: verificar o que está disponível
+            console.log('Funções disponíveis:', {
+                startEANScanner: typeof startEANScanner,
+                startBarcodeScanner: typeof startBarcodeScanner,
+                eanBarcodeScanner: typeof eanBarcodeScanner,
+                Quagga: typeof Quagga
+            });
+
+            // Tentar diferentes métodos
             if (typeof startEANScanner === 'function') {
+                console.log('✅ Usando startEANScanner');
                 startEANScanner();
+            } else if (typeof startBarcodeScanner === 'function') {
+                console.log('✅ Usando startBarcodeScanner (fallback)');
+                startBarcodeScanner();
+            } else if (typeof eanBarcodeScanner !== 'undefined') {
+                console.log('✅ Usando eanBarcodeScanner.startScanning');
+                eanBarcodeScanner.startScanning((code) => {
+                    displayResult(code);
+                });
             } else {
-                displayError('Scanner EAN não carregado. Verifique a conexão.');
+                console.error('❌ Nenhuma função de scanner encontrada');
+                displayError('Scanner EAN não carregado. Verifique o console para detalhes.');
+                
+                // Tentar carregar manualmente
+                setTimeout(() => {
+                    if (typeof Quagga !== 'undefined') {
+                        console.log('🔧 QuaggaJS disponível, tentando inicializar manualmente...');
+                        startManualEANScanner();
+                    } else {
+                        showToast('❌ QuaggaJS não carregado', 'error');
+                    }
+                }, 500);
             }
         }
 
         function stopEANTest() {
+            console.log('🛑 Parando scanner EAN...');
+            
+            // Tentar múltiplos métodos de parada
             if (typeof stopBarcodeScanner === 'function') {
                 stopBarcodeScanner();
             }
+            
+            if (typeof eanBarcodeScanner !== 'undefined' && eanBarcodeScanner.stopScanning) {
+                eanBarcodeScanner.stopScanning();
+            }
+            
+            // Parada manual como backup
+            stopManualScanner();
+            
             showToast('Scanner EAN fechado', 'success');
         }
 
         function manualEANInput() {
             const code = prompt('Digite o código EAN (apenas números):\n\n• EAN-8: 8 dígitos\n• EAN-13: 13 dígitos\n• UPC-A: 12 dígitos');
-            
+
             if (code && code.trim()) {
                 const cleanCode = code.trim().replace(/\D/g, '');
-                
+
                 if (cleanCode.length >= 6 && cleanCode.length <= 13) {
                     displayResult(cleanCode);
                 } else {
@@ -530,7 +632,7 @@
 • Medicamentos
 • Eletrônicos
             `;
-            
+
             alert(helpText);
         }
 
@@ -539,13 +641,162 @@
             displayResult(code);
         }
 
+        // ================================
+        // SCANNER MANUAL DE EMERGÊNCIA
+        // ================================
+        
+        function startManualEANScanner() {
+            console.log('🔧 Iniciando scanner manual de emergência...');
+            
+            const modal = document.getElementById('scanner-modal');
+            const video = document.getElementById('scanner-video');
+            
+            if (!modal || !video) {
+                displayError('Elementos do modal não encontrados');
+                return;
+            }
+            
+            modal.classList.add('active');
+            
+            // Atualizar status
+            const statusHint = document.querySelector('.scanner-hint');
+            if (statusHint) {
+                statusHint.textContent = '📹 Iniciando câmera...';
+            }
+            
+            // Iniciar câmera
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            })
+            .then(stream => {
+                console.log('✅ Câmera iniciada');
+                video.srcObject = stream;
+                
+                if (statusHint) {
+                    statusHint.textContent = '🔍 Inicializando detector...';
+                }
+                
+                video.onloadedmetadata = () => {
+                    console.log('✅ Vídeo carregado:', video.videoWidth + 'x' + video.videoHeight);
+                    
+                    // Inicializar Quagga
+                    const config = {
+                        inputStream: {
+                            name: "Live",
+                            type: "LiveStream",
+                            target: video,
+                            constraints: {
+                                width: { min: 640, ideal: 1280 },
+                                height: { min: 480, ideal: 720 },
+                                facingMode: "environment"
+                            }
+                        },
+                        decoder: {
+                            readers: ["ean_reader", "upc_reader", "upc_e_reader"],
+                            debug: {
+                                drawBoundingBox: true,
+                                drawScanline: true
+                            }
+                        },
+                        locate: true,
+                        locator: {
+                            patchSize: "medium",
+                            halfSample: true
+                        },
+                        numOfWorkers: 2,
+                        frequency: 25
+                    };
+                    
+                    Quagga.init(config, (err) => {
+                        if (err) {
+                            console.error('❌ Erro Quagga:', err);
+                            displayError('Erro ao inicializar detector: ' + err.message);
+                            return;
+                        }
+                        
+                        console.log('✅ Quagga inicializado');
+                        if (statusHint) {
+                            statusHint.textContent = '🎯 Posicione o código EAN no quadro';
+                        }
+                        
+                        // Configurar detecção
+                        Quagga.onDetected((result) => {
+                            const code = result.codeResult.code;
+                            console.log('🎯 Código detectado:', code);
+                            
+                            // Validar EAN básico
+                            if (/^\d{8}$|^\d{12,13}$/.test(code)) {
+                                console.log('✅ EAN válido:', code);
+                                
+                                // Parar scanner
+                                Quagga.stop();
+                                stream.getTracks().forEach(track => track.stop());
+                                modal.classList.remove('active');
+                                
+                                // Mostrar resultado
+                                displayResult(code);
+                            }
+                        });
+                        
+                        Quagga.start();
+                        showToast('✅ Scanner EAN ativo!', 'success');
+                    });
+                };
+            })
+            .catch(error => {
+                console.error('❌ Erro de câmera:', error);
+                displayError('Erro ao acessar câmera: ' + error.message);
+                modal.classList.remove('active');
+            });
+        }
+        
+        function stopManualScanner() {
+            try {
+                if (typeof Quagga !== 'undefined') {
+                    Quagga.stop();
+                    Quagga.offDetected();
+                }
+                
+                const video = document.getElementById('scanner-video');
+                if (video && video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+                
+                const modal = document.getElementById('scanner-modal');
+                if (modal) {
+                    modal.classList.remove('active');
+                }
+                
+                console.log('✅ Scanner manual parado');
+            } catch (error) {
+                console.error('Erro ao parar scanner:', error);
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             showToast('🎯 Scanner EAN carregado e pronto!', 'success');
+            
+            // Verificar dependências
+            setTimeout(() => {
+                console.log('🔍 Verificando dependências...');
+                console.log('QuaggaJS:', typeof Quagga !== 'undefined' ? '✅' : '❌');
+                console.log('Camera API:', !!navigator.mediaDevices?.getUserMedia ? '✅' : '❌');
+                console.log('Modal elements:', {
+                    modal: !!document.getElementById('scanner-modal'),
+                    video: !!document.getElementById('scanner-video')
+                });
+            }, 1000);
         });
     </script>
-    
+
     <!-- Load EAN Scanner -->
     <script src="js/scanner-ean.js"></script>
 </body>
+
 </html>
