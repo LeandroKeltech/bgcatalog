@@ -7,19 +7,19 @@
     <title>BGCatalog - Web App</title>
     <meta name="description" content="Catálogo de jogos de tabuleiro com scanner de código de barras">
     <meta name="theme-color" content="#2196F3">
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
-    
+
     <!-- Icons -->
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="icon-192.png">
-    
+
     <!-- Styles -->
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    
+
     <!-- QuaggaJS for barcode scanning -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
 </head>
@@ -59,8 +59,8 @@
             <div class="search-container">
                 <div class="search-box">
                     <span class="material-icons">search</span>
-                    <input type="text" id="search-input" placeholder="Buscar por título ou código de barras..." 
-                           oninput="handleSearch(this.value)">
+                    <input type="text" id="search-input" placeholder="Buscar por título ou código de barras..."
+                        oninput="handleSearch(this.value)">
                 </div>
                 <div class="search-filters">
                     <select id="category-filter" onchange="applyFilters()">
@@ -124,7 +124,7 @@
                     <span class="material-icons">close</span>
                 </button>
             </div>
-            
+
             <form id="item-form" class="item-form">
                 <!-- Barcode Section -->
                 <div class="form-section">
@@ -156,7 +156,7 @@
                             <input type="text" id="title" required>
                         </div>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="category">Categoria *</label>
@@ -187,13 +187,12 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="reference-price">Preço de Referência (€) *</label>
-                            <input type="number" id="reference-price" step="0.01" required 
-                                   oninput="calculateFinalPrice()">
+                            <input type="number" id="reference-price" step="0.01" required
+                                oninput="calculateFinalPrice()">
                         </div>
                         <div class="form-group">
                             <label for="price-rule">Regra de Preço (%) *</label>
-                            <input type="number" id="price-rule" value="-50" 
-                                   oninput="calculateFinalPrice()">
+                            <input type="number" id="price-rule" value="-50" oninput="calculateFinalPrice()">
                         </div>
                     </div>
                     <div class="form-row">
@@ -249,7 +248,7 @@
                     <span class="material-icons">close</span>
                 </button>
             </div>
-            
+
             <div class="scanner-container">
                 <video id="scanner-video" autoplay playsinline muted></video>
                 <canvas id="scanner-canvas"></canvas>
@@ -258,7 +257,7 @@
                     <p class="scanner-hint">Posicione o código de barras dentro do quadro</p>
                 </div>
             </div>
-            
+
             <div class="scanner-controls">
                 <button type="button" onclick="toggleFlashlight()" class="btn-icon">
                     <span class="material-icons">flash_on</span>
@@ -284,30 +283,32 @@
                     <span class="material-icons">close</span>
                 </button>
             </div>
-            
+
             <div class="settings-content">
                 <!-- Google Sheets Configuration -->
                 <div class="settings-section">
                     <h4>🔗 Configuração Google Sheets</h4>
                     <p class="settings-description">Configure o Google Sheets como seu banco de dados na nuvem.</p>
-                    
+
                     <div class="form-group">
                         <label for="sheets-api-key">Google Sheets API Key</label>
                         <input type="text" id="sheets-api-key" placeholder="Digite sua API Key do Google">
-                        <small>Crie uma API Key no <a href="https://console.developers.google.com" target="_blank">Google Cloud Console</a></small>
+                        <small>Crie uma API Key no <a href="https://console.developers.google.com"
+                                target="_blank">Google Cloud Console</a></small>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="spreadsheet-id">ID da Planilha</label>
                         <input type="text" id="spreadsheet-id" placeholder="ID da sua planilha Google Sheets">
-                        <small>Copie da URL: https://docs.google.com/spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit</small>
+                        <small>Copie da URL:
+                            https://docs.google.com/spreadsheets/d/<strong>SPREADSHEET_ID</strong>/edit</small>
                     </div>
-                    
+
                     <div class="form-group">
                         <label for="sheet-name">Nome da Aba (opcional)</label>
                         <input type="text" id="sheet-name" placeholder="BGCatalog" value="BGCatalog">
                     </div>
-                    
+
                     <div class="settings-actions">
                         <button onclick="testGoogleSheets()" class="btn-secondary">
                             <span class="material-icons">cloud_sync</span>
@@ -318,7 +319,7 @@
                             Salvar Configuração
                         </button>
                     </div>
-                    
+
                     <div id="sheets-status" class="sync-status"></div>
                 </div>
 
@@ -394,7 +395,7 @@
     <script src="js/scanner.js"></script>
     <script src="js/bgg-api.js"></script>
     <script src="js/app.js"></script>
-    
+
     <!-- PWA Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
