@@ -526,61 +526,48 @@
         }
 
         function startEANTest() {
-            console.log('🚀 Iniciando teste EAN...');
-            showToast('🎯 Iniciando scanner EAN otimizado...', 'success');
+            console.log('🚀 FORÇANDO inicialização do scanner...');
+            showToast('🎯 Abrindo câmera...', 'success');
 
-            // Debug: verificar o que está disponível
-            console.log('Funções disponíveis:', {
-                startEANScanner: typeof startEANScanner,
-                startBarcodeScanner: typeof startBarcodeScanner,
-                eanBarcodeScanner: typeof eanBarcodeScanner,
-                Quagga: typeof Quagga
-            });
-
-            // Tentar diferentes métodos
-            if (typeof startEANScanner === 'function') {
-                console.log('✅ Usando startEANScanner');
-                startEANScanner();
-            } else if (typeof startBarcodeScanner === 'function') {
-                console.log('✅ Usando startBarcodeScanner (fallback)');
-                startBarcodeScanner();
-            } else if (typeof eanBarcodeScanner !== 'undefined') {
-                console.log('✅ Usando eanBarcodeScanner.startScanning');
-                eanBarcodeScanner.startScanning((code) => {
-                    displayResult(code);
-                });
-            } else {
-                console.error('❌ Nenhuma função de scanner encontrada');
-                displayError('Scanner EAN não carregado. Verifique o console para detalhes.');
-
-                // Tentar carregar manualmente
-                setTimeout(() => {
-                    if (typeof Quagga !== 'undefined') {
-                        console.log('🔧 QuaggaJS disponível, tentando inicializar manualmente...');
-                        startManualEANScanner();
-                    } else {
-                        showToast('❌ QuaggaJS não carregado', 'error');
-                    }
-                }, 500);
-            }
+            // FORÇA a abertura da câmera IMEDIATAMENTE
+            startDirectCamera();
         }
 
         function stopEANTest() {
-            console.log('🛑 Parando scanner EAN...');
-
-            // Tentar múltiplos métodos de parada
-            if (typeof stopBarcodeScanner === 'function') {
-                stopBarcodeScanner();
+            console.log('🛑 FORÇANDO parada do scanner...');
+            
+            // PARAR TUDO COM FORÇA
+            try {
+                // Parar Quagga
+                if (typeof Quagga !== 'undefined') {
+                    Quagga.stop();
+                    Quagga.offDetected();
+                    console.log('✅ Quagga parado');
+                }
+                
+                // Parar câmera
+                const video = document.getElementById('scanner-video');
+                if (video && video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => {
+                        track.stop();
+                        console.log('✅ Track parado:', track.kind);
+                    });
+                    video.srcObject = null;
+                }
+                
+                // Fechar modal
+                const modal = document.getElementById('scanner-modal');
+                if (modal) {
+                    modal.classList.remove('active');
+                    console.log('✅ Modal fechado');
+                }
+                
+                showToast('✅ Scanner fechado', 'success');
+                
+            } catch (error) {
+                console.error('❌ Erro ao parar:', error);
+                showToast('⚠️ Scanner parado com erro', 'warning');
             }
-
-            if (typeof eanBarcodeScanner !== 'undefined' && eanBarcodeScanner.stopScanning) {
-                eanBarcodeScanner.stopScanning();
-            }
-
-            // Parada manual como backup
-            stopManualScanner();
-
-            showToast('Scanner EAN fechado', 'success');
         }
 
         function manualEANInput() {
@@ -639,6 +626,178 @@
         // Handle barcode result
         function handleBarcodeResult(code) {
             displayResult(code);
+        }
+
+        // ================================
+        // CÂMERA DIRETA - FORÇA ABERTURA
+        // ================================
+        
+        function startDirectCamera() {
+            console.log('📹 FORÇANDO abertura direta da câmera...');
+            
+            // 1. ABRIR MODAL IMEDIATAMENTE
+            const modal = document.getElementById('scanner-modal');
+            const video = document.getElementById('scanner-video');
+            
+            if (!modal) {
+                console.error('❌ Modal não encontrado!');
+                showToast('❌ Erro: Modal não encontrado', 'error');
+                return;
+            }
+            
+            if (!video) {
+                console.error('❌ Vídeo não encontrado!');
+                showToast('❌ Erro: Elemento de vídeo não encontrado', 'error');
+                return;
+            }
+            
+            console.log('✅ Elementos encontrados, abrindo modal...');
+            modal.classList.add('active');
+            
+            // 2. ATUALIZAR STATUS
+            const statusHint = document.querySelector('.scanner-hint');
+            if (statusHint) {
+                statusHint.textContent = '📹 Solicitando permissão da câmera...';
+            }
+            
+            // 3. SOLICITAR CÂMERA COM FORÇA
+            console.log('📱 Solicitando acesso à câmera...');
+            
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 }
+                }
+            })
+            .then(stream => {
+                console.log('🎉 CÂMERA OBTIDA COM SUCESSO!');
+                showToast('✅ Câmera ativada!', 'success');
+                
+                // Configurar vídeo
+                video.srcObject = stream;
+                video.play();
+                
+                if (statusHint) {
+                    statusHint.textContent = '📹 Carregando vídeo...';
+                }
+                
+                // Aguardar vídeo carregar
+                video.onloadedmetadata = () => {
+                    console.log('📺 Vídeo carregado:', video.videoWidth + 'x' + video.videoHeight);
+                    
+                    if (statusHint) {
+                        statusHint.textContent = '🔍 Inicializando detector de código...';
+                    }
+                    
+                    // Verificar se Quagga existe
+                    if (typeof Quagga === 'undefined') {
+                        console.error('❌ QuaggaJS não carregado!');
+                        showToast('❌ Detector não disponível', 'error');
+                        return;
+                    }
+                    
+                    // Inicializar Quagga
+                    console.log('🔧 Inicializando Quagga...');
+                    
+                    const config = {
+                        inputStream: {
+                            name: "Live",
+                            type: "LiveStream",
+                            target: video,
+                            constraints: {
+                                width: { min: 640, ideal: 1280 },
+                                height: { min: 480, ideal: 720 },
+                                facingMode: "environment"
+                            }
+                        },
+                        decoder: {
+                            readers: [
+                                "ean_reader",      // EAN-13 e EAN-8
+                                "upc_reader",      // UPC-A 
+                                "upc_e_reader"     // UPC-E
+                            ],
+                            debug: {
+                                drawBoundingBox: true,
+                                showFrequency: false,
+                                drawScanline: true,
+                                showPattern: false
+                            }
+                        },
+                        locate: true,
+                        locator: {
+                            patchSize: "large",
+                            halfSample: false
+                        },
+                        numOfWorkers: 1,
+                        frequency: 20
+                    };
+                    
+                    Quagga.init(config, (err) => {
+                        if (err) {
+                            console.error('❌ Erro ao inicializar Quagga:', err);
+                            showToast('❌ Erro no detector: ' + err.message, 'error');
+                            return;
+                        }
+                        
+                        console.log('🎯 QUAGGA INICIALIZADO COM SUCESSO!');
+                        showToast('🎯 Scanner EAN ativo!', 'success');
+                        
+                        if (statusHint) {
+                            statusHint.textContent = '🎯 Posicione o código EAN no quadro verde';
+                        }
+                        
+                        // Configurar detecção
+                        Quagga.onDetected((result) => {
+                            const code = result.codeResult.code;
+                            const format = result.codeResult.format;
+                            
+                            console.log('🎉 CÓDIGO DETECTADO!', code, format);
+                            
+                            // Verificar se é EAN
+                            if (format.includes('EAN') || format.includes('UPC')) {
+                                console.log('✅ É um código EAN/UPC válido!');
+                                
+                                // Parar tudo
+                                Quagga.stop();
+                                stream.getTracks().forEach(track => track.stop());
+                                modal.classList.remove('active');
+                                
+                                // Mostrar resultado
+                                displayResult(code, format);
+                                showToast(`🎯 EAN detectado: ${code}`, 'success');
+                                
+                                // Som de sucesso
+                                try {
+                                    const beep = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N+QQAoUXrTp66hVFApGn+DyvGQdDDuD0fPReS4FJHfH8N2QQAoUXrTp66hVFApGn+DyvGQdDDuD0fPReS4FJHfH8N2QQAoUXrTp66hVFApGn+DyvGQdDDuD0fPReS4FJHfH8N2QQAoUXrTp66hVFApGn+DyvGQdDDuD0fPReS4FJHfH8N2QQAoUXrTp66hVFApGn+DyvGQdDDuD0fPReS4FJHfH8N2QQAoUXrTp66hVFApGn+DyvGQdDDuD0fPReS4FJHfH8N2QQAoUXrTp66hVFApGn+DyvGQdDDuD0fPReS4FJHfH8N2QQAoUXrTp66hVFApGn+DyvGQdDDuD0fPReS4FJHfH8N2QQAoUXrTp66hVFApGn+DyvGQdDD');
+                                    beep.play();
+                                } catch(e) {}
+                            }
+                        });
+                        
+                        Quagga.start();
+                        console.log('🚀 SCANNER TOTALMENTE ATIVO!');
+                    });
+                };
+            })
+            .catch(error => {
+                console.error('❌ ERRO DE CÂMERA:', error);
+                
+                let errorMsg = 'Erro ao acessar câmera';
+                if (error.name === 'NotAllowedError') {
+                    errorMsg = 'Permissão de câmera negada. Clique no ícone da câmera na barra de endereço e permita o acesso.';
+                } else if (error.name === 'NotFoundError') {
+                    errorMsg = 'Nenhuma câmera encontrada no dispositivo.';
+                } else if (error.name === 'NotSupportedError') {
+                    errorMsg = 'Câmera não suportada neste navegador.';
+                }
+                
+                showToast('❌ ' + errorMsg, 'error');
+                displayError(errorMsg);
+                
+                // Fechar modal
+                modal.classList.remove('active');
+            });
         }
 
         // ================================
