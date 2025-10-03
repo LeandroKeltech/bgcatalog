@@ -4,9 +4,18 @@
 
 class GoogleSheetsDB {
     constructor() {
-        this.sheetsApiKey = ''; // Will be set from settings
-        this.spreadsheetId = ''; // Will be set from settings
-        this.sheetName = 'BGCatalog';
+        // Get default configuration from config.js
+        const config = window.BGCATALOG_CONFIG || {};
+        
+        // 🔧 CONFIGURAÇÃO PADRÃO (vem do config.js):
+        this.defaultSheetsApiKey = config.SHEETS_API_KEY || '';
+        this.defaultSpreadsheetId = config.SPREADSHEET_ID || '';
+        this.defaultSheetName = config.SHEET_NAME || 'BGCatalog';
+        
+        // Configurações dinâmicas (sobrescreve os padrões se existir)
+        this.sheetsApiKey = '';
+        this.spreadsheetId = '';
+        this.sheetName = this.defaultSheetName;
         this.cache = new Map();
         this.isOnline = navigator.onLine;
         this.localStorageKey = 'bgcatalog_local_data';
@@ -54,9 +63,24 @@ class GoogleSheetsDB {
     // Load settings from localStorage
     async loadSettings() {
         const settings = JSON.parse(localStorage.getItem('bgcatalog_settings') || '{}');
-        this.sheetsApiKey = settings.sheetsApiKey || '';
-        this.spreadsheetId = settings.spreadsheetId || '';
-        this.sheetName = settings.sheetName || 'BGCatalog';
+        
+        // Use user settings if available, otherwise use defaults
+        this.sheetsApiKey = settings.sheetsApiKey || this.defaultSheetsApiKey;
+        this.spreadsheetId = settings.spreadsheetId || this.defaultSpreadsheetId;
+        this.sheetName = settings.sheetName || this.defaultSheetName;
+        
+        // Log configuration status
+        if (this.defaultSheetsApiKey && this.defaultSpreadsheetId) {
+            if (this.sheetsApiKey === this.defaultSheetsApiKey && this.spreadsheetId === this.defaultSpreadsheetId) {
+                console.log('✅ Usando configuração padrão do Google Sheets');
+            } else if (this.isConfigured()) {
+                console.log('✅ Usando configuração personalizada do Google Sheets');
+            }
+        } else if (this.isConfigured()) {
+            console.log('✅ Google Sheets configurado via settings');
+        } else {
+            console.log('⚠️ Google Sheets não configurado - funcionando apenas offline');
+        }
     }
 
     // Save settings to localStorage
