@@ -1,128 +1,171 @@
 // ================================
 // BARCODE SCANNER MODULE
+// Enhanced version based on proven working implementation
 // ================================
 
 class BarcodeScanner {
-    constructor() {
+    constructor(options = {}) {
+        // Configuration options
+        this.options = {
+            modalId: options.modalId || 'scanner-modal',
+            videoId: options.videoId || 'scanner-video',
+            title: options.title || 'Scanner de Código de Barras',
+            instruction: options.instruction || '📱 Posicione o código de barras no quadro',
+            autoClose: options.autoClose !== false, // Default true
+            cameraConstraints: options.cameraConstraints || {
+                facingMode: "environment",
+                width: { min: 1280, ideal: 1920, max: 1920 },
+                height: { min: 720, ideal: 1080, max: 1080 },
+                focusMode: "continuous",
+                exposureMode: "continuous",
+                whiteBalanceMode: "continuous"
+            },
+            supportedFormats: options.supportedFormats || [
+                'CODE_128', 'CODE_39', 'EAN_13', 'EAN_8', 'UPC_A', 'UPC_E'
+            ],
+            ...options
+        };
+
+        // Internal state
         this.isScanning = false;
-        this.videoStream = null;
-        this.quaggaInitialized = false;
-        this.onBarcodeDetected = null;
+        this.stream = null;
+        this.video = null;
+        this.modal = null;
+        this.videoTrack = null;
+        this.lastResult = null;
+        
+        // Event callbacks
+        this.callbacks = {
+            onScan: options.onScan || null,
+            onError: options.onError || null,
+            onOpen: options.onOpen || null,
+            onClose: options.onClose || null
+        };
     }
 
-    // Start barcode scanning
+    /**
+     * Open the scanner modal and start camera
+     */
+    async open() {
+        try {
+            this.modal = document.getElementById(this.options.modalId);
+            this.video = document.getElementById(this.options.videoId);
+            
+            if (!this.modal || !this.video) {
+                throw new Error('Scanner modal elements not found');
+            }
+            
+            this.modal.classList.add('active');
+            
+            // Trigger onOpen callback
+            if (this.callbacks.onOpen) {
+                this.callbacks.onOpen();
+            }
+            
+            await this.startCamera();
+        } catch (error) {
+            this.handleError('Failed to start camera', error);
+        }
+    }
+
+    /**
+     * Start barcode scanning (legacy method for compatibility)
+     */
     async startScanning(onDetected) {
-        if (this.isScanning) {
-            console.log('Scanner already active');
-            return;
+        this.callbacks.onScan = onDetected;
+        return this.open();
+    }
+
+    /**
+     * Start camera and initialize scanning
+     */
+    async startCamera() {
+        // Validate QuaggaJS availability
+        if (typeof Quagga === 'undefined') {
+            throw new Error('QuaggaJS library not available');
+        }
+        
+        // Check getUserMedia support
+        if (!navigator.mediaDevices?.getUserMedia) {
+            throw new Error('Camera access not supported in this browser');
         }
 
-        this.onBarcodeDetected = onDetected;
-
-        // Check camera availability
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            throw new Error('Camera not available on this device');
+        // Stop any existing camera first
+        if (this.videoTrack || this.stream) {
+            this.stopCamera();
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
 
         try {
-            // Show scanner modal
-            const modal = document.getElementById('scanner-modal');
-            modal.classList.add('active');
-
-            // Request camera permissions
-            const constraints = {
-                video: {
-                    facingMode: 'environment', // Prefer back camera
-                    width: { ideal: 1280, min: 640 },
-                    height: { ideal: 720, min: 480 }
-                }
-            };
-
-            try {
-                // Try with environment camera first
-                this.videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-            } catch (envError) {
-                console.log('Environment camera failed, trying any camera...');
-                // Fallback to any available camera
-                constraints.video = {
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                };
-                this.videoStream = await navigator.mediaDevices.getUserMedia(constraints);
-            }
-
-            // Set up video element
-            const video = document.getElementById('scanner-video');
-            video.srcObject = this.videoStream;
-
-            // Wait for video to be ready
-            await new Promise((resolve) => {
-                video.onloadedmetadata = resolve;
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: this.options.cameraConstraints
             });
-
-            // Initialize Quagga scanner
-            await this.initQuagga();
             
+            this.stream = stream;
+            this.video.srcObject = stream;
+            this.videoTrack = stream.getVideoTracks()[0];
             this.isScanning = true;
-            console.log('Barcode scanner started successfully');
-
+            
+            // Wait for video metadata and start scanning
+            return new Promise((resolve, reject) => {
+                const handleLoadedMetadata = () => {
+                    if (this.video.videoWidth > 0 && this.video.videoHeight > 0) {
+                        this.startScanning_internal();
+                        resolve();
+                    } else {
+                        reject(new Error('Invalid video dimensions'));
+                    }
+                };
+                
+                this.video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+                
+                const timeout = setTimeout(() => {
+                    this.video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                    stream.getTracks().forEach(track => track.stop());
+                    reject(new Error('Camera initialization timeout'));
+                }, 3000);
+                
+                this.video.addEventListener('loadedmetadata', () => {
+                    clearTimeout(timeout);
+                }, { once: true });
+            });
+            
         } catch (error) {
-            console.error('Camera access error:', error);
-            this.stopScanning();
-            
-            // Handle specific error types
-            let errorMessage = 'Failed to access camera. ';
-            if (error.name === 'NotAllowedError') {
-                errorMessage += 'Please allow camera permissions and try again.';
-            } else if (error.name === 'NotFoundError') {
-                errorMessage += 'No camera found on this device.';
-            } else if (error.name === 'NotSupportedError') {
-                errorMessage += 'Camera not supported in this browser.';
-            } else {
-                errorMessage += error.message;
-            }
-            
-            throw new Error(errorMessage);
+            throw new Error('Camera access failed: ' + error.message);
         }
     }
 
-    // Initialize Quagga barcode scanner
-    async initQuagga() {
-        return new Promise((resolve, reject) => {
-            console.log('Initializing Quagga scanner...');
-            
-            Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector('#scanner-video'),
-                    constraints: {
-                        width: { min: 640, ideal: 1280, max: 1920 },
-                        height: { min: 480, ideal: 720, max: 1080 },
-                        facingMode: "environment"
-                    }
-                },
-                decoder: {
-                    readers: [
-                        "ean_reader",      // EAN-13, EAN-8 (mais comum)
-                        "upc_reader",      // UPC-A
-                        "upc_e_reader",    // UPC-E
-                        "code_128_reader", // Code 128
-                        "code_39_reader",  // Code 39
-                        "i2of5_reader"     // Interleaved 2 of 5
-                    ],
-                    debug: {
-                        drawBoundingBox: true,  // Mostrar área detectada
-                        showFrequency: false,
-                        drawScanline: true,     // Mostrar linha de scan
-                        showPattern: false
-                    }
-                },
-                locate: true,
-                locator: {
-                    patchSize: "large",     // Patches maiores para melhor detecção
-                    halfSample: false,      // Não reduzir qualidade
-                    showCanvas: true,       // Mostrar canvas de debug
+    /**
+     * Start barcode scanning with QuaggaJS (internal method)
+     */
+    startScanning_internal() {
+        if (typeof Quagga === 'undefined' || !this.isScanning) {
+            return;
+        }
+
+        // Optimized QuaggaJS configuration for higher sensitivity and speed
+        const quaggaConfig = {
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: this.video,
+                constraints: {
+                    width: { min: 640, ideal: 1280, max: 1920 },
+                    height: { min: 480, ideal: 720, max: 1080 },
+                    facingMode: "environment"
+                }
+            },
+            decoder: {
+                readers: [
+                    "code_128_reader",
+                    "ean_reader", 
+                    "ean_8_reader",
+                    "code_39_reader",
+                    "upc_reader",
+                    "upc_e_reader"
+                ],
+                debug: {
+                    showCanvas: false,
                     showPatches: false,
                     showFoundPatches: false,
                     showSkeleton: false,
@@ -130,70 +173,154 @@ class BarcodeScanner {
                     showPatchLabels: false,
                     showRemainingPatchLabels: false,
                     boxFromPatches: {
-                        showTransformed: true,
-                        showTransformedBox: true,
-                        showBB: true
+                        showTransformed: false,
+                        showTransformedBox: false,
+                        showBB: false
                     }
-                },
-                numOfWorkers: 1,        // Reduzir workers para evitar conflitos
-                frequency: 20,          // Aumentar frequência de scan
-                area: {
-                    top: "10%",
-                    right: "10%", 
-                    left: "10%",
-                    bottom: "10%"
                 }
-            }, (err) => {
-                if (err) {
-                    console.error('Quagga initialization error:', err);
-                    reject(err);
-                    return;
+            },
+            locator: {
+                patchSize: "medium",
+                halfSample: false,
+                showCanvas: false,
+                showPatches: false,
+                showFoundPatches: false,
+                showSkeleton: false,
+                showLabels: false,
+                showPatchLabels: false,
+                showRemainingPatchLabels: false,
+                boxFromPatches: {
+                    showTransformed: false,
+                    showTransformedBox: false,
+                    showBB: false
                 }
+            },
+            numOfWorkers: 2,
+            frequency: 25,
+            locate: true
+        };
 
-                console.log("Quagga initialization finished");
-                Quagga.start();
-                this.quaggaInitialized = true;
-
-                // Listen for barcode detection
-                Quagga.onDetected(this.handleBarcodeDetection.bind(this));
-                resolve();
-            });
+        Quagga.init(quaggaConfig, (err) => {
+            if (err) {
+                this.handleError('Scanner initialization failed', err);
+                return;
+            }
+            
+            Quagga.start();
+            this.setupQuaggaListeners();
         });
     }
 
-    // Handle barcode detection
-    handleBarcodeDetection(result) {
-        const code = result.codeResult.code;
+    /**
+     * Setup QuaggaJS event listeners
+     */
+    setupQuaggaListeners() {
+        // Track detections to avoid duplicates
+        let lastDetectionTime = 0;
+        let lastCode = null;
         
-        // Update UI to show detection attempt
-        this.updateScannerStatus('🔍 Código detectado: ' + code, 'scanning');
+        Quagga.onDetected((result) => {
+            const code = result.codeResult.code;
+            const now = Date.now();
+            
+            // Accept codes with length >= 2 and avoid duplicate detections within 500ms
+            if (code && code.length >= 2 && 
+                (code !== lastCode || now - lastDetectionTime > 500)) {
+                
+                lastCode = code;
+                lastDetectionTime = now;
+                this.onBarcodeDetected(code, result);
+            }
+        });
+
+        // Also listen for processed events to improve detection quality
+        Quagga.onProcessed((result) => {
+            if (result && result.codeResult) {
+                const code = result.codeResult.code;
+                const now = Date.now();
+                
+                // If we have a good quality detection, process it
+                if (code && code.length >= 2 && result.codeResult.quality > 75 &&
+                    (code !== lastCode || now - lastDetectionTime > 300)) {
+                    
+                    lastCode = code;
+                    lastDetectionTime = now;
+                    this.onBarcodeDetected(code, result);
+                }
+            }
+        });
+    }
+
+    /**
+     * Play success sound when barcode is detected
+     */
+    playSuccessSound() {
+        try {
+            // Create audio context and play a success beep
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Configure success sound (higher pitch beep)
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            // Configure volume envelope
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            // Play sound for 300ms
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+            
+        } catch (error) {
+            // Fallback: try to use system beep if available
+            console.log('Success: Barcode detected');
+        }
+    }
+
+    /**
+     * Handle detected barcode
+     */
+    onBarcodeDetected(code, result = null) {
+        // Always stop scanning first to prevent multiple rapid detections
+        this.stopScanning_internal();
+        
+        // Play success sound
+        this.playSuccessSound();
+        
+        // Update UI to show detection
+        this.updateScannerStatus('✅ Código detectado: ' + code, 'success');
         
         // Validate barcode
         if (this.isValidBarcode(code)) {
             console.log('✅ Valid barcode detected:', code);
             
-            // Show success status
-            this.updateScannerStatus('✅ Código válido: ' + code, 'success');
-            
-            // Stop scanning after short delay
+            // Close modal after short delay
             setTimeout(() => {
-                this.stopScanning();
+                if (this.options.autoClose) {
+                    this.close();
+                }
                 
-                // Call callback
-                if (this.onBarcodeDetected) {
-                    this.onBarcodeDetected(code);
+                // Trigger callback
+                if (this.callbacks.onScan && typeof this.callbacks.onScan === 'function') {
+                    this.callbacks.onScan(code, result);
                 }
             }, 800);
             
         } else {
-            console.log('❌ Invalid barcode detected, continuing scan:', code);
+            console.log('❌ Invalid barcode detected, restarting scan:', code);
             
             // Show error status briefly
             this.updateScannerStatus('❌ Código inválido, tentando novamente...', 'error');
             
-            // Reset to scanning state after 1 second
+            // Restart scanning after delay
             setTimeout(() => {
-                this.updateScannerStatus('📱 Posicione o código de barras no quadro', '');
+                this.restartScanning();
             }, 1500);
         }
     }
@@ -209,82 +336,175 @@ class BarcodeScanner {
         }
     }
 
-    // Basic barcode validation
+    /**
+     * Validate barcode (enhanced version)
+     */
     isValidBarcode(code) {
         if (!code || typeof code !== 'string') return false;
         
-        // Clean the code
         const cleanCode = code.trim();
-        
-        // Check if it's mostly digits (allow some letters for Code 39, Code 128)
         const digitCount = (cleanCode.match(/\d/g) || []).length;
         const totalLength = cleanCode.length;
         
-        // Must be at least 50% digits
-        if (digitCount < totalLength * 0.5) {
-            console.log('Barcode validation failed: not enough digits', code);
-            return false;
-        }
+        if (digitCount < totalLength * 0.5) return false;
+        if (totalLength < 6 || totalLength > 20) return false;
         
-        // Length validation (most barcodes are 6-18 characters)
-        if (totalLength < 6) {
-            console.log('Barcode validation failed: too short', code);
-            return false;
-        }
-        
-        if (totalLength > 20) {
-            console.log('Barcode validation failed: too long', code);
-            return false;
-        }
-        
-        // Common barcode patterns
         const patterns = [
             /^\d{8}$/,          // EAN-8
             /^\d{12}$/,         // UPC-A
             /^\d{13}$/,         // EAN-13
-            /^[\dA-Z\-\. ]+$/   // Code 39/128 (alphanumeric)
+            /^[\dA-Z\-\. ]+$/   // Code 39/128
         ];
         
-        const isValid = patterns.some(pattern => pattern.test(cleanCode));
-        
-        if (isValid) {
-            console.log('✅ Valid barcode detected:', code);
-        } else {
-            console.log('❌ Invalid barcode pattern:', code);
-        }
-        
-        return isValid;
+        return patterns.some(pattern => pattern.test(cleanCode));
     }
 
-    // Stop barcode scanning
-    stopScanning() {
-        // Hide modal
-        const modal = document.getElementById('scanner-modal');
-        modal.classList.remove('active');
+    /**
+     * Set callback functions
+     */
+    on(event, callback) {
+        const eventMap = {
+            'scan': 'onScan',
+            'error': 'onError',
+            'open': 'onOpen',
+            'close': 'onClose'
+        };
+        
+        const callbackName = eventMap[event];
+        if (callbackName && this.callbacks.hasOwnProperty(callbackName)) {
+            this.callbacks[callbackName] = callback;
+        }
+        
+        return this; // For chaining
+    }
 
-        // Stop Quagga
-        if (this.quaggaInitialized) {
+    /**
+     * Handle errors with callback or fallback
+     */
+    handleError(message, error = null) {
+        if (this.callbacks.onError) {
+            this.callbacks.onError(message, error);
+        } else {
+            console.error(message, error);
+            showToast(message + (error ? ': ' + error.message : ''), 'error');
+        }
+    }
+
+    /**
+     * Show status message in the modal
+     */
+    showStatus(message, type = 'error') {
+        const statusElement = document.getElementById('scanner-status');
+        if (statusElement) {
+            statusElement.textContent = message;
+            statusElement.style.display = 'block';
+            statusElement.style.color = type === 'error' ? '#dc3545' : '#28a745';
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    /**
+     * Restart scanning (useful for invalid codes)
+     */
+    async restartScanning() {
+        // First stop any existing scanning
+        this.stopScanning_internal();
+        
+        // Small delay to ensure proper cleanup
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Check if video stream is still active
+        if (this.video && this.video.srcObject && this.video.videoWidth > 0) {
+            this.isScanning = true;
+            this.startScanning_internal();
+        } else {
+            try {
+                await this.startCamera();
+            } catch (error) {
+                this.handleError('Failed to restart camera', error);
+            }
+        }
+    }
+
+    /**
+     * Close the scanner modal and stop camera
+     */
+    close() {
+        if (this.modal) {
+            this.modal.classList.remove('active');
+        }
+        this.stopCamera();
+        
+        // Trigger onClose callback
+        if (this.callbacks.onClose) {
+            this.callbacks.onClose();
+        }
+    }
+
+    /**
+     * Stop camera and cleanup resources
+     */
+    stopCamera() {
+        this.stopScanning_internal();
+        
+        // Stop video track
+        if (this.videoTrack) {
+            try {
+                this.videoTrack.stop();
+            } catch (error) {
+                // Silent cleanup
+            }
+            this.videoTrack = null;
+        }
+        
+        // Stop all media streams
+        if (this.stream) {
+            try {
+                this.stream.getTracks().forEach(track => track.stop());
+            } catch (error) {
+                // Silent cleanup
+            }
+            this.stream = null;
+        }
+        
+        // Clear video element
+        if (this.video) {
+            try {
+                this.video.srcObject = null;
+                this.video.pause();
+                this.video.currentTime = 0;
+            } catch (error) {
+                // Silent cleanup
+            }
+        }
+        
+        this.isScanning = false;
+    }
+
+    /**
+     * Stop scanning (internal method)
+     */
+    stopScanning_internal() {
+        if (typeof Quagga !== 'undefined') {
             try {
                 Quagga.stop();
                 Quagga.offDetected();
-                this.quaggaInitialized = false;
-                console.log('Quagga stopped');
+                Quagga.offProcessed();
             } catch (error) {
-                console.error('Error stopping Quagga:', error);
+                // Silent cleanup
             }
         }
+    }
 
-        // Stop video stream
-        if (this.videoStream) {
-            this.videoStream.getTracks().forEach(track => {
-                track.stop();
-            });
-            this.videoStream = null;
-            console.log('Video stream stopped');
-        }
-
-        this.isScanning = false;
-        this.onBarcodeDetected = null;
+    /**
+     * Stop barcode scanning (legacy method for compatibility)
+     */
+    stopScanning() {
+        this.close();
     }
 
     // Toggle flashlight (if supported)
@@ -363,12 +583,20 @@ const barcodeScanner = new BarcodeScanner();
 
 // Global functions for HTML event handlers
 function startBarcodeScanner() {
-    barcodeScanner.startScanning((barcode) => {
+    // Use new callback system
+    barcodeScanner.on('scan', (barcode) => {
         handleBarcodeResult(barcode);
-        showToast('Código escaneado: ' + barcode, 'success');
-    }).catch(error => {
+        showToast('✅ Código escaneado: ' + barcode, 'success');
+    });
+    
+    barcodeScanner.on('error', (message, error) => {
         console.error('Scanner error:', error);
-        showToast('Erro no scanner: ' + error.message, 'error');
+        showToast('❌ Erro no scanner: ' + message, 'error');
+    });
+    
+    barcodeScanner.open().catch(error => {
+        console.error('Scanner error:', error);
+        showToast('❌ Erro ao abrir scanner: ' + error.message, 'error');
     });
 }
 
