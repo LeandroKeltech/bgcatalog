@@ -131,9 +131,13 @@
                     <label>Código de Barras</label>
                     <div class="barcode-input-group">
                         <input type="text" id="barcode" placeholder="Escaneie ou digite o código">
-                        <button type="button" class="scan-btn" onclick="startBarcodeScanner()">
+                        <button type="button" class="scan-btn" onclick="takeBarcodePhoto()">
+                            <span class="material-icons">photo_camera</span>
+                            Foto
+                        </button>
+                        <button type="button" class="scan-btn-secondary" onclick="startBarcodeScanner()">
                             <span class="material-icons">qr_code_scanner</span>
-                            Scanner
+                            Câmera
                         </button>
                     </div>
                     <div class="form-actions">
@@ -239,11 +243,49 @@
         </div>
     </div>
 
+    <!-- Photo Capture Modal -->
+    <div id="photo-modal" class="modal">
+        <div class="modal-content photo-modal">
+            <div class="modal-header">
+                <h3>📸 Capturar Código de Barras</h3>
+                <button class="close-btn" onclick="closePhotoModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            
+            <div class="photo-container">
+                <video id="photo-video" autoplay playsinline muted style="display: none;"></video>
+                <canvas id="photo-canvas" style="display: none;"></canvas>
+                <div id="photo-preview" class="photo-preview">
+                    <div class="photo-placeholder">
+                        <span class="material-icons">photo_camera</span>
+                        <p>Clique para tirar uma foto do código de barras</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="photo-controls">
+                <button type="button" onclick="capturePhoto()" class="btn-primary" id="capture-btn">
+                    <span class="material-icons">photo_camera</span>
+                    Tirar Foto
+                </button>
+                <button type="button" onclick="processPhoto()" class="btn-secondary" id="process-btn" style="display: none;">
+                    <span class="material-icons">search</span>
+                    Processar Foto
+                </button>
+                <button type="button" onclick="retakePhoto()" class="btn-secondary" id="retake-btn" style="display: none;">
+                    <span class="material-icons">refresh</span>
+                    Nova Foto
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Barcode Scanner Modal -->
     <div id="scanner-modal" class="modal">
         <div class="modal-content scanner-modal">
             <div class="modal-header">
-                <h3>Scanner de Código de Barras</h3>
+                <h3>📹 Scanner ao Vivo</h3>
                 <button class="close-btn" onclick="stopBarcodeScanner()">
                     <span class="material-icons">close</span>
                 </button>
@@ -405,6 +447,7 @@
     <script src="js/config.js"></script>
     <script src="js/database-sheets.js"></script>
     <script src="js/scanner.js"></script>
+    <script src="js/photo-scanner.js"></script>
     <script src="js/bgg-api.js"></script>
     <script src="js/app.js"></script>
 
