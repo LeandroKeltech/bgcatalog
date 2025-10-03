@@ -1,0 +1,447 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f5f5f5;
+    height: 100vh;
+    overflow-x: hidden;
+}
+
+.screen {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: white;
+}
+
+.screen.hidden {
+    display: none;
+}
+
+.top-bar {
+    background: #2196F3;
+    color: white;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.top-bar h1 {
+    font-size: 20px;
+    font-weight: 500;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: white;
+    padding: 8px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+#search-field {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 20px;
+}
+
+.items-list {
+    margin-bottom: 20px;
+}
+
+.item-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.item-title {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.item-details {
+    color: #666;
+    font-size: 14px;
+}
+
+.bottom-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.bottom-buttons button {
+    flex: 1;
+    padding: 15px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.bottom-buttons button:hover {
+    background: #1976D2;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.save-btn,
+.export-btn {
+    background: #4CAF50;
+    color: white;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.save-btn:hover,
+.export-btn:hover {
+    background: #45a049;
+}
+
+.export-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#export-status {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    background: #e8f5e8;
+    color: #2e7d32;
+    display: none;
+}
+
+.empty-state {
+    text-align: center;
+    color: #666;
+    padding: 40px;
+}
+
+.barcode-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.barcode-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.barcode-buttons button {
+    flex: 1;
+}
+
+.barcode-hint {
+    text-align: center;
+    margin-top: 5px;
+    opacity: 0.8;
+}
+
+.barcode-hint small {
+    color: #666;
+    font-style: italic;
+}
+
+.permissions-btn {
+    background: #E91E63;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.permissions-btn:hover {
+    background: #C2185B;
+}
+
+.scan-btn {
+    background: #FF9800;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.scan-btn:hover {
+    background: #F57C00;
+}
+
+.manual-btn {
+    background: #607D8B;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.manual-btn:hover {
+    background: #455A64;
+}
+
+/* Scanner Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    width: 90%;
+    max-width: 400px;
+    max-height: 90vh;
+}
+
+.scanner-header {
+    background: #2196F3;
+    color: white;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.scanner-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: white;
+    padding: 5px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#scanner-container {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    overflow: hidden;
+    background: #000;
+}
+
+#scanner-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#scanner-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.scanner-controls {
+    padding: 15px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.flash-btn {
+    background: #FFC107;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flash-btn:hover {
+    background: #FF9800;
+}
+
+.cancel-btn {
+    background: #f44336;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.cancel-btn:hover {
+    background: #d32f2f;
+}
+
+.bgg-btn {
+    background: #9C27B0;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.bgg-btn:hover:not(:disabled) {
+    background: #7B1FA2;
+}
+
+.bgg-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-style: italic;
+}
+
+.loading.hidden,
+.bgg-results.hidden {
+    display: none;
+}
+
+.bgg-results {
+    margin: 15px 0;
+    padding: 15px;
+    background: #e8f5e8;
+    border-radius: 8px;
+    border-left: 4px solid #4CAF50;
+}
+
+.bgg-game {
+    margin-bottom: 10px;
+    padding: 10px;
+    background: white;
+    border-radius: 5px;
+    cursor: pointer;
+    border: 1px solid #ddd;
+}
+
+.bgg-game:hover {
+    background: #f5f5f5;
+}
+
+.bgg-game-name {
+    font-weight: bold;
+    color: #333;
+}
+
+.bgg-game-year {
+    color: #666;
+    font-size: 14px;
+}
+
+#barcode {
+    background: #f0f0f0;
+    font-family: monospace;
+    font-weight: bold;
+}

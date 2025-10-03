@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BGCatalog</title>
+    <link rel="stylesheet" href="css/index.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+</head>
+
+<body>
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen">
+        <header class="top-bar">
+            <button class="icon-btn" onclick="showScreen('settings')">
+                <span class="material-icons">menu</span>
+            </button>
+            <h1>BGCatalog</h1>
+            <button class="icon-btn" onclick="showScreen('item-form')">
+                <span class="material-icons">add</span>
+            </button>
+        </header>
+
+        <div class="content">
+            <input type="text" id="search-field" placeholder="Search by title or barcode"
+                oninput="filterItems(this.value)">
+
+            <div id="items-list" class="items-list">
+                <!-- Items will be dynamically added here -->
+            </div>
+
+            <div class="bottom-buttons">
+                <button onclick="showScreen('review')">Review</button>
+                <button onclick="showScreen('inventory')">Inventory</button>
+                <button onclick="showScreen('export')">Export</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Form Screen -->
+    <div id="item-form" class="screen hidden">
+        <header class="top-bar">
+            <button class="icon-btn" onclick="showScreen('home-screen')">
+                <span class="material-icons">arrow_back</span>
+            </button>
+            <h1>New Item</h1>
+            <button class="icon-btn" onclick="startBarcodeScanner()">
+                <span class="material-icons">qr_code_scanner</span>
+            </button>
+        </header>
+
+        <div class="content">
+            <div class="form-group">
+                <div class="barcode-section">
+                    <input type="text" id="barcode" placeholder="Barcode will appear here"
+                        oninput="onBarcodeInput(this.value)">
+                    <div class="barcode-buttons">
+                        <button type="button" onclick="startBarcodeScanner()" class="scan-btn">
+                            <span class="material-icons">qr_code_scanner</span> Try Camera Scanner
+                        </button>
+                        <button type="button" onclick="openBarcodeInput()" class="manual-btn">
+                            <span class="material-icons">edit</span> Enter Manually
+                        </button>
+                    </div>
+                    <button type="button" onclick="searchBGG()" class="bgg-btn" id="bgg-search-btn" disabled>
+                        🎲 Search BGG
+                    </button>
+                    <div class="barcode-hint">
+                        <small>💡 Tip: If camera doesn't work, try the permissions button below!</small>
+                    </div>
+                    <button type="button" onclick="requestPermissions()" class="permissions-btn" id="permissions-btn"
+                        style="display: none;">
+                        <span class="material-icons">security</span> Request Camera Permission
+                    </button>
+                </div>
+                <div id="bgg-loading" class="loading hidden">Searching BGG...</div>
+                <div id="bgg-results" class="bgg-results hidden"></div>
+
+                <input type="text" id="title" placeholder="Title*" required>
+                <select id="category" required>
+                    <option value="">Category*</option>
+                    <option value="boardgame">Board Game</option>
+                    <option value="furniture">Furniture</option>
+                    <option value="kitchen">Kitchen</option>
+                    <option value="others">Others</option>
+                </select>
+                <select id="condition" required>
+                    <option value="">Condition*</option>
+                    <option value="new">New</option>
+                    <option value="good">Good</option>
+                    <option value="acceptable">Acceptable</option>
+                    <option value="poor">Poor</option>
+                </select>
+                <input type="number" id="reference-price" placeholder="Reference Price* (€)" step="0.01" required>
+                <input type="number" id="price-rule" placeholder="Price Rule (%)" value="-50">
+                <input type="number" id="final-price" placeholder="Final Price* (€)" step="0.01" required>
+                <input type="number" id="stock" placeholder="Stock Qty*" required>
+                <input type="number" id="sold" placeholder="Sold Qty" value="0">
+                <textarea id="notes" placeholder="Notes"></textarea>
+                <button onclick="saveItem()" class="save-btn">Save Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Screen -->
+    <div id="review" class="screen hidden">
+        <header class="top-bar">
+            <button class="icon-btn" onclick="showScreen('home-screen')">
+                <span class="material-icons">arrow_back</span>
+            </button>
+            <h1>Review Items</h1>
+        </header>
+
+        <div class="content">
+            <div id="review-list" class="items-list">
+                <!-- Review items will be shown here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Screen -->
+    <div id="inventory" class="screen hidden">
+        <header class="top-bar">
+            <button class="icon-btn" onclick="showScreen('home-screen')">
+                <span class="material-icons">arrow_back</span>
+            </button>
+            <h1>Inventory</h1>
+        </header>
+
+        <div class="content">
+            <div id="inventory-list" class="items-list">
+                <!-- Inventory items will be shown here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Screen -->
+    <div id="export" class="screen hidden">
+        <header class="top-bar">
+            <button class="icon-btn" onclick="showScreen('home-screen')">
+                <span class="material-icons">arrow_back</span>
+            </button>
+            <h1>Export</h1>
+        </header>
+
+        <div class="content">
+            <div class="export-options">
+                <button onclick="exportToSheets()" class="export-btn">Export to Google Sheets</button>
+                <button onclick="exportToJSON()" class="export-btn">Export to JSON</button>
+                <button onclick="importFromJSON()" class="export-btn">Import from JSON</button>
+            </div>
+            <div id="export-status"></div>
+        </div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settings" class="screen hidden">
+        <header class="top-bar">
+            <button class="icon-btn" onclick="showScreen('home-screen')">
+                <span class="material-icons">arrow_back</span>
+            </button>
+            <h1>Settings</h1>
+        </header>
+
+        <div class="content">
+            <div class="form-group">
+                <input type="url" id="script-url" placeholder="Apps Script URL">
+                <input type="number" id="image-quality" placeholder="Image Quality (1-100)" min="1" max="100"
+                    value="80">
+                <button onclick="saveSettings()" class="save-btn">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Camera Scanner Modal -->
+    <div id="scanner-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="scanner-header">
+                <h3>Scan Barcode</h3>
+                <button onclick="stopBarcodeScanner()" class="close-btn">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div id="scanner-container">
+                <video id="scanner-video" autoplay playsinline></video>
+                <canvas id="scanner-canvas"></canvas>
+            </div>
+            <div class="scanner-controls">
+                <button onclick="toggleFlash()" class="flash-btn">
+                    <span class="material-icons">flash_on</span>
+                </button>
+                <button onclick="stopBarcodeScanner()" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/index.js"></script>
+</body>
+
+</html>
