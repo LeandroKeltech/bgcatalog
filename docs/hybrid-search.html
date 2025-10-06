@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 BGCatalog - Scanner + Busca por Imagem</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 { 
+            text-align: center; 
+            color: #667eea; 
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .method-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .method-card {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .method-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+        
+        .method-card.scanner {
+            border-color: #28a745;
+        }
+        
+        .method-card.image-search {
+            border-color: #007bff;
+        }
+        
+        .method-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+        }
+        
+        .method-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .method-icon {
+            font-size: 48px;
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .method-title {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+        
+        .method-subtitle {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .method-description {
+            color: #495057;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        
+        .method-features {
+            margin-bottom: 20px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+            color: #495057;
+            font-size: 0.9rem;
+        }
+        
+        .feature-icon {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            width: 100%;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-scanner {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+        
+        .btn-scanner:hover {
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.4);
+        }
+        
+        .btn-image {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+        }
+        
+        .btn-image:hover {
+            box-shadow: 0 8px 20px rgba(0, 123, 255, 0.4);
+        }
+        
+        .result-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 30px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .result-display {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            min-height: 80px;
+            border: 2px dashed #dee2e6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6c757d;
+            font-style: italic;
+        }
+        
+        .result-display.success {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+            color: #155724;
+        }
+        
+        .comparison-table {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            overflow-x: auto;
+        }
+        
+        .comparison-table h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 500;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .pro { color: #28a745; font-weight: bold; }
+        .con { color: #dc3545; font-weight: bold; }
+        
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+        }
+        .toast {
+            background: #333;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+        }
+        .toast.success { background: linear-gradient(45deg, #28a745, #20c997); }
+        .toast.error { background: linear-gradient(45deg, #dc3545, #c82333); }
+        .toast.info { background: linear-gradient(45deg, #17a2b8, #138496); }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Upload Area */
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            margin: 20px 0;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.2));
+        }
+        
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(32, 201, 151, 0.2));
+        }
+        
+        .upload-icon {
+            font-size: 64px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .upload-text {
+            color: #495057;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        #imageInput {
+            display: none;
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            margin: 15px 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        /* Modal styles para scanner */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 25px;
+            border-bottom: 2px solid #eee;
+        }
+        .modal-header h3 {
+            color: #28a745;
+            margin: 0;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #6c757d;
+        }
+        .scanner-container {
+            position: relative;
+            background: black;
+            overflow: hidden;
+            padding: 25px;
+        }
+        #scanner-video {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+        .scanner-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+        .scanner-frame {
+            width: 250px;
+            height: 120px;
+            border: 3px solid #28a745;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+        .scanner-status {
+            color: white;
+            background: rgba(0,0,0,0.8);
+            padding: 15px 25px;
+            border-radius: 10px;
+            max-width: 350px;
+        }
+    </style>
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- QuaggaJS para scanner -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 BGCatalog - Busca Inteligente</h1>
+        
+        <div class="method-grid">
+            <!-- Método 1: Scanner de Código -->
+            <div class="method-card scanner">
+                <div class="method-header">
+                    <div class="method-icon">📱</div>
+                    <div>
+                        <div class="method-title">Scanner EAN</div>
+                        <div class="method-subtitle">Câmera + Detector</div>
+                    </div>
+                </div>
+                <div class="method-description">
+                    Escaneie códigos de barras EAN-13, EAN-8 e UPC diretamente com a câmera do seu dispositivo.
+                </div>
+                <div class="method-features">
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span>Detecção automática em tempo real</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span>Validação matemática de checksum</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">⚠️</span>
+                        <span>Requer boa iluminação e foco</span>
+                    </div>
+                </div>
+                <button class="btn btn-scanner" onclick="startEANScanner()">
+                    <span class="material-icons">qr_code_scanner</span>
+                    Iniciar Scanner
+                </button>
+            </div>
+            
+            <!-- Método 2: Busca por Imagem -->
+            <div class="method-card image-search">
+                <div class="method-header">
+                    <div class="method-icon">🔍</div>
+                    <div>
+                        <div class="method-title">Busca por Imagem</div>
+                        <div class="method-subtitle">Google Lens + IA</div>
+                    </div>
+                </div>
+                <div class="method-description">
+                    Tire uma foto ou selecione uma imagem e use o Google Lens para identificar produtos e jogos.
+                </div>
+                <div class="method-features">
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span>Funciona com qualquer produto</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span>Não precisa de código de barras</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">✅</span>
+                        <span>Identifica por design e texto</span>
+                    </div>
+                </div>
+                <button class="btn btn-image" onclick="toggleImageSearch()">
+                    <span class="material-icons">image_search</span>
+                    Buscar por Imagem
+                </button>
+            </div>
+        </div>
+        
+        <!-- Upload de Imagem -->
+        <div id="imageSearchSection" style="display: none;">
+            <div class="upload-area" onclick="selectImage()" ondrop="handleDrop(event)" ondragover="handleDragOver(event)">
+                <div class="upload-icon">📸</div>
+                <div class="upload-text">Clique para tirar foto ou selecionar imagem</div>
+                <div class="upload-hint">Ou arraste uma imagem aqui • JPG, PNG, WebP</div>
+            </div>
+            <input type="file" id="imageInput" accept="image/*" capture="camera" onchange="handleImageSelect(event)">
+            <div id="imagePreview"></div>
+        </div>
+        
+        <!-- Resultados -->
+        <div class="result-section">
+            <h3>📊 Resultado da Busca</h3>
+            <div class="result-display" id="resultDisplay">
+                Aguardando busca... Escolha um método acima
+            </div>
+        </div>
+        
+        <!-- Comparação de Métodos -->
+        <div class="comparison-table">
+            <h3>⚖️ Comparação de Métodos</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aspecto</th>
+                        <th>📱 Scanner EAN</th>
+                        <th>🔍 Busca por Imagem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Precisão</strong></td>
+                        <td><span class="pro">Alta (se detectar)</span></td>
+                        <td><span class="pro">Muito Alta</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Facilidade de Uso</strong></td>
+                        <td><span class="con">Requer alinhamento</span></td>
+                        <td><span class="pro">Muito Fácil</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Produtos Suportados</strong></td>
+                        <td><span class="con">Apenas com código</span></td>
+                        <td><span class="pro">Qualquer produto</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Velocidade</strong></td>
+                        <td><span class="pro">Instantâneo</span></td>
+                        <td><span class="con">Depende de internet</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Condições de Luz</strong></td>
+                        <td><span class="con">Críticas</span></td>
+                        <td><span class="pro">Flexíveis</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Modal do Scanner -->
+    <div id="scanner-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📱 Scanner EAN</h3>
+                <button class="close-btn" onclick="stopEANScanner()">×</button>
+            </div>
+            <div class="scanner-container">
+                <video id="scanner-video" autoplay playsinline muted></video>
+                <div class="scanner-overlay">
+                    <div class="scanner-frame"></div>
+                    <div id="scanner-status" class="scanner-status">
+                        <div class="scanner-hint">Iniciando scanner...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script>
+        // ================================
+        // SISTEMA DE TOAST
+        // ================================
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 4000);
+        }
+
+        // ================================
+        // SCANNER EAN
+        // ================================
+        
+        function startEANScanner() {
+            console.log('🚀 Iniciando scanner EAN...');
+            showToast('📱 Abrindo câmera para scanner...', 'info');
+            
+            const modal = document.getElementById('scanner-modal');
+            const video = document.getElementById('scanner-video');
+            
+            if (!modal || !video) {
+                showToast('❌ Erro: Elementos não encontrados', 'error');
+                return;
+            }
+            
+            modal.classList.add('active');
+            
+            // Solicitar câmera
+            navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            })
+            .then(stream => {
+                video.srcObject = stream;
+                showToast('✅ Câmera ativada!', 'success');
+                
+                video.onloadedmetadata = () => {
+                    if (typeof Quagga !== 'undefined') {
+                        initQuaggaScanner(video, stream);
+                    } else {
+                        showToast('❌ Detector não disponível', 'error');
+                    }
+                };
+            })
+            .catch(error => {
+                console.error('Erro de câmera:', error);
+                showToast('❌ Erro ao acessar câmera', 'error');
+                modal.classList.remove('active');
+            });
+        }
+        
+        function initQuaggaScanner(video, stream) {
+            const config = {
+                inputStream: {
+                    name: "Live",
+                    type: "LiveStream",
+                    target: video
+                },
+                decoder: {
+                    readers: ["ean_reader", "upc_reader"]
+                },
+                locate: true
+            };
+            
+            Quagga.init(config, (err) => {
+                if (err) {
+                    showToast('❌ Erro no detector: ' + err.message, 'error');
+                    return;
+                }
+                
+                Quagga.onDetected((result) => {
+                    const code = result.codeResult.code;
+                    console.log('Código detectado:', code);
+                    
+                    if (/^\d{8,13}$/.test(code)) {
+                        Quagga.stop();
+                        stream.getTracks().forEach(track => track.stop());
+                        document.getElementById('scanner-modal').classList.remove('active');
+                        
+                        displayResult(`📱 Scanner EAN: ${code}`, 'scanner');
+                        showToast(`✅ Código detectado: ${code}`, 'success');
+                    }
+                });
+                
+                Quagga.start();
+                showToast('🎯 Scanner ativo! Posicione o código', 'success');
+            });
+        }
+        
+        function stopEANScanner() {
+            try {
+                if (typeof Quagga !== 'undefined') {
+                    Quagga.stop();
+                }
+                
+                const video = document.getElementById('scanner-video');
+                if (video && video.srcObject) {
+                    video.srcObject.getTracks().forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+                
+                document.getElementById('scanner-modal').classList.remove('active');
+                showToast('Scanner fechado', 'info');
+            } catch (error) {
+                console.error('Erro ao fechar:', error);
+            }
+        }
+
+        // ================================
+        // BUSCA POR IMAGEM
+        // ================================
+        
+        function toggleImageSearch() {
+            const section = document.getElementById('imageSearchSection');
+            const isVisible = section.style.display !== 'none';
+            
+            section.style.display = isVisible ? 'none' : 'block';
+            
+            if (!isVisible) {
+                showToast('📸 Selecione uma imagem para buscar', 'info');
+            }
+        }
+        
+        function selectImage() {
+            document.getElementById('imageInput').click();
+        }
+        
+        function handleImageSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                processImage(file);
+            }
+        }
+        
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.target.closest('.upload-area').classList.add('dragover');
+        }
+        
+        function handleDrop(event) {
+            event.preventDefault();
+            event.target.closest('.upload-area').classList.remove('dragover');
+            
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                processImage(files[0]);
+            }
+        }
+        
+        function processImage(file) {
+            if (!file.type.startsWith('image/')) {
+                showToast('❌ Por favor, selecione uma imagem válida', 'error');
+                return;
+            }
+            
+            showToast('📸 Processando imagem...', 'info');
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const imageUrl = e.target.result;
+                displayImagePreview(imageUrl);
+                searchWithGoogleLens(imageUrl);
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function displayImagePreview(imageUrl) {
+            const preview = document.getElementById('imagePreview');
+            preview.innerHTML = `
+                <div style="text-align: center;">
+                    <h4 style="margin-bottom: 15px; color: #495057;">📸 Imagem Selecionada</h4>
+                    <img src="${imageUrl}" class="image-preview" alt="Imagem selecionada">
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-image" onclick="searchWithGoogleLens('${imageUrl}')">
+                            <span class="material-icons">search</span>
+                            Buscar com Google Lens
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function searchWithGoogleLens(imageUrl) {
+            try {
+                // Converter para blob se necessário
+                if (imageUrl.startsWith('data:')) {
+                    // Criar URL do Google Lens
+                    const googleLensUrl = `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(imageUrl)}`;
+                    
+                    // Abrir em nova aba
+                    window.open(googleLensUrl, '_blank');
+                    
+                    displayResult('🔍 Busca por imagem iniciada! Verifique a nova aba do Google Lens para ver os resultados.', 'image-search');
+                    showToast('🚀 Google Lens aberto em nova aba!', 'success');
+                } else {
+                    // Para URLs diretas
+                    const googleLensUrl = `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(imageUrl)}`;
+                    window.open(googleLensUrl, '_blank');
+                    
+                    displayResult('🔍 Busca por imagem iniciada no Google Lens!', 'image-search');
+                    showToast('🚀 Redirecionando para Google Lens...', 'success');
+                }
+            } catch (error) {
+                console.error('Erro na busca:', error);
+                
+                // Fallback: Busca reversa do Google
+                showToast('📱 Abrindo busca de imagens do Google...', 'info');
+                window.open('https://images.google.com/', '_blank');
+                displayResult('🔍 Abra o Google Imagens e clique no ícone da câmera para fazer upload da sua imagem.', 'image-search');
+            }
+        }
+        
+        // ================================
+        // SISTEMA DE RESULTADOS
+        // ================================
+        
+        function displayResult(message, method) {
+            const display = document.getElementById('resultDisplay');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            display.className = 'result-display success';
+            display.innerHTML = `
+                <div style="text-align: left; width: 100%;">
+                    <strong>${message}</strong><br>
+                    <small style="opacity: 0.8;">⏰ ${timestamp} • Método: ${method}</small>
+                </div>
+            `;
+        }
+        
+        // ================================
+        // INICIALIZAÇÃO
+        // ================================
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            showToast('🎯 BGCatalog carregado! Escolha um método de busca.', 'success');
+            
+            // Remover evento de dragover global
+            document.addEventListener('dragover', (e) => {
+                if (!e.target.closest('.upload-area')) {
+                    e.preventDefault();
+                }
+            });
+            
+            document.addEventListener('dragleave', (e) => {
+                if (e.target.classList.contains('upload-area')) {
+                    e.target.classList.remove('dragover');
+                }
+            });
+        });
+        
+        console.log('🎯 BGCatalog - Scanner + Busca por Imagem carregado!');
+    </script>
+</body>
+</html>
