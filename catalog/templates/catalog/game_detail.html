@@ -1,0 +1,217 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}{{ game.name }} - Board Game Catalog{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12 mb-3">
+        <a href="{% url 'catalog_list' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Back to Catalog
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Image Carousel -->
+    <div class="col-md-6">
+        {% if images %}
+            <div id="gameCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-indicators">
+                    {% for image in images %}
+                        <button type="button" data-bs-target="#gameCarousel" data-bs-slide-to="{{ forloop.counter0 }}" 
+                                {% if forloop.first %}class="active"{% endif %}></button>
+                    {% endfor %}
+                </div>
+                
+                <div class="carousel-inner">
+                    {% for image in images %}
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                            <img src="{{ image }}" class="d-block w-100" alt="{{ game.name }}">
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                {% if images|length > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#gameCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#gameCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="bg-secondary text-white d-flex align-items-center justify-content-center" style="height: 400px;">
+                <i class="bi bi-image" style="font-size: 6rem;"></i>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Game Details -->
+    <div class="col-md-6">
+        <h1 class="mb-3">{{ game.name }}</h1>
+        
+        {% if game.year_published %}
+            <p class="text-muted"><strong>Year Published:</strong> {{ game.year_published }}</p>
+        {% endif %}
+        
+        {% if game.designer %}
+            <p><strong>Designer:</strong> {{ game.designer }}</p>
+        {% endif %}
+        
+        <!-- Game Stats -->
+        <div class="row mb-3">
+            {% if game.players_range != 'N/A' %}
+                <div class="col-6">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <i class="bi bi-people-fill text-primary" style="font-size: 2rem;"></i>
+                            <p class="mb-0"><strong>{{ game.players_range }}</strong></p>
+                            <small>Players</small>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if game.playtime_range != 'N/A' %}
+                <div class="col-6">
+                    <div class="card bg-light">
+                        <div class="card-body text-center">
+                            <i class="bi bi-clock-fill text-primary" style="font-size: 2rem;"></i>
+                            <p class="mb-0"><strong>{{ game.playtime_range }}</strong></p>
+                            <small>Playtime</small>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Condition & Stock -->
+        <div class="mb-3">
+            <span class="badge badge-condition bg-info">{{ game.get_condition_display }}</span>
+            {% if game.in_stock %}
+                <span class="badge bg-success">In Stock: {{ game.stock_quantity }}</span>
+            {% elif game.is_sold %}
+                <span class="badge bg-danger">SOLD {% if game.sold_date %}on {{ game.sold_date|date:"M d, Y" }}{% endif %}</span>
+            {% else %}
+                <span class="badge bg-warning">Out of Stock</span>
+            {% endif %}
+        </div>
+        
+        <!-- Pricing -->
+        {% if game.msrp_price %}
+            <div class="card bg-light mb-3">
+                <div class="card-body">
+                    {% if game.discount_percentage > 0 %}
+                        <p class="price-old mb-1">Original: ${{ game.msrp_price }}</p>
+                        <p class="text-danger mb-1">Discount: {{ game.discount_percentage }}%</p>
+                    {% endif %}
+                    <h3 class="price-tag mb-0">Price: ${{ game.final_price|default:game.msrp_price }}</h3>
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Actions -->
+        <div class="btn-group w-100 mb-3" role="group">
+            <a href="{% url 'game_edit' game.pk %}" class="btn btn-warning">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+            {% if not game.is_sold %}
+                <form method="post" action="{% url 'game_mark_sold' game.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success" onclick="return confirm('Mark this game as sold?')">
+                        <i class="bi bi-check-circle"></i> Mark Sold
+                    </button>
+                </form>
+            {% else %}
+                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#unmarkSoldModal">
+                    <i class="bi bi-arrow-counterclockwise"></i> Unmark Sold
+                </button>
+            {% endif %}
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                <i class="bi bi-trash"></i> Delete
+            </button>
+        </div>
+        
+        {% if game.bgg_id %}
+            <a href="https://boardgamegeek.com/boardgame/{{ game.bgg_id }}" target="_blank" class="btn btn-outline-primary w-100 mb-3">
+                <i class="bi bi-box-arrow-up-right"></i> View on BoardGameGeek
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Description -->
+{% if game.description %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Description</h3>
+            <div class="card">
+                <div class="card-body">
+                    {{ game.description|linebreaks }}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Notes -->
+{% if game.notes %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Notes</h3>
+            <div class="alert alert-info">
+                {{ game.notes|linebreaks }}
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete <strong>{{ game.name }}</strong>? This action cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'game_delete' game.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Unmark Sold Modal -->
+<div class="modal fade" id="unmarkSoldModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Unmark as Sold</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'game_unmark_sold' game.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <p>Restore <strong>{{ game.name }}</strong> to available inventory?</p>
+                    <div class="mb-3">
+                        <label for="stock_quantity" class="form-label">Stock Quantity:</label>
+                        <input type="number" class="form-control" id="stock_quantity" name="stock_quantity" value="1" min="1">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Unmark Sold</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Search BGG - Board Game Catalog{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-search"></i> Search BoardGameGeek</h1>
+
+<!-- CSRF Debug Info -->
+<div class="alert alert-warning">
+    <strong>Debug Info:</strong> CSRF Token = {{ csrf_token|slice:":10" }}... 
+    (Check browser console for full token)
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="{% url 'bgg_search' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="query" class="form-label">Search for a board game:</label>
+                        <input type="text" class="form-control" id="query" name="query" 
+                               placeholder="e.g., Catan, Ticket to Ride..." 
+                               value="{{ query }}" required autofocus>
+                        <small class="form-text text-muted">
+                            Enter part of the game name (e.g., "Catan" will find "Settlers of Catan")
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Search BGG
+                    </button>
+                    <a href="{% url 'catalog_list' %}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="alert alert-info">
+            <h5><i class="bi bi-info-circle"></i> How to use:</h5>
+            <ol>
+                <li>Enter the name (or part of the name) of a board game</li>
+                <li>Click "Search BGG" to find games</li>
+                <li>Select the game from the results</li>
+                <li>Review and customize the details</li>
+                <li>Add to your catalog!</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+{% if results %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Search Results ({{ results|length }})</h3>
+            <div class="list-group">
+                {% for result in results %}
+                    <a href="{% url 'bgg_import' result.id %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h5 class="mb-1">{{ result.name }}</h5>
+                            <small class="text-muted">{% if result.year %}{{ result.year }}{% endif %}</small>
+                        </div>
+                        <small class="text-muted">BGG ID: {{ result.id }}</small>
+                    </a>
+                {% empty %}
+                    <div class="list-group-item">
+                        <p class="mb-0">No results found for "{{ query }}". Try a different search term.</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Debug CSRF Cookie
+    console.log('=== CSRF DEBUG ===');
+    console.log('All Cookies:', document.cookie);
+    console.log('CSRF Token from form:', document.querySelector('input[name="csrfmiddlewaretoken"]')?.value);
+    
+    // Check if cookie exists
+    const csrfCookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+    if (csrfCookie) {
+        console.log('CSRF Cookie found:', csrfCookie);
+    } else {
+        console.error('CSRF Cookie NOT found! This will cause form submission to fail.');
+    }
+    console.log('==================');
+    
+    // Intercept form submission to debug
+    document.querySelector('form').addEventListener('submit', function(e) {
+        console.log('=== FORM SUBMIT DEBUG ===');
+        console.log('Form action:', this.action);
+        console.log('Form method:', this.method);
+        console.log('Query value:', document.getElementById('query').value);
+        console.log('CSRF token:', document.querySelector('input[name="csrfmiddlewaretoken"]')?.value);
+        console.log('Form is submitting...');
+        console.log('========================');
+        // Don't prevent default - let it submit normally
+    });
+</script>
+{% endblock %}

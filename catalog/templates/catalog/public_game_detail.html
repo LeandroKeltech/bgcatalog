@@ -1,0 +1,160 @@
+{% extends 'catalog/public_base.html' %}
+
+{% block title %}{{ game.name }} - Board Game Store{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <a href="{% url 'public_catalog' %}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> Back to Store
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Images -->
+    <div class="col-md-6 mb-4">
+        {% if images %}
+            <div id="gameCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-indicators">
+                    {% for image in images %}
+                        <button type="button" data-bs-target="#gameCarousel" data-bs-slide-to="{{ forloop.counter0 }}" 
+                                {% if forloop.first %}class="active"{% endif %}></button>
+                    {% endfor %}
+                </div>
+                
+                <div class="carousel-inner rounded">
+                    {% for image in images %}
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                            <img src="{{ image }}" class="d-block w-100" alt="{{ game.name }}" 
+                                 style="max-height: 500px; object-fit: contain; background: white;">
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                {% if images|length > 1 %}
+                    <button class="carousel-control-prev" type="button" data-bs-target="#gameCarousel" data-bs-slide="prev">
+                        <span class="carousel-control-prev-icon"></span>
+                    </button>
+                    <button class="carousel-control-next" type="button" data-bs-target="#gameCarousel" data-bs-slide="next">
+                        <span class="carousel-control-next-icon"></span>
+                    </button>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 400px;">
+                <i class="bi bi-image text-secondary" style="font-size: 6rem;"></i>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Game Info -->
+    <div class="col-md-6">
+        <h1 class="mb-3">{{ game.name }}</h1>
+        
+        {% if game.year_published %}
+            <p class="text-muted"><i class="bi bi-calendar"></i> <strong>Year:</strong> {{ game.year_published }}</p>
+        {% endif %}
+        
+        {% if game.designer %}
+            <p><i class="bi bi-person"></i> <strong>Designer:</strong> {{ game.designer }}</p>
+        {% endif %}
+        
+        <!-- Game Stats -->
+        <div class="row mb-4">
+            {% if game.players_range != 'N/A' %}
+                <div class="col-md-6 mb-3">
+                    <div class="card bg-light text-center">
+                        <div class="card-body">
+                            <i class="bi bi-people-fill text-primary" style="font-size: 2.5rem;"></i>
+                            <h4 class="mt-2 mb-0">{{ game.players_range }}</h4>
+                            <small class="text-muted">Players</small>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if game.playtime_range != 'N/A' %}
+                <div class="col-md-6 mb-3">
+                    <div class="card bg-light text-center">
+                        <div class="card-body">
+                            <i class="bi bi-clock-fill text-primary" style="font-size: 2.5rem;"></i>
+                            <h4 class="mt-2 mb-0">{{ game.playtime_range }}</h4>
+                            <small class="text-muted">Playtime</small>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+            
+            {% if game.min_age %}
+                <div class="col-md-6 mb-3">
+                    <div class="card bg-light text-center">
+                        <div class="card-body">
+                            <i class="bi bi-star-fill text-primary" style="font-size: 2.5rem;"></i>
+                            <h4 class="mt-2 mb-0">{{ game.min_age }}+</h4>
+                            <small class="text-muted">Age</small>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Condition -->
+        <div class="mb-4">
+            <h5>Condition:</h5>
+            <span class="badge badge-condition bg-primary">{{ game.get_condition_display }}</span>
+            {% if game.stock_quantity > 1 %}
+                <span class="badge bg-success">{{ game.stock_quantity }} available</span>
+            {% else %}
+                <span class="badge bg-warning">Only 1 left!</span>
+            {% endif %}
+        </div>
+        
+        <!-- Pricing -->
+        {% if game.msrp_price %}
+            <div class="card mb-4" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
+                <div class="card-body">
+                    {% if game.discount_percentage > 0 %}
+                        <p class="price-old mb-2">Original Price: ${{ game.msrp_price }}</p>
+                        <h2 class="price-tag mb-2">${{ game.final_price }}</h2>
+                        <span class="badge bg-success" style="font-size: 1.2rem;">
+                            Save {{ game.discount_percentage }}% (${%  widthratio game.discount_percentage 1 game.msrp_price %})
+                        </span>
+                    {% else %}
+                        <h2 class="price-tag mb-0">${{ game.msrp_price }}</h2>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Contact/Purchase Info -->
+        <div class="alert alert-info">
+            <h5><i class="bi bi-info-circle"></i> Interested in this game?</h5>
+            <p class="mb-0">Please contact us for purchase details and availability.</p>
+        </div>
+        
+        {% if game.bgg_id %}
+            <a href="https://boardgamegeek.com/boardgame/{{ game.bgg_id }}" target="_blank" 
+               class="btn btn-outline-secondary w-100">
+                <i class="bi bi-box-arrow-up-right"></i> View on BoardGameGeek
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Description -->
+{% if game.description %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="bi bi-file-text"></i> Description</h3>
+                </div>
+                <div class="card-body">
+                    {{ game.description|linebreaks }}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
