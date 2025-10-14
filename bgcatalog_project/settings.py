@@ -30,30 +30,29 @@ DEBUG = config('DEBUG', default=True, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,10.0.0.47,.local', cast=Csv())
 
 # CSRF Settings for local network access
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8443',
-    'http://127.0.0.1:8443',
-    'http://10.0.0.47:8443',
-    'http://bgcatalog.local:8443',
-]
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='http://localhost:8443,http://127.0.0.1:8443,http://10.0.0.47:8443',
+    cast=Csv()
+)
 
 # Session Cookie Settings
-SESSION_COOKIE_NAME = 'sessionid'  # Explicitly set session cookie name
+SESSION_COOKIE_NAME = 'sessionid'
 SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
-SESSION_COOKIE_HTTPONLY = False  # Allow JavaScript access for debugging
-SESSION_COOKIE_DOMAIN = None  # No domain restriction
-SESSION_COOKIE_PATH = '/'  # Available for entire site
-SESSION_SAVE_EVERY_REQUEST = True  # Force session to be saved on every request
+SESSION_COOKIE_SECURE = not DEBUG  # True in production (HTTPS)
+SESSION_COOKIE_HTTPONLY = True  # Secure in production
+SESSION_COOKIE_DOMAIN = None
+SESSION_COOKIE_PATH = '/'
+SESSION_SAVE_EVERY_REQUEST = True
 
 # CSRF Cookie Settings
-CSRF_COOKIE_NAME = 'csrftoken'  # Explicitly set CSRF cookie name
+CSRF_COOKIE_NAME = 'csrftoken'
 CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
-CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access for debugging
-CSRF_USE_SESSIONS = False  # Try cookie-based again with explicit settings
-CSRF_COOKIE_DOMAIN = None  # No domain restriction
-CSRF_COOKIE_PATH = '/'  # Cookie available for entire site
+CSRF_COOKIE_SECURE = not DEBUG  # True in production (HTTPS)
+CSRF_COOKIE_HTTPONLY = False
+CSRF_USE_SESSIONS = False
+CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_PATH = '/'
 
 
 # Application definition
@@ -73,12 +72,18 @@ MIDDLEWARE = [
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Whitenoise for static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'catalog.middleware.DisableCSRFMiddleware',  # DEVELOPMENT ONLY - Disable CSRF for IP access
+]
+
+# Disable CSRF only in development (when DEBUG=True)
+if DEBUG:
+    MIDDLEWARE.append('catalog.middleware.DisableCSRFMiddleware')
+
+MIDDLEWARE.extend([
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
+])
 
 ROOT_URLCONF = 'bgcatalog_project.urls'
 
