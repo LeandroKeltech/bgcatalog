@@ -9,7 +9,7 @@ urlpatterns = [
     
     # BGG Integration
     path('bgg/search/', views.bgg_search, name='bgg_search'),
-    path('bgg/import/<int:bgg_id>/', views.bgg_import, name='bgg_import'),
+    path('bgg/import/<str:bgg_id>/', views.bgg_import, name='bgg_import'),
     
     # CRUD Operations
     path('game/create/', views.game_create_manual, name='game_create_manual'),

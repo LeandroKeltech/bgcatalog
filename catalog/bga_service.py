@@ -31,7 +31,7 @@ def search_games(query, limit=10):
     
     try:
         logger.info(f"Searching Board Game Atlas for: {query}")
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, timeout=15)
         response.raise_for_status()
         
         data = response.json()
@@ -60,8 +60,10 @@ def search_games(query, limit=10):
         
         return results
         
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Board Game Atlas API error: {e}")
+    except (requests.exceptions.RequestException, requests.exceptions.ConnectionError, 
+            requests.exceptions.Timeout, OSError) as e:
+        logger.warning(f"Board Game Atlas API error: {e}")
+        logger.info("Returning mock data as fallback")
         # Return mock data as fallback
         return get_mock_data(query)
     except Exception as e:
@@ -82,7 +84,7 @@ def get_game_details(bga_id):
     
     try:
         logger.info(f"Getting details for BGA ID: {bga_id}")
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, timeout=15)
         response.raise_for_status()
         
         data = response.json()
@@ -109,10 +111,29 @@ def get_game_details(bga_id):
                 'rules_url': game.get('rules_url'),
             }
         
+        # If not found in API, check if it's a mock ID
+        if str(bga_id).startswith('mock_'):
+            logger.info(f"Mock ID detected: {bga_id}, returning mock data")
+            mock_games = get_mock_data('')
+            for game in mock_games:
+                if game['bga_id'] == bga_id:
+                    return game
+        
         return None
         
+    except (requests.exceptions.RequestException, requests.exceptions.ConnectionError,
+            requests.exceptions.Timeout, OSError) as e:
+        logger.warning(f"Error getting game details: {e}")
+        logger.info("Checking if it's a mock ID")
+        # Check if it's a mock ID
+        if str(bga_id).startswith('mock_'):
+            mock_games = get_mock_data('')
+            for game in mock_games:
+                if game['bga_id'] == bga_id:
+                    return game
+        return None
     except Exception as e:
-        logger.error(f"Error getting game details: {e}")
+        logger.error(f"Unexpected error getting game details: {e}")
         return None
 
 
