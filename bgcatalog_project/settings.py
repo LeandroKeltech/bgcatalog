@@ -114,12 +114,11 @@ WSGI_APPLICATION = 'bgcatalog_project.wsgi.application'
 
 import dj_database_url
 
-DATABASE_URL = config('DATABASE_URL', default=None)
-
-if DATABASE_URL:
-    # Production database (PostgreSQL)
+# Configure database from DATABASE_URL
+databases_config = config('DATABASE_URL', default=None)
+if databases_config:
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL)
+        'default': dj_database_url.parse(databases_config)
     }
 else:
     # Development database (SQLite)

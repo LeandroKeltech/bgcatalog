@@ -1,0 +1,29 @@
+# Fly.io configuration file for bgcatalog
+app = "bgcatalog"
+
+[build]
+  image = "python:3.10-slim"
+
+[env]
+  DJANGO_SETTINGS_MODULE = "bgcatalog_project.settings"
+  PYTHONUNBUFFERED = "1"
+
+[experimental]
+  auto_rollback = true
+
+[[services]]
+  internal_port = 8000
+  protocol = "tcp"
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls"]
+    port = 443
