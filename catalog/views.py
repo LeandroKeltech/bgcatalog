@@ -8,9 +8,13 @@ from django.middleware.csrf import get_token
 from django.core.paginator import Paginator
 from .models import BoardGame
 from .bgg_service import BGGService
+from .bga_service import search_games as bga_search_games, get_game_details as bga_get_game_details
 from .sheets_service import GoogleSheetsService
 from decimal import Decimal
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def index(request):
@@ -84,7 +88,7 @@ def game_detail(request, pk):
 
 @ensure_csrf_cookie
 def bgg_search(request):
-    """Search BGG API for board games"""
+    """Search Board Game Atlas API for board games"""
     # Explicitly force CSRF token generation and save to session
     csrf_token = get_token(request)
     
@@ -93,17 +97,9 @@ def bgg_search(request):
         request.session.create()
     request.session.modified = True
     
-    # Debug CSRF
-    print(f"=== BGG SEARCH DEBUG ===")
-    print(f"Method: {request.method}")
-    print(f"Session Key: {request.session.session_key}")
-    print(f"CSRF Token Generated: {csrf_token}")
-    print(f"CSRF in Session: {request.session.get('_csrftoken', 'NOT IN SESSION')}")
-    print(f"CSRF Cookie: {request.COOKIES.get('csrftoken', 'NOT SET')}")
-    print(f"SessionID Cookie: {request.COOKIES.get('sessionid', 'NOT SET')}")
-    print(f"CSRF Token (POST): {request.POST.get('csrfmiddlewaretoken', 'NOT SET')}")
-    print(f"All Cookies: {request.COOKIES}")
-    print(f"======================")
+    logger.info(f"=== BGA SEARCH DEBUG ===")
+    logger.info(f"Method: {request.method}")
+    logger.info(f"Session Key: {request.session.session_key}")
     
     if request.method == 'GET':
         # Force session save
@@ -123,7 +119,6 @@ def bgg_search(request):
                 samesite='Lax',
                 secure=False
             )
-            print(f"SessionID cookie explicitly set: {request.session.session_key}")
         
         # Explicitly set CSRF cookie if not present
         if 'csrftoken' not in request.COOKIES:
@@ -137,14 +132,12 @@ def bgg_search(request):
                 samesite='Lax',
                 secure=False
             )
-            print(f"CSRF cookie explicitly set: {csrf_token}")
         
         return response
     
     elif request.method == 'POST':
-        print(f"=== POST REQUEST RECEIVED ===")
-        print(f"POST data: {request.POST}")
-        print(f"============================")
+        logger.info(f"=== POST REQUEST RECEIVED ===")
+        logger.info(f"POST data: {request.POST}")
         
         query = request.POST.get('query', '').strip()
         
@@ -152,17 +145,13 @@ def bgg_search(request):
             messages.error(request, 'Please enter a search term')
             return render(request, 'catalog/bgg_search.html')
         
-        # Search BGG
-        results = BGGService.search_games(query)
+        # Search Board Game Atlas
+        results = bga_search_games(query)
         
-        # If BGG search fails (SSL error), provide mock data for development
-        if not results:
-            messages.warning(request, 'BGG API is currently unavailable. Showing sample data for development.')
-            results = [
-                {'id': 9209, 'name': 'Ticket to Ride', 'year': 2004},
-                {'id': 181304, 'name': 'Ticket to Ride: Europe', 'year': 2005},
-                {'id': 14996, 'name': 'Ticket to Ride: Märklin', 'year': 2006},
-            ]
+        if results:
+            messages.success(request, f'Found {len(results)} games matching "{query}"')
+        else:
+            messages.info(request, f'No games found for "{query}"')
         
         context = {
             'query': query,
@@ -174,32 +163,14 @@ def bgg_search(request):
 
 @ensure_csrf_cookie
 def bgg_import(request, bgg_id):
-    """Import a game from BGG and show form to add to catalog"""
-    # Fetch game details from BGG
-    game_data = BGGService.get_game_details(bgg_id)
+    """Import a game from Board Game Atlas and show form to add to catalog"""
+    # Fetch game details from Board Game Atlas
+    game_data = bga_get_game_details(bgg_id)
     
-    # If BGG API fails, provide mock data for development
+    # If API fails, show error
     if not game_data:
-        messages.warning(request, 'BGG API is currently unavailable. Using sample data for development.')
-        game_data = {
-            'bgg_id': int(bgg_id),
-            'name': 'Ticket to Ride',
-            'description': 'Ticket to Ride is a cross-country train adventure game. Players collect train cards that enable them to claim railway routes connecting cities throughout North America.',
-            'year_published': 2004,
-            'designer': 'Alan R. Moon',
-            'min_players': 2,
-            'max_players': 5,
-            'min_playtime': 30,
-            'max_playtime': 60,
-            'min_age': 8,
-            'thumbnail_url': 'https://cf.geekdo-images.com/ZWJg0dCdrWHxVnc0eFXK8w__thumb/img/5cDRW7tXiKd0n3RkjSOM4kHDVhM=/fit-in/200x150/filters:strip_icc()/pic66668.jpg',
-            'images': [
-                'https://cf.geekdo-images.com/ZWJg0dCdrWHxVnc0eFXK8w__original/img/hTNtzPD-hF7gm8HsdEUIQdwTc-Y=/0x0/filters:format(jpeg)/pic66668.jpg'
-            ],
-            'msrp_price': None,
-            'rating': 7.4,
-            'weight': 1.89,
-        }
+        messages.error(request, f'Could not find game with ID: {bgg_id}')
+        return redirect('bgg_search')
     
     if request.method == 'POST':
         # Process form submission
@@ -207,30 +178,33 @@ def bgg_import(request, bgg_id):
             # Create new game
             game = BoardGame()
             
-            # BGG data
-            game.bgg_id = game_data['bgg_id']
+            # Board Game Atlas data
+            game.bgg_id = game_data['bga_id']  # Using BGA ID in bgg_id field (for compatibility)
             game.name = game_data['name']
-            game.description = game_data['description']
-            game.year_published = game_data['year_published']
-            game.designer = game_data['designer']
-            game.min_players = game_data['min_players']
-            game.max_players = game_data['max_players']
-            game.min_playtime = game_data['min_playtime']
-            game.max_playtime = game_data['max_playtime']
-            game.min_age = game_data['min_age']
-            game.thumbnail_url = game_data['thumbnail_url'] or ''
+            game.description = game_data.get('description', game_data.get('description_preview', ''))
+            game.year_published = game_data.get('year')
+            game.designer = ''  # BGA doesn't provide designer in basic search
+            game.min_players = game_data.get('min_players')
+            game.max_players = game_data.get('max_players')
+            game.min_playtime = game_data.get('min_playtime')
+            game.max_playtime = game_data.get('max_playtime')
+            game.min_age = game_data.get('min_age')
+            game.thumbnail_url = game_data.get('thumbnail', '')
             
             # Store images as JSON
-            if game_data['images']:
-                game.set_images_list(game_data['images'])
+            if game_data.get('image_url'):
+                game.set_images_list([game_data['image_url']])
             
             # User inputs
             game.condition = request.POST.get('condition', 'new')
             game.stock_quantity = int(request.POST.get('stock_quantity', 1))
             game.notes = request.POST.get('notes', '')
             
-            # Pricing
+            # Pricing - use BGA price data
             msrp_price = request.POST.get('msrp_price', '').strip()
+            if not msrp_price and game_data.get('msrp'):
+                msrp_price = str(game_data['msrp'])
+            
             if msrp_price:
                 game.msrp_price = Decimal(msrp_price)
             

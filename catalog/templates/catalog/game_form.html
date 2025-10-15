@@ -98,10 +98,14 @@
                     <div class="mb-3">
                         <label for="msrp_price" class="form-label">MSRP Price ($) *</label>
                         <input type="number" step="0.01" class="form-control" id="msrp_price" name="msrp_price" 
-                               value="{% if game.msrp_price %}{{ game.msrp_price }}{% endif %}" 
+                               value="{% if game.msrp_price %}{{ game.msrp_price }}{% elif game_data.msrp %}{{ game_data.msrp }}{% elif game_data.price and game_data.price != '0' %}{{ game_data.price }}{% endif %}" 
                                required onchange="calculateFinalPrice()">
                         <small class="form-text text-muted">
-                            Original manufacturer's suggested retail price (check BGG or Amazon)
+                            {% if game_data.msrp or game_data.price %}
+                                Price from API: ${{ game_data.msrp|default:game_data.price }}
+                            {% else %}
+                                Original manufacturer's suggested retail price
+                            {% endif %}
                         </small>
                     </div>
                     

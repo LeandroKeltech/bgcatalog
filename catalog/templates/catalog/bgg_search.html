@@ -1,15 +1,9 @@
 {% extends 'catalog/base.html' %}
 
-{% block title %}Search BGG - Board Game Catalog{% endblock %}
+{% block title %}Search Board Games - Board Game Catalog{% endblock %}
 
 {% block content %}
-<h1 class="mb-4"><i class="bi bi-search"></i> Search BoardGameGeek</h1>
-
-<!-- CSRF Debug Info -->
-<div class="alert alert-warning">
-    <strong>Debug Info:</strong> CSRF Token = {{ csrf_token|slice:":10" }}... 
-    (Check browser console for full token)
-</div>
+<h1 class="mb-4"><i class="bi bi-search"></i> Search Board Games</h1>
 
 <div class="row">
     <div class="col-md-6">
@@ -23,11 +17,11 @@
                                placeholder="e.g., Catan, Ticket to Ride..." 
                                value="{{ query }}" required autofocus>
                         <small class="form-text text-muted">
-                            Enter part of the game name (e.g., "Catan" will find "Settlers of Catan")
+                            Enter part of the game name to find games with prices
                         </small>
                     </div>
                     <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-search"></i> Search BGG
+                        <i class="bi bi-search"></i> Search Games
                     </button>
                     <a href="{% url 'catalog_list' %}" class="btn btn-secondary">Cancel</a>
                 </form>
@@ -40,11 +34,12 @@
             <h5><i class="bi bi-info-circle"></i> How to use:</h5>
             <ol>
                 <li>Enter the name (or part of the name) of a board game</li>
-                <li>Click "Search BGG" to find games</li>
+                <li>Click "Search Games" to find games with prices</li>
                 <li>Select the game from the results</li>
-                <li>Review and customize the details</li>
+                <li>Review price and details</li>
                 <li>Add to your catalog!</li>
             </ol>
+            <p class="mb-0"><small>Prices provided by Board Game Atlas</small></p>
         </div>
     </div>
 </div>
@@ -53,52 +48,56 @@
     <div class="row mt-4">
         <div class="col-12">
             <h3>Search Results ({{ results|length }})</h3>
-            <div class="list-group">
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
                 {% for result in results %}
-                    <a href="{% url 'bgg_import' result.id %}" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">{{ result.name }}</h5>
-                            <small class="text-muted">{% if result.year %}{{ result.year }}{% endif %}</small>
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if result.thumbnail %}
+                            <img src="{{ result.thumbnail }}" class="card-img-top" alt="{{ result.name }}" style="max-height: 200px; object-fit: contain;">
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">{{ result.name }}</h5>
+                                <p class="card-text text-muted mb-2">
+                                    {% if result.year %}{{ result.year }}{% endif %}
+                                    {% if result.min_players and result.max_players %}
+                                        <br><small>{{ result.min_players }}-{{ result.max_players }} players</small>
+                                    {% endif %}
+                                    {% if result.min_playtime %}
+                                        <br><small>~{{ result.min_playtime }} min</small>
+                                    {% endif %}
+                                </p>
+                                {% if result.price and result.price != '0' %}
+                                    <p class="card-text">
+                                        <strong class="text-success">${{ result.price }}</strong>
+                                        {% if result.msrp and result.msrp > 0 %}
+                                            <span class="text-muted"><s>${{ result.msrp }}</s></span>
+                                        {% endif %}
+                                    </p>
+                                {% elif result.msrp and result.msrp > 0 %}
+                                    <p class="card-text">
+                                        <strong>MSRP: ${{ result.msrp }}</strong>
+                                    </p>
+                                {% endif %}
+                                {% if result.description %}
+                                    <p class="card-text"><small>{{ result.description|slice:":100" }}...</small></p>
+                                {% endif %}
+                            </div>
+                            <div class="card-footer">
+                                <a href="{% url 'bgg_import' result.bga_id %}" class="btn btn-primary btn-sm w-100">
+                                    <i class="bi bi-plus-circle"></i> Add to Catalog
+                                </a>
+                            </div>
                         </div>
-                        <small class="text-muted">BGG ID: {{ result.id }}</small>
-                    </a>
+                    </div>
                 {% empty %}
-                    <div class="list-group-item">
-                        <p class="mb-0">No results found for "{{ query }}". Try a different search term.</p>
+                    <div class="col-12">
+                        <div class="alert alert-warning">
+                            <p class="mb-0">No results found for "{{ query }}". Try a different search term.</p>
+                        </div>
                     </div>
                 {% endfor %}
             </div>
         </div>
     </div>
 {% endif %}
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    // Debug CSRF Cookie
-    console.log('=== CSRF DEBUG ===');
-    console.log('All Cookies:', document.cookie);
-    console.log('CSRF Token from form:', document.querySelector('input[name="csrfmiddlewaretoken"]')?.value);
-    
-    // Check if cookie exists
-    const csrfCookie = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
-    if (csrfCookie) {
-        console.log('CSRF Cookie found:', csrfCookie);
-    } else {
-        console.error('CSRF Cookie NOT found! This will cause form submission to fail.');
-    }
-    console.log('==================');
-    
-    // Intercept form submission to debug
-    document.querySelector('form').addEventListener('submit', function(e) {
-        console.log('=== FORM SUBMIT DEBUG ===');
-        console.log('Form action:', this.action);
-        console.log('Form method:', this.method);
-        console.log('Query value:', document.getElementById('query').value);
-        console.log('CSRF token:', document.querySelector('input[name="csrfmiddlewaretoken"]')?.value);
-        console.log('Form is submitting...');
-        console.log('========================');
-        // Don't prevent default - let it submit normally
-    });
-</script>
 {% endblock %}
