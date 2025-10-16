@@ -160,3 +160,25 @@ class BoardGame(models.Model):
     def in_stock(self):
         """Check if game is in stock"""
         return self.stock_quantity > 0 and not self.is_sold
+
+
+class CartItem(models.Model):
+    """Shopping cart item"""
+    session_key = models.CharField(max_length=40, help_text="Session ID for anonymous users")
+    game = models.ForeignKey(BoardGame, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=1, validators=[MinValueValidator(1)])
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['session_key', 'game']
+    
+    def __str__(self):
+        return f"{self.game.name} x{self.quantity}"
+    
+    @property
+    def subtotal(self):
+        """Calculate subtotal for this item"""
+        if self.game.final_price:
+            return self.game.final_price * self.quantity
+        return 0

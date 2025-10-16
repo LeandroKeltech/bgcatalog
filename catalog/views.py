@@ -1,12 +1,16 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
-from django.db.models import Q
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.db.models import Q, Sum
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.middleware.csrf import get_token
 from django.core.paginator import Paginator
-from .models import BoardGame
+from django.core.mail import send_mail
+from django.conf import settings
+from .models import BoardGame, CartItem
 from .bgg_service import BGGService
 from .bga_service import search_games as bga_search_games, get_game_details as bga_get_game_details
 from .sheets_service import GoogleSheetsService

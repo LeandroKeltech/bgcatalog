@@ -111,28 +111,33 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'catalog_list' %}">
-                            <i class="bi bi-list-ul"></i> Catalog
+                        <a class="nav-link" href="{% url 'public_catalog' %}">
+                            <i class="bi bi-shop"></i> Catálogo
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'bgg_search' %}">
-                            <i class="bi bi-search"></i> Add Game (BGG)
+                        <a class="nav-link" href="{% url 'cart_view' %}">
+                            <i class="fas fa-shopping-cart"></i> Carrinho
+                        </a>
+                    </li>
+                    {% if user.is_authenticated %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'admin_panel' %}">
+                            <i class="fas fa-cog"></i> Admin
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'public_catalog' %}" target="_blank">
-                            <i class="bi bi-shop"></i> Public Catalog
+                        <a class="nav-link" href="{% url 'admin_logout' %}">
+                            <i class="fas fa-sign-out-alt"></i> Sair
                         </a>
                     </li>
+                    {% else %}
                     <li class="nav-item">
-                        <form method="post" action="{% url 'sync_to_sheets' %}" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-sm btn-success nav-link">
-                                <i class="bi bi-cloud-upload"></i> Sync to Sheets
-                            </button>
-                        </form>
+                        <a class="nav-link" href="{% url 'admin_login' %}">
+                            <i class="fas fa-lock"></i> Admin Login
+                        </a>
                     </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

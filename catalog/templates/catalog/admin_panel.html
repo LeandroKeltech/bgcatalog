@@ -1,0 +1,189 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Painel Administrativo{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1><i class="fas fa-cog"></i> Painel Administrativo</h1>
+                <div>
+                    <span class="me-3"><i class="fas fa-user"></i> {{ request.user.username }}</span>
+                    <a href="{% url 'admin_logout' %}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h3>{{ stats.total_games }}</h3>
+                    <p class="mb-0"><i class="fas fa-gamepad"></i> Total de Jogos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h3>{{ stats.in_stock }}</h3>
+                    <p class="mb-0"><i class="fas fa-check-circle"></i> Em Estoque</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h3>{{ stats.sold }}</h3>
+                    <p class="mb-0"><i class="fas fa-money-bill-wave"></i> Vendidos</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h3>€{{ stats.total_value|floatformat:2 }}</h3>
+                    <p class="mb-0"><i class="fas fa-euro-sign"></i> Valor Total</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Actions -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="btn-group" role="group">
+                <a href="{% url 'bgg_search' %}" class="btn btn-success">
+                    <i class="fas fa-plus"></i> Adicionar Jogo
+                </a>
+                <a href="{% url 'game_create_manual' %}" class="btn btn-secondary">
+                    <i class="fas fa-edit"></i> Adicionar Manualmente
+                </a>
+                <a href="{% url 'sync_to_sheets' %}" class="btn btn-info" 
+                   onclick="return confirm('Sincronizar todos os jogos com Google Sheets?')">
+                    <i class="fas fa-sync"></i> Sync Google Sheets
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="search" 
+                           placeholder="Buscar jogos..." value="{{ search_query }}">
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="condition">
+                        <option value="">Todas as Condições</option>
+                        {% for value, label in condition_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="stock">
+                        <option value="">Todos</option>
+                        <option value="in_stock">Em Estoque</option>
+                        <option value="sold">Vendidos</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="sort">
+                        <option value="-created_at">Mais Recentes</option>
+                        <option value="name">Nome (A-Z)</option>
+                        <option value="-name">Nome (Z-A)</option>
+                        <option value="final_price">Preço (Menor)</option>
+                        <option value="-final_price">Preço (Maior)</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Games Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Jogo</th>
+                            <th>Ano</th>
+                            <th>Condição</th>
+                            <th>Preço MSRP</th>
+                            <th>Desconto</th>
+                            <th>Preço Final</th>
+                            <th>Estoque</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for game in games %}
+                        <tr>
+                            <td>
+                                <strong>{{ game.name }}</strong><br>
+                                <small class="text-muted">{{ game.designer|truncatewords:3 }}</small>
+                            </td>
+                            <td>{{ game.year_published|default:"-" }}</td>
+                            <td>
+                                <span class="badge bg-secondary">{{ game.get_condition_display }}</span>
+                            </td>
+                            <td>€{{ game.msrp_price|default:"-" }}</td>
+                            <td>{{ game.discount_percentage }}%</td>
+                            <td><strong>€{{ game.final_price|default:"-" }}</strong></td>
+                            <td>{{ game.stock_quantity }}</td>
+                            <td>
+                                {% if game.is_sold %}
+                                    <span class="badge bg-danger">Vendido</span>
+                                {% elif game.in_stock %}
+                                    <span class="badge bg-success">Disponível</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Sem Estoque</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'game_detail' game.pk %}" 
+                                       class="btn btn-info" title="Ver">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'game_edit' game.pk %}" 
+                                       class="btn btn-warning" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'game_delete' game.pk %}" 
+                                       class="btn btn-danger" title="Excluir"
+                                       onclick="return confirm('Tem certeza que deseja excluir este jogo?')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">
+                                Nenhum jogo encontrado.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

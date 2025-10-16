@@ -74,8 +74,11 @@
                         </div>
                     {% endif %}
                     
-                    <a href="{% url 'public_game_detail' game.pk %}" class="btn btn-primary w-100">
+                    <a href="{% url 'public_game_detail' game.pk %}" class="btn btn-primary w-100 mb-2">
                         <i class="bi bi-eye"></i> View Details
+                    </a>
+                    <a href="{% url 'add_to_cart' game.pk %}" class="btn btn-success w-100">
+                        <i class="fas fa-cart-plus"></i> Add to Cart
                     </a>
                 </div>
             </div>
