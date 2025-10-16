@@ -6,6 +6,7 @@ Documentation: https://boardgamegeek.com/wiki/page/BGG_XML_API2
 import requests
 import xml.etree.ElementTree as ET
 from decimal import Decimal
+from datetime import datetime, timezone
 import time
 import urllib3
 
@@ -357,9 +358,153 @@ class BGGService:
             if result['id']:
                 details = BGGService.get_game_details(result['id'])
                 if details:
+                    # Try to fetch price from BoardGamePrices
+                    price_data = BGGService.fetch_boardgameprices(result['id'])
+                    if price_data and price_data.get('base_price_eur'):
+                        details['msrp_price'] = price_data['base_price_eur']
+                        details['price_info'] = price_data
                     detailed_results.append(details)
                 # Be nice to BGG API - add small delay between requests
                 if i < len(search_results[:limit]) - 1:
                     time.sleep(0.5)
         
         return detailed_results
+    
+    @staticmethod
+    def fetch_boardgameprices(bgg_id, region="IE", currency="EUR", gbp_to_eur_rate=1.17):
+        """
+        Fetch price data from BoardGamePrices for a specific game
+        
+        Args:
+            bgg_id (int): BGG game ID
+            region (str): Destination region (default: IE for Ireland)
+            currency (str): Preferred currency (default: EUR)
+            gbp_to_eur_rate (float): Conversion rate from GBP to EUR
+            
+        Returns:
+            dict: Price information including base price, store details, etc.
+        """
+        try:
+            # Try multiple BoardGamePrices endpoints
+            endpoints = [
+                f"https://www.boardgameprices.co.uk/api/item/{bgg_id}",
+                f"https://boardgameprices.co.uk/item/{bgg_id}/prices.json",
+                f"https://www.boardgameprices.com/api/item/{bgg_id}",
+            ]
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Accept': 'application/json, text/html',
+            }
+            
+            data = None
+            for url in endpoints:
+                try:
+                    response = requests.get(url, headers=headers, timeout=10)
+                    if response.status_code == 200:
+                        try:
+                            data = response.json()
+                            break
+                        except:
+                            continue
+                except:
+                    continue
+            
+            if not data:
+                # Fallback: try scraping the page
+                try:
+                    url = f"https://www.boardgameprices.co.uk/item/{bgg_id}"
+                    response = requests.get(url, headers=headers, timeout=10)
+                    if response.status_code == 200:
+                        # Basic price extraction from HTML (simplified)
+                        import re
+                        prices = re.findall(r'€(\d+\.?\d*)', response.text)
+                        if prices:
+                            base_price_eur = float(prices[0])
+                            return {
+                                "base_price_eur": base_price_eur,
+                                "store_name": "BoardGamePrices.co.uk",
+                                "store_url": url,
+                                "stock_status": "unknown",
+                                "price_status": "ok",
+                                "price_currency_source": "scraped",
+                                "region": region,
+                                "currency": currency,
+                                "capture_time_utc": datetime.now(timezone.utc).isoformat(),
+                            }
+                except:
+                    pass
+                
+                print(f"No prices found for BGG ID {bgg_id}")
+                return None
+            
+            # Extract prices from JSON response
+            prices = data.get('prices', [])
+            if not prices:
+                print(f"No prices found for BGG ID {bgg_id}")
+                return None
+            
+            # Filter for target region and currency
+            eu_prices = []
+            gbp_prices = []
+            
+            for price_item in prices:
+                item_currency = price_item.get('currency', '').upper()
+                item_country = price_item.get('country', '').upper()
+                price_value = price_item.get('price')
+                
+                if price_value is None:
+                    continue
+                
+                # Check if delivers to Ireland/EU
+                if item_currency == 'EUR':
+                    eu_prices.append(price_item)
+                elif item_currency == 'GBP' and item_country in ['UK', 'GB']:
+                    gbp_prices.append(price_item)
+            
+            # Find lowest EUR price
+            base_price_eur = None
+            store_name = None
+            store_url = None
+            stock_status = "unknown"
+            price_currency_source = "native"
+            
+            if eu_prices:
+                lowest_eu = min(eu_prices, key=lambda x: x.get('price', float('inf')))
+                base_price_eur = lowest_eu.get('price')
+                store_name = lowest_eu.get('shop_name')
+                store_url = lowest_eu.get('url')
+                stock_status = "in_stock" if lowest_eu.get('in_stock') else "out_of_stock"
+            
+            # Fallback to GBP with conversion
+            elif gbp_prices:
+                lowest_gbp = min(gbp_prices, key=lambda x: x.get('price', float('inf')))
+                gbp_price = lowest_gbp.get('price')
+                if gbp_price:
+                    base_price_eur = round(gbp_price * gbp_to_eur_rate, 2)
+                    store_name = lowest_gbp.get('shop_name')
+                    store_url = lowest_gbp.get('url')
+                    stock_status = "in_stock" if lowest_gbp.get('in_stock') else "out_of_stock"
+                    price_currency_source = "conversion"
+            
+            if base_price_eur:
+                return {
+                    "base_price_eur": base_price_eur,
+                    "store_name": store_name,
+                    "store_url": store_url,
+                    "stock_status": stock_status,
+                    "price_status": "ok",
+                    "price_currency_source": price_currency_source,
+                    "region": region,
+                    "currency": currency,
+                    "capture_time_utc": datetime.now(timezone.utc).isoformat(),
+                }
+            
+            return None
+            
+        except requests.RequestException as e:
+            print(f"Error fetching prices from BoardGamePrices: {e}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error in fetch_boardgameprices: {e}")
+            return None
