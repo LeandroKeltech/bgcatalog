@@ -179,7 +179,14 @@ def bgg_import(request, bgg_id):
             game = BoardGame()
             
             # Board Game Atlas data
-            game.bgg_id = game_data['bga_id']  # Using BGA ID in bgg_id field (for compatibility)
+            # Only set bgg_id if it's a valid integer (not a mock ID)
+            bga_id = game_data.get('bga_id', '')
+            if bga_id and not str(bga_id).startswith('mock_'):
+                try:
+                    game.bgg_id = int(bga_id)
+                except (ValueError, TypeError):
+                    pass  # Skip if not a valid integer
+            
             game.name = game_data['name']
             game.description = game_data.get('description', game_data.get('description_preview', ''))
             game.year_published = game_data.get('year')
