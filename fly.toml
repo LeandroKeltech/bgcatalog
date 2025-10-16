@@ -1,12 +1,14 @@
 # Fly.io configuration file for bgcatalog
 app = "bgcatalog"
+primary_region = "gru"
 
 [build]
-  image = "python:3.10-slim"
+  dockerfile = "Dockerfile"
 
 [env]
   DJANGO_SETTINGS_MODULE = "bgcatalog_project.settings"
   PYTHONUNBUFFERED = "1"
+  PORT = "8000"
 
 [experimental]
   auto_rollback = true
