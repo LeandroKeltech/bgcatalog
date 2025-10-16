@@ -125,6 +125,14 @@
                                     <span class="badge bg-warning">No IE shipping</span>
                                 {% endif %}
                             </p>
+                            {% if price.game_name or price.game_year %}
+                                <p class="mb-1 text-info">
+                                    <i class="bi bi-info-circle"></i> 
+                                    <strong>Edition:</strong> 
+                                    {% if price.game_name %}{{ price.game_name }}{% endif %}
+                                    {% if price.game_year %} ({{ price.game_year }}){% endif %}
+                                </p>
+                            {% endif %}
                             <small class="text-muted">
                                 <i class="bi bi-clock"></i> Updated: {{ price.last_updated|slice:":10" }}
                                 {% if price.notes %}
@@ -204,10 +212,10 @@
                         <label for="discount_percentage" class="form-label">Discount Percentage (%)</label>
                         <input type="number" step="0.01" class="form-control" id="discount_percentage" 
                                name="discount_percentage" 
-                               value="{% if game.discount_percentage %}{{ game.discount_percentage }}{% elif game_data %}30.00{% endif %}" 
+                               value="{% if game.discount_percentage %}{{ game.discount_percentage }}{% elif game_data %}20.00{% endif %}" 
                                min="0" max="100" onchange="calculateFinalPrice()">
                         <small class="form-text text-muted">
-                            Default: New (30%), Like New (50%), Used (70%), Damaged (80%), Missing Pieces (85%)
+                            Default: New (20%), Like New (30%), Used (50%), Damaged (70%), Missing Pieces (85%)
                         </small>
                     </div>
                     
@@ -248,10 +256,10 @@
 <script>
     // Discount defaults based on condition
     const discountDefaults = {
-        'new': 30.00,
-        'like_new': 50.00,
-        'used': 70.00,
-        'damaged': 80.00,
+        'new': 20.00,
+        'like_new': 30.00,
+        'used': 50.00,
+        'damaged': 70.00,
         'missing_pieces': 85.00
     };
     
@@ -305,6 +313,54 @@
                 
                 // Recalculate final price
                 calculateFinalPrice();
+                
+                // Minimize prices block and focus on inventory
+                const pricesCard = document.querySelector('.card:has(.list-group)') || 
+                                  document.querySelector('[class*="price"]:has(.list-group)').closest('.card');
+                if (pricesCard) {
+                    // Collapse the card body
+                    const cardBody = pricesCard.querySelector('.card-body');
+                    if (cardBody) {
+                        cardBody.style.maxHeight = '120px';
+                        cardBody.style.overflow = 'hidden';
+                        cardBody.style.transition = 'max-height 0.3s ease-out';
+                        
+                        // Add a "Show all prices" button
+                        let showAllBtn = pricesCard.querySelector('.show-all-prices-btn');
+                        if (!showAllBtn) {
+                            showAllBtn = document.createElement('button');
+                            showAllBtn.className = 'btn btn-sm btn-outline-secondary show-all-prices-btn mt-2';
+                            showAllBtn.innerHTML = '<i class="bi bi-chevron-down"></i> Show all prices';
+                            showAllBtn.type = 'button';
+                            showAllBtn.addEventListener('click', function() {
+                                if (cardBody.style.maxHeight === '120px') {
+                                    cardBody.style.maxHeight = 'none';
+                                    this.innerHTML = '<i class="bi bi-chevron-up"></i> Minimize prices';
+                                } else {
+                                    cardBody.style.maxHeight = '120px';
+                                    this.innerHTML = '<i class="bi bi-chevron-down"></i> Show all prices';
+                                }
+                            });
+                            cardBody.appendChild(showAllBtn);
+                        }
+                    }
+                }
+                
+                // Focus on inventory pricing section
+                const inventoryCard = document.querySelector('.card:has(#condition)') || 
+                                     document.querySelector('h5:contains("Inventory")').closest('.card');
+                if (inventoryCard) {
+                    inventoryCard.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                    // Add a subtle highlight animation
+                    inventoryCard.style.boxShadow = '0 0 15px rgba(0,123,255,0.3)';
+                    inventoryCard.style.transition = 'box-shadow 0.5s ease-out';
+                    setTimeout(() => {
+                        inventoryCard.style.boxShadow = '';
+                    }, 2000);
+                }
             });
         });
     });
