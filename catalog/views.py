@@ -168,14 +168,25 @@ def bgg_search(request):
 
 @ensure_csrf_cookie
 def bgg_import(request, bgg_id):
-    """Import a game from BoardGameGeek with prices from BoardGamePrices and show form to add to catalog"""
-    # Fetch game details from BoardGameGeek + BoardGamePrices
+    """Import a game from BoardGameGeek with prices from multiple sources and show form to add to catalog"""
+    # Fetch game details from BoardGameGeek
     game_data = get_bgg_game_details(bgg_id)
     
     # If API fails, show error
     if not game_data or 'error' in game_data:
         messages.error(request, f'Could not find game with ID: {bgg_id}')
         return redirect('bgg_search')
+    
+    # Fetch prices from multiple sources
+    from catalog.price_sources import PriceSourceService
+    price_sources = PriceSourceService.fetch_all_prices(bgg_id, game_data.get('name', ''))
+    
+    # Add price sources to game data
+    game_data['price_sources'] = price_sources
+    
+    # Use lowest price as default if available
+    if price_sources:
+        game_data['msrp_price'] = price_sources[0].get('price_eur')
     
     if request.method == 'POST':
         # Process form submission
