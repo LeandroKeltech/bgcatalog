@@ -27,5 +27,14 @@ COPY . .
 # Collect static files
 RUN python manage.py collectstatic --noinput
 
-# Run migrations and start server
-CMD python manage.py migrate && gunicorn bgcatalog_project.wsgi:application --bind 0.0.0.0:8000 --workers 2
+# Create startup script
+RUN echo '#!/bin/sh\n\
+set -e\n\
+echo "Running migrations..."\n\
+python manage.py migrate --noinput || echo "Migration failed, continuing..."\n\
+echo "Starting gunicorn..."\n\
+exec gunicorn bgcatalog_project.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile - --error-logfile - --log-level info' > /app/start.sh && \
+chmod +x /app/start.sh
+
+# Run startup script
+CMD ["/app/start.sh"]
