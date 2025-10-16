@@ -4,7 +4,6 @@ FROM python:3.10-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV PORT=8000
 
 # Set work directory
 WORKDIR /app
@@ -20,24 +19,13 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
 COPY . .
 
-# Collect static files (create directory first)
-RUN mkdir -p staticfiles && \
-    python manage.py collectstatic --noinput || true
-
-# Expose port
-EXPOSE 8000
+# Collect static files
+RUN python manage.py collectstatic --noinput
 
 # Run migrations and start server
-CMD python manage.py migrate --noinput && \
-    gunicorn bgcatalog_project.wsgi:application \
-    --bind 0.0.0.0:${PORT} \
-    --workers 2 \
-    --timeout 120 \
-    --access-logfile - \
-    --error-logfile -
+CMD python manage.py migrate && gunicorn bgcatalog_project.wsgi:application --bind 0.0.0.0:8000 --workers 2

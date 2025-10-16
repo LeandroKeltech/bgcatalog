@@ -10,14 +10,22 @@ primary_region = "gru"
   PYTHONUNBUFFERED = "1"
   PORT = "8000"
 
-[http_service]
-  internal_port = 8000
-  force_https = true
-  auto_stop_machines = true
-  auto_start_machines = true
-  min_machines_running = 0
-  processes = ["app"]
+[experimental]
+  auto_rollback = true
 
-[[vm]]
-  size = "shared-cpu-1x"
-  memory = "256mb"
+[[services]]
+  internal_port = 8000
+  protocol = "tcp"
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls"]
+    port = 443
