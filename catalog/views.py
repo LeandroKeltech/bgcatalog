@@ -13,6 +13,7 @@ from django.conf import settings
 from .models import BoardGame, CartItem
 from .bgg_service import BGGService
 from .bga_service import search_games as bga_search_games, get_game_details as bga_get_game_details
+from .bgg_price_service import search_bgg_games, get_bgg_game_details
 from .sheets_service import GoogleSheetsService
 from decimal import Decimal
 import json
@@ -149,8 +150,8 @@ def bgg_search(request):
             messages.error(request, 'Please enter a search term')
             return render(request, 'catalog/bgg_search.html')
         
-        # Search Board Game Atlas
-        results = bga_search_games(query)
+        # Search BoardGameGeek
+        results = search_bgg_games(query)
         
         if results:
             messages.success(request, f'Found {len(results)} games matching "{query}"')
@@ -167,12 +168,12 @@ def bgg_search(request):
 
 @ensure_csrf_cookie
 def bgg_import(request, bgg_id):
-    """Import a game from Board Game Atlas and show form to add to catalog"""
-    # Fetch game details from Board Game Atlas
-    game_data = bga_get_game_details(bgg_id)
+    """Import a game from BoardGameGeek with prices from BoardGamePrices and show form to add to catalog"""
+    # Fetch game details from BoardGameGeek + BoardGamePrices
+    game_data = get_bgg_game_details(bgg_id)
     
     # If API fails, show error
-    if not game_data:
+    if not game_data or 'error' in game_data:
         messages.error(request, f'Could not find game with ID: {bgg_id}')
         return redirect('bgg_search')
     
@@ -182,25 +183,20 @@ def bgg_import(request, bgg_id):
             # Create new game
             game = BoardGame()
             
-            # Board Game Atlas data
-            # Only set bgg_id if it's a valid integer (not a mock ID)
-            bga_id = game_data.get('bga_id', '')
-            if bga_id and not str(bga_id).startswith('mock_'):
-                try:
-                    game.bgg_id = int(bga_id)
-                except (ValueError, TypeError):
-                    pass  # Skip if not a valid integer
+            # BoardGameGeek data
+            if bgg_id and bgg_id.isdigit():
+                game.bgg_id = int(bgg_id)
             
             game.name = game_data['name']
-            game.description = game_data.get('description', game_data.get('description_preview', ''))
-            game.year_published = game_data.get('year')
-            game.designer = ''  # BGA doesn't provide designer in basic search
+            game.description = game_data.get('description', '')
+            game.year_published = game_data.get('year_published')
+            game.designer = game_data.get('designer', '')
             game.min_players = game_data.get('min_players')
             game.max_players = game_data.get('max_players')
             game.min_playtime = game_data.get('min_playtime')
             game.max_playtime = game_data.get('max_playtime')
             game.min_age = game_data.get('min_age')
-            game.thumbnail_url = game_data.get('thumbnail', '')
+            game.thumbnail_url = game_data.get('thumbnail_url', '')
             
             # Store images as JSON
             if game_data.get('image_url'):
@@ -211,10 +207,10 @@ def bgg_import(request, bgg_id):
             game.stock_quantity = int(request.POST.get('stock_quantity', 1))
             game.notes = request.POST.get('notes', '')
             
-            # Pricing - use BGA price data
+            # Pricing - use BoardGamePrices data
             msrp_price = request.POST.get('msrp_price', '').strip()
-            if not msrp_price and game_data.get('msrp'):
-                msrp_price = str(game_data['msrp'])
+            if not msrp_price and game_data.get('msrp_price'):
+                msrp_price = str(game_data['msrp_price'])
             
             if msrp_price:
                 game.msrp_price = Decimal(msrp_price)

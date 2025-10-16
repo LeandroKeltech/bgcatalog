@@ -34,12 +34,12 @@
             <h5><i class="bi bi-info-circle"></i> How to use:</h5>
             <ol>
                 <li>Enter the name (or part of the name) of a board game</li>
-                <li>Click "Search Games" to find games with prices</li>
+                <li>Click "Search Games" to find games on BoardGameGeek</li>
                 <li>Select the game from the results</li>
-                <li>Review price and details</li>
+                <li>Review price from BoardGamePrices (EUR for Ireland)</li>
                 <li>Add to your catalog!</li>
             </ol>
-            <p class="mb-0"><small>Prices provided by Board Game Atlas</small></p>
+            <p class="mb-0"><small>Data from BoardGameGeek + Prices from BoardGamePrices (IE/EUR)</small></p>
         </div>
     </div>
 </div>
@@ -52,39 +52,19 @@
                 {% for result in results %}
                     <div class="col">
                         <div class="card h-100">
-                            {% if result.thumbnail %}
-                            <img src="{{ result.thumbnail }}" class="card-img-top" alt="{{ result.name }}" style="max-height: 200px; object-fit: contain;">
-                            {% endif %}
                             <div class="card-body">
                                 <h5 class="card-title">{{ result.name }}</h5>
                                 <p class="card-text text-muted mb-2">
-                                    {% if result.year %}{{ result.year }}{% endif %}
-                                    {% if result.min_players and result.max_players %}
-                                        <br><small>{{ result.min_players }}-{{ result.max_players }} players</small>
+                                    {% if result.year %}
+                                        <small><i class="bi bi-calendar"></i> {{ result.year }}</small>
                                     {% endif %}
-                                    {% if result.min_playtime %}
-                                        <br><small>~{{ result.min_playtime }} min</small>
-                                    {% endif %}
+                                    <br>
+                                    <small><i class="bi bi-tag"></i> BGG ID: {{ result.bgg_id }}</small>
                                 </p>
-                                {% if result.price and result.price != '0' %}
-                                    <p class="card-text">
-                                        <strong class="text-success">${{ result.price }}</strong>
-                                        {% if result.msrp and result.msrp > 0 %}
-                                            <span class="text-muted"><s>${{ result.msrp }}</s></span>
-                                        {% endif %}
-                                    </p>
-                                {% elif result.msrp and result.msrp > 0 %}
-                                    <p class="card-text">
-                                        <strong>MSRP: ${{ result.msrp }}</strong>
-                                    </p>
-                                {% endif %}
-                                {% if result.description %}
-                                    <p class="card-text"><small>{{ result.description|slice:":100" }}...</small></p>
-                                {% endif %}
                             </div>
                             <div class="card-footer">
-                                <a href="{% url 'bgg_import' result.bga_id %}" class="btn btn-primary btn-sm w-100">
-                                    <i class="bi bi-plus-circle"></i> Add to Catalog
+                                <a href="{% url 'bgg_import' result.bgg_id %}" class="btn btn-primary btn-sm w-100">
+                                    <i class="bi bi-plus-circle"></i> Select & Get Price
                                 </a>
                             </div>
                         </div>
