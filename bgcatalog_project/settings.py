@@ -29,14 +29,13 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-bcun_+pdzk(6=&@2538)a
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-# Show detailed errors in production temporarily for debugging
-# Set DEBUG=False in Render environment variables later
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,10.0.0.47,.local,.onrender.com', cast=Csv())
+# Allowed hosts for Fly.io and local development
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,10.0.0.47,.local,.fly.dev,bgcatalog.fly.dev', cast=Csv())
 
-# CSRF Settings for local network access
+# CSRF Settings for Fly.io and local development
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='http://localhost:8443,http://127.0.0.1:8443,http://10.0.0.47:8443,https://bgcatalog.onrender.com',
+    default='http://localhost:8443,http://127.0.0.1:8443,http://10.0.0.47:8443,https://bgcatalog.fly.dev',
     cast=Csv()
 )
 
