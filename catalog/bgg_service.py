@@ -387,11 +387,11 @@ class BGGService:
         try:
             print(f"[BoardGamePrices] Fetching prices for BGG ID: {bgg_id}")
             
-            # Try multiple BoardGamePrices endpoints
+            # Try multiple BoardGamePrices endpoints (without www to avoid SSL issues)
             endpoints = [
-                f"https://www.boardgameprices.co.uk/api/item/{bgg_id}",
+                f"https://boardgameprices.co.uk/api/item/{bgg_id}",
                 f"https://boardgameprices.co.uk/item/{bgg_id}/prices.json",
-                f"https://www.boardgameprices.com/api/item/{bgg_id}",
+                f"https://boardgameprices.eu/api/item/{bgg_id}",
             ]
             
             headers = {
@@ -404,7 +404,8 @@ class BGGService:
             for url in endpoints:
                 try:
                     print(f"[BoardGamePrices] Trying URL: {url}")
-                    response = requests.get(url, headers=headers, timeout=10)
+                    # Disable SSL verification temporarily to avoid certificate issues
+                    response = requests.get(url, headers=headers, timeout=10, verify=False)
                     print(f"[BoardGamePrices] Response status: {response.status_code}")
                     
                     if response.status_code == 200:
@@ -426,9 +427,9 @@ class BGGService:
                 print(f"[BoardGamePrices] No JSON data received from any endpoint")
                 # Fallback: try scraping the page
                 try:
-                    url = f"https://www.boardgameprices.co.uk/item/{bgg_id}"
+                    url = f"https://boardgameprices.co.uk/item/{bgg_id}"
                     print(f"[BoardGamePrices] Attempting to scrape: {url}")
-                    response = requests.get(url, headers=headers, timeout=10)
+                    response = requests.get(url, headers=headers, timeout=10, verify=False)
                     print(f"[BoardGamePrices] Scrape response status: {response.status_code}")
                     
                     if response.status_code == 200:
