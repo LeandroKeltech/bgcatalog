@@ -196,6 +196,8 @@ def bgg_import(request, bgg_id):
             'stock_status': offer.stock_status,
             'last_updated': offer.last_updated,
             'shipping_to_ie': offer.shipping_to_ie,
+            'game_name': offer.game_name,
+            'game_year': offer.game_year,
             'notes': offer.notes,
         })
     

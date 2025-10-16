@@ -25,7 +25,9 @@ class Offer:
     stock_status: str           # "in_stock" | "preorder" | "backorder" | "oos" | "unknown"
     last_updated: str
     shipping_to_ie: Optional[bool]  # None if unknown
-    notes: Optional[str] = None     # reason codes, edition info, etc.
+    game_name: Optional[str] = None      # Nome da edição específica encontrada
+    game_year: Optional[int] = None      # Ano da edição específica
+    notes: Optional[str] = None          # reason codes, edition info, etc.
 
     def rank_tuple(self) -> Tuple[int, float]:
         # Lower is better: in_stock=0, preorder=1, backorder=2, unknown=3, oos=4
@@ -177,12 +179,35 @@ class PriceSourceService:
 
         offers: List[Offer] = []
         for item in items:
+            # Extrair informações da edição do item
+            item_name = item.get("name") or item.get("title") or ""
+            item_year = None
+            
+            # Tentar extrair ano do nome ou campo específico
+            year_field = item.get("year") or item.get("year_published") or item.get("yearpublished")
+            if year_field:
+                try:
+                    item_year = int(year_field)
+                except (ValueError, TypeError):
+                    pass
+            
+            # Se não encontrou ano, tentar extrair do nome (formato "Game Name (2020)")
+            if item_year is None and item_name:
+                import re
+                year_match = re.search(r'\((\d{4})\)', item_name)
+                if year_match:
+                    try:
+                        item_year = int(year_match.group(1))
+                    except ValueError:
+                        pass
+            
             prices = item.get("prices") or item.get("offers") or []
             for p in prices:
                 raw_price = p.get("price_value") or p.get("price") or p.get("value")
                 curr = (p.get("currency") or p.get("currency_code") or "EUR").upper()
                 store_name = (p.get("store") or p.get("shop") or p.get("retailer") or "").strip() or "Unknown store"
                 store_url = p.get("url") or p.get("link") or p.get("shop_url") or ""
+                
                 # stock heuristics
                 in_stock = p.get("in_stock")
                 if in_stock is None:
@@ -212,6 +237,8 @@ class PriceSourceService:
                     stock_status=stock_status,
                     last_updated=_iso_now(),
                     shipping_to_ie=None,
+                    game_name=item_name,
+                    game_year=item_year,
                     notes=None
                 ))
         return offers
@@ -257,6 +284,28 @@ class PriceSourceService:
             else:
                 stock = "unknown"
 
+            # Extrair informações da edição do Oracle
+            game_name = o.get("name") or o.get("title") or data.get("name") or ""
+            game_year = None
+            
+            # Tentar extrair ano
+            year_field = o.get("year") or data.get("year") or data.get("year_published")
+            if year_field:
+                try:
+                    game_year = int(year_field)
+                except (ValueError, TypeError):
+                    pass
+            
+            # Se não encontrou ano, tentar extrair do nome
+            if game_year is None and game_name:
+                import re
+                year_match = re.search(r'\((\d{4})\)', game_name)
+                if year_match:
+                    try:
+                        game_year = int(year_match.group(1))
+                    except ValueError:
+                        pass
+
             offers.append(Offer(
                 source="BoardGameOracle",
                 source_url=f"https://www.boardgameoracle.com/game/{bgg_id}",
@@ -268,6 +317,8 @@ class PriceSourceService:
                 stock_status=stock,
                 last_updated=_iso_now(),
                 shipping_to_ie=None,
+                game_name=game_name,
+                game_year=game_year,
                 notes=o.get("notes")
             ))
         return offers
@@ -304,6 +355,8 @@ class PriceSourceService:
             stock_status="unknown",
             last_updated=_iso_now(),
             shipping_to_ie=None,
+            game_name=game_name,  # Nome pesquisado
+            game_year=None,       # Não conseguimos extrair do scraping
             notes="search-page price; verify SKU/edition"
         )]
 
@@ -331,6 +384,8 @@ class PriceSourceService:
             stock_status="unknown",
             last_updated=_iso_now(),
             shipping_to_ie=None,
+            game_name=game_name,
+            game_year=None,
             notes="search-page price; verify SKU/edition"
         )]
 
@@ -358,6 +413,8 @@ class PriceSourceService:
             stock_status="unknown",
             last_updated=_iso_now(),
             shipping_to_ie=None,
+            game_name=game_name,
+            game_year=None,
             notes="search-page price; verify SKU/edition"
         )]
 
@@ -385,5 +442,7 @@ class PriceSourceService:
             stock_status="unknown",
             last_updated=_iso_now(),
             shipping_to_ie=True,   # Philibert generally ships to IE; shipping fee varies.
+            game_name=game_name,
+            game_year=None,
             notes="search-page price; verify SKU/edition; shipping at checkout"
         )]
