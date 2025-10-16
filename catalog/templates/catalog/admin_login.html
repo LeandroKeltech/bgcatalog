@@ -1,6 +1,6 @@
 {% extends 'catalog/base.html' %}
 
-{% block title %}Login Administrativo{% endblock %}
+{% block title %}Admin Login{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
@@ -8,30 +8,30 @@
         <div class="col-md-6 col-lg-4">
             <div class="card shadow">
                 <div class="card-header bg-dark text-white text-center">
-                    <h4 class="mb-0"><i class="fas fa-lock"></i> Área Administrativa</h4>
+                    <h4 class="mb-0"><i class="fas fa-lock"></i> Admin Area</h4>
                 </div>
                 <div class="card-body">
                     <form method="POST">
                         {% csrf_token %}
                         <div class="mb-3">
-                            <label for="username" class="form-label">Usuário</label>
+                            <label for="username" class="form-label">Username</label>
                             <input type="text" class="form-control" id="username" name="username" 
                                    required autofocus>
                         </div>
                         <div class="mb-3">
-                            <label for="password" class="form-label">Senha</label>
+                            <label for="password" class="form-label">Password</label>
                             <input type="password" class="form-control" id="password" name="password" 
                                    required>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-sign-in-alt"></i> Entrar
+                            <i class="fas fa-sign-in-alt"></i> Sign In
                         </button>
                     </form>
                 </div>
             </div>
             <div class="text-center mt-3">
                 <a href="{% url 'public_catalog' %}" class="text-muted">
-                    <i class="fas fa-arrow-left"></i> Voltar ao Catálogo
+                    <i class="fas fa-arrow-left"></i> Back to Catalog
                 </a>
             </div>
         </div>

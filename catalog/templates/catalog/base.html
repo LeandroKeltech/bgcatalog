@@ -112,12 +112,12 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'public_catalog' %}">
-                            <i class="bi bi-shop"></i> Catálogo
+                            <i class="bi bi-shop"></i> Catalog
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'cart_view' %}">
-                            <i class="fas fa-shopping-cart"></i> Carrinho
+                            <i class="fas fa-shopping-cart"></i> Cart
                         </a>
                     </li>
                     {% if user.is_authenticated %}
@@ -128,7 +128,7 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'admin_logout' %}">
-                            <i class="fas fa-sign-out-alt"></i> Sair
+                            <i class="fas fa-sign-out-alt"></i> Logout
                         </a>
                     </li>
                     {% else %}

@@ -38,7 +38,7 @@ def add_to_cart(request, pk):
     game = get_object_or_404(BoardGame, pk=pk)
     
     if not game.in_stock:
-        messages.error(request, 'Este jogo não está disponível no momento.')
+        messages.error(request, 'This game is not available at the moment.')
         return redirect('public_catalog')
     
     session_key = get_or_create_session_key(request)
@@ -53,11 +53,11 @@ def add_to_cart(request, pk):
         if cart_item.quantity < game.stock_quantity:
             cart_item.quantity += 1
             cart_item.save()
-            messages.success(request, f'Quantidade de "{game.name}" atualizada no carrinho!')
+            messages.success(request, f'Quantity of "{game.name}" updated in cart!')
         else:
-            messages.warning(request, f'Quantidade máxima disponível para "{game.name}" já está no carrinho.')
+            messages.warning(request, f'Maximum available quantity of "{game.name}" is already in cart.')
     else:
-        messages.success(request, f'"{game.name}" adicionado ao carrinho!')
+        messages.success(request, f'"{game.name}" added to cart!')
     
     return redirect('cart_view')
 
@@ -70,7 +70,7 @@ def remove_from_cart(request, pk):
     game_name = cart_item.game.name
     cart_item.delete()
     
-    messages.success(request, f'"{game_name}" removido do carrinho.')
+    messages.success(request, f'"{game_name}" removed from cart.')
     return redirect('cart_view')
 
 
@@ -85,11 +85,11 @@ def update_cart_quantity(request, pk):
             if quantity > 0 and quantity <= cart_item.game.stock_quantity:
                 cart_item.quantity = quantity
                 cart_item.save()
-                messages.success(request, 'Quantidade atualizada!')
+                messages.success(request, 'Quantity updated!')
             else:
-                messages.error(request, 'Quantidade inválida.')
+                messages.error(request, 'Invalid quantity.')
         except ValueError:
-            messages.error(request, 'Quantidade inválida.')
+            messages.error(request, 'Invalid quantity.')
     
     return redirect('cart_view')
 
@@ -101,11 +101,11 @@ def send_cart_email(request):
         cart_items = CartItem.objects.filter(session_key=session_key)
         
         if not cart_items.exists():
-            messages.error(request, 'Seu carrinho está vazio.')
+            messages.error(request, 'Your cart is empty.')
             return redirect('cart_view')
         
         # Get customer info
-        customer_name = request.POST.get('customer_name', 'Cliente')
+        customer_name = request.POST.get('customer_name', 'Customer')
         customer_email = request.POST.get('customer_email', '')
         customer_phone = request.POST.get('customer_phone', '')
         customer_message = request.POST.get('message', '')
@@ -114,18 +114,18 @@ def send_cart_email(request):
         total = sum(item.subtotal for item in cart_items)
         
         message_body = f"""
-Nova solicitação de orçamento do site Board Game Catalog
+New Quote Request from Board Game Catalog Website
 ========================================================
 
-INFORMAÇÕES DO CLIENTE:
-Nome: {customer_name}
+CUSTOMER INFORMATION:
+Name: {customer_name}
 Email: {customer_email}
-Telefone: {customer_phone}
+Phone: {customer_phone}
 
-MENSAGEM DO CLIENTE:
+CUSTOMER MESSAGE:
 {customer_message}
 
-ITENS SOLICITADOS:
+REQUESTED ITEMS:
 {'='*60}
 
 """
@@ -133,12 +133,12 @@ ITENS SOLICITADOS:
         for item in cart_items:
             game = item.game
             message_body += f"""
-Jogo: {game.name}
-Quantidade: {item.quantity}
-Preço Unitário: €{game.final_price:.2f}
+Game: {game.name}
+Quantity: {item.quantity}
+Unit Price: €{game.final_price:.2f}
 Subtotal: €{item.subtotal:.2f}
-Condição: {game.get_condition_display()}
-Estoque Disponível: {game.stock_quantity}
+Condition: {game.get_condition_display()}
+Stock Available: {game.stock_quantity}
 ---
 """
         
@@ -147,12 +147,12 @@ Estoque Disponível: {game.stock_quantity}
 TOTAL: €{total:.2f}
 {'='*60}
 
-Esta é uma solicitação de orçamento. Entre em contato com o cliente para confirmar a compra.
+This is a quote request. Please contact the customer to confirm the purchase.
 """
         
         try:
             send_mail(
-                subject=f'Nova Solicitação de Orçamento - {customer_name}',
+                subject=f'New Quote Request - {customer_name}',
                 message=message_body,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[settings.ADMIN_EMAIL],
@@ -162,11 +162,11 @@ Esta é uma solicitação de orçamento. Entre em contato com o cliente para con
             # Clear cart after sending email
             cart_items.delete()
             
-            messages.success(request, 'Sua solicitação foi enviada com sucesso! Entraremos em contato em breve.')
+            messages.success(request, 'Your request was sent successfully! We will contact you soon.')
             return redirect('public_catalog')
             
         except Exception as e:
-            messages.error(request, f'Erro ao enviar solicitação. Por favor, tente novamente.')
+            messages.error(request, f'Error sending request. Please try again.')
             return redirect('cart_view')
     
     return redirect('cart_view')
@@ -188,7 +188,7 @@ def admin_login(request):
             auth_login(request, user)
             return redirect('admin_panel')
         else:
-            messages.error(request, 'Usuário ou senha incorretos.')
+            messages.error(request, 'Incorrect username or password.')
     
     return render(request, 'catalog/admin_login.html')
 
@@ -196,7 +196,7 @@ def admin_login(request):
 def admin_logout(request):
     """Admin logout"""
     auth_logout(request)
-    messages.success(request, 'Você saiu da área administrativa.')
+    messages.success(request, 'You have logged out of the admin area.')
     return redirect('public_catalog')
 
 
