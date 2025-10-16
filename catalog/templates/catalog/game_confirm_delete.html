@@ -1,0 +1,43 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Delete Game - Board Game Catalog{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h3><i class="bi bi-exclamation-triangle"></i> Confirm Deletion</h3>
+            </div>
+            <div class="card-body">
+                <p class="lead">Are you sure you want to delete this game?</p>
+                
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <h4>{{ game.name }}</h4>
+                        {% if game.year_published %}
+                            <p class="text-muted">{{ game.year_published }}</p>
+                        {% endif %}
+                        {% if game.designer %}
+                            <p><strong>Designer:</strong> {{ game.designer }}</p>
+                        {% endif %}
+                        <span class="badge bg-info">{{ game.get_condition_display }}</span>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <strong>Warning:</strong> This action cannot be undone. The game will be permanently removed from your catalog and Google Sheets.
+                </div>
+                
+                <form method="post" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Yes, Delete
+                    </button>
+                </form>
+                <a href="{% url 'game_detail' game.pk %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

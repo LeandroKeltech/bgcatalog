@@ -110,6 +110,14 @@ ENV/
 env.bak/
 venv.bak/
 
+# Google Credentials
+google_credentials.json
+*.json
+
+# Static files
+staticfiles/
+static/
+
 # Spyder project settings
 .spyderproject
 .spyproject

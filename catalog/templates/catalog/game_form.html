@@ -1,0 +1,192 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}{% if is_edit %}Edit{% else %}Add{% endif %} Game - Board Game Catalog{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    <i class="bi bi-{% if is_edit %}pencil{% else %}plus-circle{% endif %}"></i>
+    {% if is_edit %}Edit{% else %}Add{% endif %} Board Game
+</h1>
+
+<form method="post">
+    {% csrf_token %}
+    
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Game Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if game_data.thumbnail_url %}
+                        <div class="text-center mb-3">
+                            <img src="{{ game_data.thumbnail_url }}" alt="{{ game_data.name }}" class="img-thumbnail" style="max-height: 200px;">
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Game Name *</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               value="{{ game_data.name }}" required readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="year_published" class="form-label">Year Published</label>
+                        <input type="number" class="form-control" id="year_published" name="year_published" 
+                               value="{{ game_data.year_published }}" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="designer" class="form-label">Designer</label>
+                        <input type="text" class="form-control" id="designer" name="designer" 
+                               value="{{ game_data.designer }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="5">{{ game_data.description }}</textarea>
+                    </div>
+                    
+                    {% if game_data.min_players or game_data.max_players %}
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Min Players</label>
+                                <input type="number" class="form-control" value="{{ game_data.min_players }}" readonly>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Max Players</label>
+                                <input type="number" class="form-control" value="{{ game_data.max_players }}" readonly>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if game_data.min_playtime or game_data.max_playtime %}
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Min Playtime</label>
+                                <input type="number" class="form-control" value="{{ game_data.min_playtime }}" readonly>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Max Playtime</label>
+                                <input type="number" class="form-control" value="{{ game_data.max_playtime }}" readonly>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column -->
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Inventory & Pricing</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="condition" class="form-label">Condition *</label>
+                        <select class="form-select" id="condition" name="condition" required onchange="updateDiscount()">
+                            {% for cond_value, cond_label in condition_choices %}
+                                <option value="{{ cond_value }}" {% if game.condition == cond_value %}selected{% endif %}>
+                                    {{ cond_label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="msrp_price" class="form-label">MSRP Price ($) *</label>
+                        <input type="number" step="0.01" class="form-control" id="msrp_price" name="msrp_price" 
+                               value="{% if game.msrp_price %}{{ game.msrp_price }}{% elif game_data.msrp %}{{ game_data.msrp }}{% elif game_data.price and game_data.price != '0' %}{{ game_data.price }}{% endif %}" 
+                               required onchange="calculateFinalPrice()">
+                        <small class="form-text text-muted">
+                            {% if game_data.msrp or game_data.price %}
+                                Price from API: ${{ game_data.msrp|default:game_data.price }}
+                            {% else %}
+                                Original manufacturer's suggested retail price
+                            {% endif %}
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="discount_percentage" class="form-label">Discount Percentage (%)</label>
+                        <input type="number" step="0.01" class="form-control" id="discount_percentage" 
+                               name="discount_percentage" 
+                               value="{% if game.discount_percentage %}{{ game.discount_percentage }}{% elif game_data %}30.00{% endif %}" 
+                               min="0" max="100" onchange="calculateFinalPrice()">
+                        <small class="form-text text-muted">
+                            Default: New (30%), Like New (50%), Used (70%), Damaged (80%), Missing Pieces (85%)
+                        </small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="final_price_display" class="form-label">Final Price ($)</label>
+                        <input type="text" class="form-control" id="final_price_display" readonly>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="stock_quantity" class="form-label">Stock Quantity *</label>
+                        <input type="number" class="form-control" id="stock_quantity" name="stock_quantity" 
+                               value="{% if game.stock_quantity %}{{ game.stock_quantity }}{% else %}1{% endif %}" 
+                               min="0" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Any additional notes about this game...">{% if game.notes %}{{ game.notes }}{% endif %}</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-check-circle"></i> {% if is_edit %}Update{% else %}Add to Catalog{% endif %}
+                </button>
+                <a href="{% if is_edit %}{% url 'game_detail' game.pk %}{% else %}{% url 'catalog_list' %}{% endif %}" 
+                   class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Discount defaults based on condition
+    const discountDefaults = {
+        'new': 30.00,
+        'like_new': 50.00,
+        'used': 70.00,
+        'damaged': 80.00,
+        'missing_pieces': 85.00
+    };
+    
+    function updateDiscount() {
+        const condition = document.getElementById('condition').value;
+        const discountInput = document.getElementById('discount_percentage');
+        
+        if (condition in discountDefaults) {
+            discountInput.value = discountDefaults[condition];
+            calculateFinalPrice();
+        }
+    }
+    
+    function calculateFinalPrice() {
+        const msrpPrice = parseFloat(document.getElementById('msrp_price').value) || 0;
+        const discountPercentage = parseFloat(document.getElementById('discount_percentage').value) || 0;
+        
+        const discountAmount = msrpPrice * (discountPercentage / 100);
+        const finalPrice = msrpPrice - discountAmount;
+        
+        document.getElementById('final_price_display').value = finalPrice.toFixed(2);
+    }
+    
+    // Calculate on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        calculateFinalPrice();
+    });
+</script>
+{% endblock %}

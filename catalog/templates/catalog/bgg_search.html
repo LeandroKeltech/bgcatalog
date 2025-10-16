@@ -1,0 +1,103 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Search Board Games - Board Game Catalog{% endblock %}
+
+{% block content %}
+<h1 class="mb-4"><i class="bi bi-search"></i> Search Board Games</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <form method="post" action="{% url 'bgg_search' %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="query" class="form-label">Search for a board game:</label>
+                        <input type="text" class="form-control" id="query" name="query" 
+                               placeholder="e.g., Catan, Ticket to Ride..." 
+                               value="{{ query }}" required autofocus>
+                        <small class="form-text text-muted">
+                            Enter part of the game name to find games with prices
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i> Search Games
+                    </button>
+                    <a href="{% url 'catalog_list' %}" class="btn btn-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="alert alert-info">
+            <h5><i class="bi bi-info-circle"></i> How to use:</h5>
+            <ol>
+                <li>Enter the name (or part of the name) of a board game</li>
+                <li>Click "Search Games" to find games with prices</li>
+                <li>Select the game from the results</li>
+                <li>Review price and details</li>
+                <li>Add to your catalog!</li>
+            </ol>
+            <p class="mb-0"><small>Prices provided by Board Game Atlas</small></p>
+        </div>
+    </div>
+</div>
+
+{% if results %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Search Results ({{ results|length }})</h3>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                {% for result in results %}
+                    <div class="col">
+                        <div class="card h-100">
+                            {% if result.thumbnail %}
+                            <img src="{{ result.thumbnail }}" class="card-img-top" alt="{{ result.name }}" style="max-height: 200px; object-fit: contain;">
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">{{ result.name }}</h5>
+                                <p class="card-text text-muted mb-2">
+                                    {% if result.year %}{{ result.year }}{% endif %}
+                                    {% if result.min_players and result.max_players %}
+                                        <br><small>{{ result.min_players }}-{{ result.max_players }} players</small>
+                                    {% endif %}
+                                    {% if result.min_playtime %}
+                                        <br><small>~{{ result.min_playtime }} min</small>
+                                    {% endif %}
+                                </p>
+                                {% if result.price and result.price != '0' %}
+                                    <p class="card-text">
+                                        <strong class="text-success">${{ result.price }}</strong>
+                                        {% if result.msrp and result.msrp > 0 %}
+                                            <span class="text-muted"><s>${{ result.msrp }}</s></span>
+                                        {% endif %}
+                                    </p>
+                                {% elif result.msrp and result.msrp > 0 %}
+                                    <p class="card-text">
+                                        <strong>MSRP: ${{ result.msrp }}</strong>
+                                    </p>
+                                {% endif %}
+                                {% if result.description %}
+                                    <p class="card-text"><small>{{ result.description|slice:":100" }}...</small></p>
+                                {% endif %}
+                            </div>
+                            <div class="card-footer">
+                                <a href="{% url 'bgg_import' result.bga_id %}" class="btn btn-primary btn-sm w-100">
+                                    <i class="bi bi-plus-circle"></i> Add to Catalog
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <div class="alert alert-warning">
+                            <p class="mb-0">No results found for "{{ query }}". Try a different search term.</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

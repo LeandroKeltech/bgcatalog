@@ -1,0 +1,151 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Catalog - Board Game Catalog{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            <i class="bi bi-collection"></i> Board Game Catalog
+            <span class="badge bg-secondary">{{ page_obj.paginator.count }} games</span>
+        </h1>
+        
+        <!-- Action Buttons -->
+        <div class="mb-3">
+            <a href="{% url 'bgg_search' %}" class="btn btn-primary">
+                <i class="bi bi-search"></i> Search BGG
+            </a>
+            <a href="{% url 'game_create_manual' %}" class="btn btn-success">
+                <i class="bi bi-plus-circle"></i> Add Game Manually
+            </a>
+            <a href="{% url 'sync_to_sheets' %}" class="btn btn-info">
+                <i class="bi bi-cloud-upload"></i> Sync to Google Sheets
+            </a>
+        </div>
+        
+        <!-- Filters and Search -->
+        <form method="get" class="row g-3 mb-4">
+            <div class="col-md-4">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" class="form-control" name="search" placeholder="Search games..." value="{{ search_query }}">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" name="condition">
+                    <option value="">All Conditions</option>
+                    {% for cond_value, cond_label in condition_choices %}
+                        <option value="{{ cond_value }}" {% if condition == cond_value %}selected{% endif %}>{{ cond_label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" name="stock">
+                    <option value="">All Stock</option>
+                    <option value="in_stock" {% if stock_filter == 'in_stock' %}selected{% endif %}>In Stock</option>
+                    <option value="sold" {% if stock_filter == 'sold' %}selected{% endif %}>Sold</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-select" name="sort">
+                    <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest First</option>
+                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Name (Z-A)</option>
+                    <option value="final_price" {% if sort_by == 'final_price' %}selected{% endif %}>Price (Low)</option>
+                    <option value="-final_price" {% if sort_by == '-final_price' %}selected{% endif %}>Price (High)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-filter"></i> Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Game Cards Grid -->
+<div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+    {% for game in page_obj %}
+        <div class="col">
+            <div class="card {% if game.is_sold %}sold-overlay{% endif %}">
+                {% if game.thumbnail_url %}
+                    <img src="{{ game.thumbnail_url }}" class="card-img-top game-card-img" alt="{{ game.name }}">
+                {% else %}
+                    <div class="card-img-top game-card-img bg-secondary d-flex align-items-center justify-content-center">
+                        <i class="bi bi-image text-white" style="font-size: 4rem;"></i>
+                    </div>
+                {% endif %}
+                
+                <div class="card-body">
+                    <h5 class="card-title">{{ game.name }}</h5>
+                    <p class="text-muted small mb-2">
+                        {% if game.year_published %}{{ game.year_published }}{% endif %}
+                        {% if game.designer %} | {{ game.designer|truncatewords:3 }}{% endif %}
+                    </p>
+                    
+                    <div class="mb-2">
+                        <span class="badge badge-condition bg-info">{{ game.get_condition_display }}</span>
+                        {% if game.in_stock %}
+                            <span class="badge bg-success">In Stock: {{ game.stock_quantity }}</span>
+                        {% elif game.is_sold %}
+                            <span class="badge bg-danger">SOLD</span>
+                        {% else %}
+                            <span class="badge bg-warning">Out of Stock</span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if game.msrp_price %}
+                        <div class="mb-2">
+                            {% if game.discount_percentage > 0 %}
+                                <div class="price-old">${{ game.msrp_price }}</div>
+                            {% endif %}
+                            <div class="price-tag">${{ game.final_price|default:game.msrp_price }}</div>
+                            {% if game.discount_percentage > 0 %}
+                                <small class="text-success">{{ game.discount_percentage }}% off</small>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                    
+                    <a href="{% url 'game_detail' game.pk %}" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-eye"></i> View Details
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="bi bi-inbox"></i> No games found. <a href="{% url 'bgg_search' %}">Add your first game!</a>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if page_obj.has_other_pages %}
+    <nav aria-label="Page navigation" class="mt-5">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if condition %}&condition={{ condition }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if condition %}&condition={{ condition }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">Previous</a>
+                </li>
+            {% endif %}
+            
+            <li class="page-item active">
+                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if condition %}&condition={{ condition }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if condition %}&condition={{ condition }}{% endif %}{% if stock_filter %}&stock={{ stock_filter }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">Last</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+{% endif %}
+{% endblock %}
