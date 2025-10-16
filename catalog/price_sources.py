@@ -121,60 +121,168 @@ class PriceSourceService:
             return None
     
     @staticmethod
-    def _fetch_boardgameprices_uk(bgg_id):
-        """Fetch from BoardGamePrices.co.uk"""
+    def _fetch_boardgameprices_uk(bgg_id, *,
+                                  sitename="https://bgcatalog.fly.dev",
+                                  currency="EUR",
+                                  destination=None,                # ex.: "GB", "DE", "US", "DK", "SE" ou None
+                                  preferred_language="GB",         # prioriza edição em inglês
+                                  timeout=12):
+        """
+        Busca preços no BoardGamePrices.co.uk usando o BGG ID (eid).
+        Retorna o menor preço em stock, priorizando a moeda pedida (EUR) e, na falta, GBP.
+        """
         try:
-            print(f"[BoardGamePrices] Fetching for BGG ID: {bgg_id}")
-            
-            # Try scraping the page
-            url = f"https://boardgameprices.co.uk/item/{bgg_id}"
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            print(f"[BoardGamePrices] Fetching (api/info) for BGG ID: {bgg_id}")
+
+            # monta query
+            params = {
+                "eid": str(bgg_id),
+                "currency": currency,              # "EUR" recomendado p/ IE/UE
+                "sort": "SMART",
+                "locale": "en",
+                "preferred_language": preferred_language,
+                "sitename": sitename
             }
-            
-            response = requests.get(url, headers=headers, timeout=10, verify=False)
-            
-            if response.status_code == 200:
-                import re
-                # Look for prices in EUR or GBP
-                eur_prices = re.findall(r'€(\d+\.?\d*)', response.text)
-                gbp_prices = re.findall(r'£(\d+\.?\d*)', response.text)
-                
-                if eur_prices:
-                    price_eur = float(eur_prices[0])
-                    return {
-                        'source': 'BoardGamePrices.co.uk',
-                        'source_url': url,
-                        'store_name': 'Various (aggregated)',
-                        'store_url': url,
-                        'price_eur': price_eur,
-                        'price_original': price_eur,
-                        'currency_original': 'EUR',
-                        'stock_status': 'unknown',
-                        'last_updated': datetime.now(timezone.utc).isoformat(),
-                        'shipping_to_ie': True,
-                    }
-                elif gbp_prices:
-                    price_gbp = float(gbp_prices[0])
-                    price_eur = round(price_gbp * PriceSourceService.GBP_TO_EUR_RATE, 2)
-                    return {
-                        'source': 'BoardGamePrices.co.uk',
-                        'source_url': url,
-                        'store_name': 'Various (aggregated)',
-                        'store_url': url,
-                        'price_eur': price_eur,
-                        'price_original': price_gbp,
-                        'currency_original': 'GBP',
-                        'stock_status': 'unknown',
-                        'last_updated': datetime.now(timezone.utc).isoformat(),
-                        'shipping_to_ie': True,
-                    }
-            
-            print(f"[BoardGamePrices] No prices found")
-            return None
-            
+            # destination é opcional; usar apenas valores suportados. Se não souber, deixe None.
+            if destination:
+                params["destination"] = destination
+
+            headers = {
+                "Accept": "application/json",
+                "User-Agent": "Mozilla/5.0 (compatible; BGCatalog/1.0; +https://bgcatalog.fly.dev)"
+            }
+
+            url = "https://boardgameprices.co.uk/api/info"
+            resp = requests.get(url, params=params, headers=headers, timeout=timeout)
+            if resp.status_code != 200:
+                print(f"[BoardGamePrices] HTTP {resp.status_code}: {resp.text[:200]}")
+                return None
+
+            data = resp.json() or {}
+            # a API normalmente retorna {"items": [...]} – mas seja resiliente
+            items = data.get("items") or data.get("results") or []
+            if not isinstance(items, list) or not items:
+                print("[BoardGamePrices] Nenhum item retornado pelo endpoint.")
+                return None
+
+            # coleta todas as ofertas de todas as edições/itens retornados
+            all_offers = []
+            for it in items:
+                # algumas respostas usam 'prices', outras 'offers'
+                prices = it.get("prices") or it.get("offers") or []
+                for p in prices:
+                    # campos que variam na prática: "price", "price_value", "value"
+                    raw_price = (
+                        p.get("price_value")
+                        or p.get("price")
+                        or p.get("value")
+                    )
+                    # moeda pode vir como "currency" ou "currency_code"
+                    curr = p.get("currency") or p.get("currency_code") or data.get("currency") or currency
+
+                    # estoque costuma vir como "stock" (Y/N) ou "in_stock" (bool) ou "availability"
+                    stock = p.get("in_stock")
+                    if stock is None:
+                        s = (p.get("stock") or "").strip().upper()
+                        stock = (s == "Y") or ("IN STOCK" in s)
+                    if stock is None:
+                        stock = "in" in str(p.get("availability", "")).lower()
+
+                    # urls e nomes de loja
+                    store_url = p.get("url") or p.get("link") or p.get("shop_url")
+                    store_name = (p.get("store") or p.get("shop") or p.get("retailer") or "").strip() or "Unknown store"
+
+                    # sanity checks
+                    try:
+                        price_float = float(raw_price)
+                    except (TypeError, ValueError):
+                        continue
+
+                    all_offers.append({
+                        "price": price_float,
+                        "currency": curr,
+                        "stock": bool(stock),
+                        "store_name": store_name,
+                        "store_url": store_url
+                    })
+
+            if not all_offers:
+                print("[BoardGamePrices] Nenhuma oferta encontrada nos itens retornados.")
+                return None
+
+            # filtra ofertas em stock
+            in_stock = [o for o in all_offers if o["stock"]]
+            offers_use = in_stock if in_stock else all_offers  # se nada em stock, cai para qualquer
+
+            # prioriza moeda solicitada (EUR). Se não houver, aceita GBP e converte.
+            def is_requested_currency(o):
+                return (o["currency"] or "").upper() == currency.upper()
+
+            # menor preço na moeda pedida
+            offers_requested = [o for o in offers_use if is_requested_currency(o)]
+            if offers_requested:
+                best = min(offers_requested, key=lambda o: o["price"])
+                price_eur = best["price"] if currency.upper() == "EUR" else None
+                # conversão se a moeda pedida não for EUR (situação rara no nosso uso)
+                if price_eur is None:
+                    if currency.upper() == "GBP":
+                        # converte para EUR se necessário para preencher 'price_eur'
+                        price_eur = round(best["price"] * PriceSourceService.GBP_TO_EUR_RATE, 2)
+                    else:
+                        # sem conversão conhecida -> retorna price_eur = None de forma honesta
+                        price_eur = None
+
+                return {
+                    "source": "BoardGamePrices.co.uk",
+                    "source_url": url,
+                    "store_name": best["store_name"],
+                    "store_url": best["store_url"],
+                    "price_eur": price_eur,
+                    "price_original": best["price"],
+                    "currency_original": best["currency"],
+                    "stock_status": "in_stock" if best["stock"] else "unknown",
+                    "last_updated": datetime.now(timezone.utc).isoformat(),
+                    "shipping_to_ie": True
+                }
+
+            # caso não exista oferta na moeda pedida, tenta GBP e converte para EUR
+            offers_gbp = [o for o in offers_use if (o["currency"] or "").upper() == "GBP"]
+            if offers_gbp:
+                best = min(offers_gbp, key=lambda o: o["price"])
+                price_eur = round(best["price"] * PriceSourceService.GBP_TO_EUR_RATE, 2)
+
+                return {
+                    "source": "BoardGamePrices.co.uk",
+                    "source_url": url,
+                    "store_name": best["store_name"],
+                    "store_url": best["store_url"],
+                    "price_eur": price_eur,
+                    "price_original": best["price"],
+                    "currency_original": "GBP",
+                    "stock_status": "in_stock" if best["stock"] else "unknown",
+                    "last_updated": datetime.now(timezone.utc).isoformat(),
+                    "shipping_to_ie": True
+                }
+
+            # fallback: pega qualquer moeda (sem conversão)
+            best_any = min(offers_use, key=lambda o: o["price"])
+            return {
+                "source": "BoardGamePrices.co.uk",
+                "source_url": url,
+                "store_name": best_any["store_name"],
+                "store_url": best_any["store_url"],
+                "price_eur": None,  # não convertemos por falta de taxa
+                "price_original": best_any["price"],
+                "currency_original": best_any["currency"],
+                "stock_status": "in_stock" if best_any["stock"] else "unknown",
+                "last_updated": datetime.now(timezone.utc).isoformat(),
+                "shipping_to_ie": True
+            }
+
         except Exception as e:
             print(f"[BoardGamePrices] Error: {e}")
+            import traceback
+            print(f"[BoardGamePrices] Traceback: {traceback.format_exc()}")
             return None
     
     @staticmethod
