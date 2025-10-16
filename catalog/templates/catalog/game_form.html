@@ -110,15 +110,26 @@
                                 <i class="bi bi-shop"></i> <strong>{{ price.store_name }}</strong>
                                 {% if price.stock_status == 'in_stock' %}
                                     <span class="badge bg-success">In Stock</span>
-                                {% elif price.stock_status == 'out_of_stock' %}
+                                {% elif price.stock_status == 'preorder' %}
+                                    <span class="badge bg-info">Pre-order</span>
+                                {% elif price.stock_status == 'backorder' %}
+                                    <span class="badge bg-warning">Backorder</span>
+                                {% elif price.stock_status == 'oos' %}
                                     <span class="badge bg-danger">Out of Stock</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Stock Unknown</span>
                                 {% endif %}
                                 {% if price.shipping_to_ie %}
                                     <span class="badge bg-primary">Ships to IE</span>
+                                {% elif price.shipping_to_ie == False %}
+                                    <span class="badge bg-warning">No IE shipping</span>
                                 {% endif %}
                             </p>
                             <small class="text-muted">
                                 <i class="bi bi-clock"></i> Updated: {{ price.last_updated|slice:":10" }}
+                                {% if price.notes %}
+                                    <br><i class="bi bi-info-circle"></i> {{ price.notes }}
+                                {% endif %}
                             </small>
                             {% if price.store_url %}
                                 <a href="{{ price.store_url }}" target="_blank" class="btn btn-sm btn-outline-primary float-end" onclick="event.stopPropagation()">

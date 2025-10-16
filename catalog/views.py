@@ -179,7 +179,25 @@ def bgg_import(request, bgg_id):
     
     # Fetch prices from multiple sources
     from catalog.price_sources import PriceSourceService
-    price_sources = PriceSourceService.fetch_all_prices(bgg_id, game_data.get('name', ''))
+    price_service = PriceSourceService(sitename="https://bgcatalog.fly.dev")
+    offers = price_service.fetch_all_prices(int(bgg_id), game_data.get('name', ''))
+    
+    # Convert Offer objects to dictionaries for template compatibility
+    price_sources = []
+    for offer in offers:
+        price_sources.append({
+            'source': offer.source,
+            'source_url': offer.source_url,
+            'store_name': offer.store_name,
+            'store_url': offer.store_url,
+            'price_eur': offer.price_eur,
+            'price_original': offer.price_original,
+            'currency_original': offer.currency_original,
+            'stock_status': offer.stock_status,
+            'last_updated': offer.last_updated,
+            'shipping_to_ie': offer.shipping_to_ie,
+            'notes': offer.notes,
+        })
     
     # Add price sources to game data
     game_data['price_sources'] = price_sources
