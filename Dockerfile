@@ -32,6 +32,8 @@ RUN echo '#!/bin/sh\n\
 set -e\n\
 echo "Running migrations..."\n\
 python manage.py migrate --noinput || echo "Migration failed, continuing..."\n\
+echo "Creating admin user..."\n\
+python manage.py shell < create_admin.py || echo "Admin creation failed or already exists"\n\
 echo "Starting gunicorn..."\n\
 exec gunicorn bgcatalog_project.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile - --error-logfile - --log-level info' > /app/start.sh && \
 chmod +x /app/start.sh

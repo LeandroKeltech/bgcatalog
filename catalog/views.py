@@ -22,8 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 def index(request):
-    """Home page - redirect to catalog list"""
-    return redirect('catalog_list')
+    """Home page - redirect to public catalog"""
+    return redirect('public_catalog')
 
 
 @ensure_csrf_cookie
