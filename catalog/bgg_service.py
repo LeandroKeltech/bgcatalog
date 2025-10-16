@@ -385,6 +385,8 @@ class BGGService:
             dict: Price information including base price, store details, etc.
         """
         try:
+            print(f"[BoardGamePrices] Fetching prices for BGG ID: {bgg_id}")
+            
             # Try multiple BoardGamePrices endpoints
             endpoints = [
                 f"https://www.boardgameprices.co.uk/api/item/{bgg_id}",
@@ -398,29 +400,46 @@ class BGGService:
             }
             
             data = None
+            successful_url = None
             for url in endpoints:
                 try:
+                    print(f"[BoardGamePrices] Trying URL: {url}")
                     response = requests.get(url, headers=headers, timeout=10)
+                    print(f"[BoardGamePrices] Response status: {response.status_code}")
+                    
                     if response.status_code == 200:
+                        print(f"[BoardGamePrices] Response length: {len(response.text)} bytes")
                         try:
                             data = response.json()
+                            successful_url = url
+                            print(f"[BoardGamePrices] Successfully parsed JSON from: {url}")
                             break
-                        except:
+                        except Exception as json_error:
+                            print(f"[BoardGamePrices] JSON parse error: {json_error}")
+                            print(f"[BoardGamePrices] Response preview: {response.text[:200]}")
                             continue
-                except:
+                except Exception as e:
+                    print(f"[BoardGamePrices] Error with {url}: {e}")
                     continue
             
             if not data:
+                print(f"[BoardGamePrices] No JSON data received from any endpoint")
                 # Fallback: try scraping the page
                 try:
                     url = f"https://www.boardgameprices.co.uk/item/{bgg_id}"
+                    print(f"[BoardGamePrices] Attempting to scrape: {url}")
                     response = requests.get(url, headers=headers, timeout=10)
+                    print(f"[BoardGamePrices] Scrape response status: {response.status_code}")
+                    
                     if response.status_code == 200:
                         # Basic price extraction from HTML (simplified)
                         import re
                         prices = re.findall(r'€(\d+\.?\d*)', response.text)
+                        print(f"[BoardGamePrices] Found {len(prices)} EUR prices via scraping")
+                        
                         if prices:
                             base_price_eur = float(prices[0])
+                            print(f"[BoardGamePrices] Scraped price: €{base_price_eur}")
                             return {
                                 "base_price_eur": base_price_eur,
                                 "store_name": "BoardGamePrices.co.uk",
@@ -432,16 +451,20 @@ class BGGService:
                                 "currency": currency,
                                 "capture_time_utc": datetime.now(timezone.utc).isoformat(),
                             }
-                except:
-                    pass
+                except Exception as scrape_error:
+                    print(f"[BoardGamePrices] Scraping failed: {scrape_error}")
                 
-                print(f"No prices found for BGG ID {bgg_id}")
+                print(f"[BoardGamePrices] No prices found for BGG ID {bgg_id}")
                 return None
             
             # Extract prices from JSON response
+            print(f"[BoardGamePrices] Data keys: {data.keys() if data else 'None'}")
             prices = data.get('prices', [])
+            print(f"[BoardGamePrices] Found {len(prices)} price entries")
+            print(f"[BoardGamePrices] Found {len(prices)} price entries")
+            
             if not prices:
-                print(f"No prices found for BGG ID {bgg_id}")
+                print(f"[BoardGamePrices] No prices array in response for BGG ID {bgg_id}")
                 return None
             
             # Filter for target region and currency
@@ -453,6 +476,8 @@ class BGGService:
                 item_country = price_item.get('country', '').upper()
                 price_value = price_item.get('price')
                 
+                print(f"[BoardGamePrices] Price item: currency={item_currency}, country={item_country}, price={price_value}")
+                
                 if price_value is None:
                     continue
                 
@@ -461,6 +486,9 @@ class BGGService:
                     eu_prices.append(price_item)
                 elif item_currency == 'GBP' and item_country in ['UK', 'GB']:
                     gbp_prices.append(price_item)
+            
+            print(f"[BoardGamePrices] Found {len(eu_prices)} EUR prices and {len(gbp_prices)} GBP prices")
+            print(f"[BoardGamePrices] Found {len(eu_prices)} EUR prices and {len(gbp_prices)} GBP prices")
             
             # Find lowest EUR price
             base_price_eur = None
@@ -475,6 +503,7 @@ class BGGService:
                 store_name = lowest_eu.get('shop_name')
                 store_url = lowest_eu.get('url')
                 stock_status = "in_stock" if lowest_eu.get('in_stock') else "out_of_stock"
+                print(f"[BoardGamePrices] Lowest EUR price: €{base_price_eur} from {store_name}")
             
             # Fallback to GBP with conversion
             elif gbp_prices:
@@ -486,9 +515,10 @@ class BGGService:
                     store_url = lowest_gbp.get('url')
                     stock_status = "in_stock" if lowest_gbp.get('in_stock') else "out_of_stock"
                     price_currency_source = "conversion"
+                    print(f"[BoardGamePrices] Converted GBP price: £{gbp_price} → €{base_price_eur} from {store_name}")
             
             if base_price_eur:
-                return {
+                result = {
                     "base_price_eur": base_price_eur,
                     "store_name": store_name,
                     "store_url": store_url,
@@ -499,12 +529,18 @@ class BGGService:
                     "currency": currency,
                     "capture_time_utc": datetime.now(timezone.utc).isoformat(),
                 }
+                print(f"[BoardGamePrices] Returning result: {result}")
+                return result
             
+            print(f"[BoardGamePrices] No valid prices found after filtering")
+            print(f"[BoardGamePrices] No valid prices found after filtering")
             return None
             
         except requests.RequestException as e:
-            print(f"Error fetching prices from BoardGamePrices: {e}")
+            print(f"[BoardGamePrices] Request error: {e}")
             return None
         except Exception as e:
-            print(f"Unexpected error in fetch_boardgameprices: {e}")
+            print(f"[BoardGamePrices] Unexpected error: {e}")
+            import traceback
+            print(f"[BoardGamePrices] Traceback: {traceback.format_exc()}")
             return None
