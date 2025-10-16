@@ -1,6 +1,6 @@
 # Fly.io configuration file for bgcatalog
 app = "bgcatalog"
-primary_region = "gru"
+primary_region = "lhr"
 
 [build]
   dockerfile = "Dockerfile"
