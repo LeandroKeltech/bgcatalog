@@ -339,3 +339,48 @@ footer {
     margin-bottom: 10px;
     display: block;
 }
+
+/* Scanner scanning line animation */
+.scanner-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff00, transparent);
+    animation: scanLine 2s linear infinite;
+}
+
+@keyframes scanLine {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(96px); }
+}
+
+/* Scanner focus helpers */
+.scanner-frame {
+    position: relative;
+    border-radius: 8px;
+}
+
+.scanner-frame::before,
+.scanner-frame::after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #00ff00;
+}
+
+.scanner-frame::before {
+    top: -3px;
+    left: -3px;
+    border-right: none;
+    border-bottom: none;
+}
+
+.scanner-frame::after {
+    bottom: -3px;
+    right: -3px;
+    border-left: none;
+    border-top: none;
+}

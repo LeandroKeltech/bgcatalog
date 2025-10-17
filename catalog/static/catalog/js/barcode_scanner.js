@@ -18,12 +18,20 @@ class BoardGameBarcodeScanner {
             autoClose: options.autoClose !== false,
             showResult: options.showResult !== false,
             cameraConstraints: options.cameraConstraints || {
-                facingMode: "environment",
-                width: { min: 1280, ideal: 1920, max: 1920 },
-                height: { min: 720, ideal: 1080, max: 1080 },
+                facingMode: "environment", // Use back camera
+                width: { min: 640, ideal: 1280, max: 1920 },
+                height: { min: 480, ideal: 720, max: 1080 },
                 focusMode: "continuous",
+                focusDistance: { ideal: 0.1 }, // Focus close for barcodes
                 exposureMode: "continuous",
-                whiteBalanceMode: "continuous"
+                whiteBalanceMode: "continuous",
+                zoom: { ideal: 1.0 }, // No zoom
+                torch: false, // Flash off initially
+                // Advanced focus settings
+                advanced: [
+                    { focusMode: "continuous" },
+                    { focusDistance: { min: 0.1, ideal: 0.3, max: 1.0 } }
+                ]
             },
             scanInterval: options.scanInterval || 50,
             supportedFormats: options.supportedFormats || [
@@ -357,12 +365,56 @@ class BoardGameBarcodeScanner {
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: this.options.cameraConstraints
+                video: {
+                    facingMode: "environment",
+                    width: { min: 640, ideal: 1280, max: 1920 },
+                    height: { min: 480, ideal: 720, max: 1080 },
+                    focusMode: "continuous",
+                    // Try to enable autofocus
+                    advanced: [
+                        { focusMode: "continuous" },
+                        { focusDistance: { min: 0.1, ideal: 0.3 } },
+                        { exposureMode: "continuous" },
+                        { whiteBalanceMode: "continuous" }
+                    ]
+                }
             });
             
             this.stream = stream;
             this.video.srcObject = stream;
             this.videoTrack = stream.getVideoTracks()[0];
+            
+            // Apply advanced camera settings if supported
+            if (this.videoTrack.getCapabilities) {
+                const capabilities = this.videoTrack.getCapabilities();
+                const settings = {};
+                
+                // Enable autofocus if supported
+                if (capabilities.focusMode && capabilities.focusMode.includes('continuous')) {
+                    settings.focusMode = 'continuous';
+                }
+                
+                // Set focus distance for close-up barcode reading
+                if (capabilities.focusDistance) {
+                    settings.focusDistance = 0.3; // 30cm ideal for barcodes
+                }
+                
+                // Enable torch/flash if available and dark
+                if (capabilities.torch) {
+                    settings.torch = false; // Start with torch off
+                }
+                
+                // Apply settings
+                if (Object.keys(settings).length > 0) {
+                    try {
+                        await this.videoTrack.applyConstraints({ advanced: [settings] });
+                        console.log('Applied camera settings:', settings);
+                    } catch (settingsError) {
+                        console.log('Could not apply camera settings:', settingsError);
+                    }
+                }
+            }
+            
             this.isScanning = true;
             
             // Wait for video metadata and start scanning
@@ -677,6 +729,47 @@ class BoardGameBarcodeScanner {
                     statusElement.style.display = 'none';
                 }, 3000);
             }
+        }
+    }
+
+    /**
+     * Toggle camera flash/torch
+     */
+    async toggleTorch() {
+        if (!this.videoTrack) {
+            return;
+        }
+        
+        try {
+            const capabilities = this.videoTrack.getCapabilities();
+            if (capabilities.torch) {
+                const settings = this.videoTrack.getSettings();
+                const newTorchState = !settings.torch;
+                
+                await this.videoTrack.applyConstraints({
+                    advanced: [{ torch: newTorchState }]
+                });
+                
+                // Update button appearance
+                const torchButton = document.getElementById('torchButton');
+                if (torchButton) {
+                    if (newTorchState) {
+                        torchButton.classList.remove('btn-outline-light');
+                        torchButton.classList.add('btn-warning');
+                        torchButton.innerHTML = '<i class="bi bi-lightbulb-fill"></i>';
+                    } else {
+                        torchButton.classList.remove('btn-warning');
+                        torchButton.classList.add('btn-outline-light');
+                        torchButton.innerHTML = '<i class="bi bi-lightbulb"></i>';
+                    }
+                }
+                
+                console.log(`Torch ${newTorchState ? 'enabled' : 'disabled'}`);
+            } else {
+                console.log('Torch not supported on this device');
+            }
+        } catch (error) {
+            console.error('Failed to toggle torch:', error);
         }
     }
 
