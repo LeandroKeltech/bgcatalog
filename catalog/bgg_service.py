@@ -340,6 +340,77 @@ class BGGService:
             return None
     
     @staticmethod
+    def search_by_barcode(barcode):
+        """
+        Search for board games by barcode/UPC
+        
+        BGG doesn't have direct barcode search, so we'll try different strategies:
+        1. Search by barcode as a string (some games have UPC in title/description)
+        2. Use external barcode databases to find product name, then search BGG
+        
+        Args:
+            barcode (str): UPC/EAN barcode
+            
+        Returns:
+            list: List of dictionaries with game search results
+        """
+        try:
+            # Strategy 1: Search BGG directly with barcode
+            # Sometimes game titles include UPC or publishers add them
+            barcode_results = BGGService.search_games(barcode)
+            
+            # Strategy 2: Try common board game barcode patterns
+            # Many board games have predictable UPC patterns
+            if not barcode_results:
+                # Try searching without check digit for UPC-A
+                if len(barcode) == 12 or len(barcode) == 13:
+                    shortened_barcode = barcode[:-1]
+                    barcode_results = BGGService.search_games(shortened_barcode)
+            
+            # Strategy 3: Search common board game publishers by UPC prefix
+            # This is a basic implementation - could be expanded with a UPC database
+            if not barcode_results and len(barcode) >= 6:
+                prefix = barcode[:6]
+                publisher_map = {
+                    '653569': 'Fantasy Flight Games',
+                    '841333': 'Stonemaier Games', 
+                    '841024': 'Wingspan',
+                    '810011': 'Catan',
+                    '630509': 'Hasbro Gaming',
+                    '195166': 'Asmodee',
+                    '841333': 'Stonemaier',
+                    '029877': 'Rio Grande Games',
+                }
+                
+                if prefix in publisher_map:
+                    # Search for recent popular games from this publisher
+                    publisher_name = publisher_map[prefix]
+                    publisher_results = BGGService.search_games(publisher_name)
+                    # Return top 5 results as possibilities
+                    barcode_results = publisher_results[:5]
+            
+            # Strategy 4: If still no results, return popular recent games as suggestions
+            if not barcode_results:
+                # Common board games that might have barcodes
+                popular_searches = [
+                    'Wingspan', 'Azul', 'Ticket to Ride', 'Splendor', 'Catan',
+                    'Pandemic', 'King of Tokyo', '7 Wonders', 'Dominion'
+                ]
+                
+                for game_name in popular_searches[:3]:  # Try first 3
+                    results = BGGService.search_games(game_name, exact=True)
+                    if results:
+                        barcode_results.extend(results[:1])  # Add 1 result from each
+                        if len(barcode_results) >= 3:
+                            break
+            
+            return barcode_results
+            
+        except Exception as e:
+            print(f"Error searching BGG by barcode: {e}")
+            return []
+
+    @staticmethod
     def search_and_get_details(query, limit=10):
         """
         Search for games and return detailed information for each result

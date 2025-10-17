@@ -1,6 +1,54 @@
 {% extends 'catalog/base.html' %}
+{% load static %}
 
 {% block title %}Search Board Games - Board Game Catalog{% endblock %}
+
+{% block extra_css %}
+<!-- QuaggaJS CSS for barcode scanner -->
+<style>
+.scanner-modal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    align-items: center;
+    justify-content: center;
+}
+
+.scanner-modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+.scanner-frame {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+.game-selection-card {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.game-selection-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <h1 class="mb-4"><i class="bi bi-search"></i> Search Board Games</h1>
@@ -13,11 +61,18 @@
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="query" class="form-label">Search for a board game:</label>
-                        <input type="text" class="form-control" id="query" name="query" 
-                               placeholder="e.g., Catan, Ticket to Ride..." 
-                               value="{{ query }}" required autofocus>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="query" name="query" 
+                                   placeholder="e.g., Catan, Ticket to Ride..." 
+                                   value="{{ query }}" required autofocus>
+                            <button type="button" class="btn btn-outline-primary" 
+                                    onclick="openBarcodeScanner()" 
+                                    title="Scan Barcode">
+                                <i class="bi bi-camera"></i>
+                            </button>
+                        </div>
                         <small class="form-text text-muted">
-                            Enter part of the game name to find games with prices
+                            Enter part of the game name or scan a barcode to find games
                         </small>
                     </div>
                     <button type="submit" class="btn btn-primary">
@@ -33,13 +88,14 @@
         <div class="alert alert-info">
             <h5><i class="bi bi-info-circle"></i> How to use:</h5>
             <ol>
-                <li>Enter the name (or part of the name) of a board game</li>
+                <li><strong>Text Search:</strong> Enter the name (or part of the name) of a board game</li>
+                <li><strong>Barcode Scan:</strong> Click the camera icon to scan a UPC/EAN barcode</li>
                 <li>Click "Search Games" to find games on BoardGameGeek</li>
                 <li>Select the game from the results</li>
-                <li>Review price from BoardGamePrices (EUR for Ireland)</li>
+                <li>Review price from multiple sources (EUR for Ireland)</li>
                 <li>Add to your catalog!</li>
             </ol>
-            <p class="mb-0"><small>Data from BoardGameGeek + Prices from BoardGamePrices (IE/EUR)</small></p>
+            <p class="mb-0"><small>Data from BoardGameGeek + Prices from multiple sources (IE/EUR)</small></p>
         </div>
     </div>
 </div>
@@ -80,4 +136,28 @@
         </div>
     </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<!-- QuaggaJS Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+
+<!-- Barcode Scanner -->
+<script src="{% static 'catalog/js/barcode_scanner.js' %}"></script>
+
+<script>
+function openBarcodeScanner() {
+    if (window.boardGameScanner) {
+        window.boardGameScanner.open();
+    } else {
+        alert('Barcode scanner not available. Please ensure your browser supports camera access.');
+    }
+}
+
+// Initialize scanner when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Scanner is already initialized in barcode_scanner.js
+    console.log('Barcode scanner ready');
+});
+</script>
 {% endblock %}

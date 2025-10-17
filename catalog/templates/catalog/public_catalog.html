@@ -4,82 +4,158 @@
 
 {% block hero %}
 <div class="hero">
-    <div class="container text-center">
-        <h1 class="display-4 mb-3"><i class="bi bi-dice-5"></i> Board Game Store</h1>
-        <p class="lead">Quality pre-owned board games at amazing prices!</p>
-        <p class="mb-4">{{ page_obj.paginator.count }} games available</p>
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-12 text-center">
+                <h1 class="mb-2"><i class="bi bi-dice-5"></i> Board Game Store</h1>
+                <p class="lead mb-3">Quality pre-owned board games at amazing prices!</p>
+                <p class="mb-4"><strong>{{ page_obj.paginator.count }}</strong> games available</p>
+            </div>
+        </div>
         
-        <!-- Search -->
-        <form method="get" class="row g-2 justify-content-center">
-            <div class="col-md-4">
-                <input type="text" class="form-control form-control-lg" name="search" 
-                       placeholder="Search games..." value="{{ search_query }}">
+        <!-- Search & Filters -->
+        <div class="row g-2 justify-content-center">
+            <div class="col-12">
+                <form method="get" class="row g-2">
+                    <div class="col-12 col-md-5">
+                        <input type="text" class="form-control" name="search" 
+                               placeholder="Search games..." value="{{ search_query }}">
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <select class="form-select" name="sort">
+                            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>A-Z</option>
+                            <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Z-A</option>
+                            <option value="final_price" {% if sort_by == 'final_price' %}selected{% endif %}>Price: Low to High</option>
+                            <option value="-final_price" {% if sort_by == '-final_price' %}selected{% endif %}>Price: High to Low</option>
+                            <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <button type="submit" class="btn btn-light w-100">
+                            <i class="bi bi-search"></i> <span class="d-none d-md-inline">Search</span>
+                        </button>
+                    </div>
+                    <div class="col-12 col-md-2">
+                        <!-- View Toggle -->
+                        <div class="view-toggle d-flex">
+                            <button type="button" class="btn btn-sm active" id="grid-view" onclick="toggleView('grid')">
+                                <i class="bi bi-grid-3x3-gap"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm" id="list-view" onclick="toggleView('list')">
+                                <i class="bi bi-list"></i>
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
-            <div class="col-md-2">
-                <select class="form-select form-select-lg" name="sort">
-                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>A-Z</option>
-                    <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Z-A</option>
-                    <option value="final_price" {% if sort_by == 'final_price' %}selected{% endif %}>Price: Low to High</option>
-                    <option value="-final_price" {% if sort_by == '-final_price' %}selected{% endif %}>Price: High to Low</option>
-                    <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest</option>
-                </select>
-            </div>
-            <div class="col-auto">
-                <button type="submit" class="btn btn-light btn-lg">
-                    <i class="bi bi-search"></i> Search
-                </button>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block content %}
-<!-- Game Grid -->
-<div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4 mb-5">
+<!-- Games Grid/List -->
+<div id="games-container" class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
     {% for game in page_obj %}
-        <div class="col">
-            <div class="card">
-                {% if game.thumbnail_url %}
-                    <img src="{{ game.thumbnail_url }}" class="card-img-top game-card-img" alt="{{ game.name }}">
-                {% else %}
-                    <div class="card-img-top game-card-img bg-secondary d-flex align-items-center justify-content-center">
-                        <i class="bi bi-image text-white" style="font-size: 4rem;"></i>
-                    </div>
-                {% endif %}
-                
-                <div class="card-body">
-                    <h5 class="card-title">{{ game.name }}</h5>
-                    <p class="text-muted small mb-2">
-                        {% if game.year_published %}{{ game.year_published }}{% endif %}
-                        {% if game.designer %}<br>{{ game.designer|truncatewords:3 }}{% endif %}
-                    </p>
-                    
-                    <div class="mb-3">
-                        <span class="badge badge-condition bg-primary">{{ game.get_condition_display }}</span>
-                        {% if game.stock_quantity > 1 %}
-                            <span class="badge bg-success">{{ game.stock_quantity }} in stock</span>
-                        {% endif %}
-                    </div>
-                    
-                    {% if game.msrp_price %}
-                        <div class="mb-3">
-                            {% if game.discount_percentage > 0 %}
-                                <div class="price-old small">${{ game.msrp_price }}</div>
-                                <div class="price-tag">${{ game.final_price }}</div>
-                                <span class="badge bg-success">Save {{ game.discount_percentage }}%</span>
-                            {% else %}
-                                <div class="price-tag">${{ game.msrp_price }}</div>
-                            {% endif %}
+        <div class="col game-item">
+            <div class="card h-100">
+                <div class="grid-view-content">
+                    {% if game.thumbnail_url %}
+                        <img src="{{ game.thumbnail_url }}" class="card-img-top game-card-img" alt="{{ game.name }}">
+                    {% else %}
+                        <div class="card-img-top game-card-img bg-secondary d-flex align-items-center justify-content-center">
+                            <i class="bi bi-image text-white" style="font-size: 2rem;"></i>
                         </div>
                     {% endif %}
                     
-                    <a href="{% url 'public_game_detail' game.pk %}" class="btn btn-primary w-100 mb-2">
-                        <i class="bi bi-eye"></i> View Details
-                    </a>
-                    <a href="{% url 'add_to_cart' game.pk %}" class="btn btn-success w-100">
-                        <i class="fas fa-cart-plus"></i> Add to Cart
-                    </a>
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="card-title">{{ game.name|truncatechars:40 }}</h6>
+                        <p class="text-muted small mb-2">
+                            {% if game.year_published %}{{ game.year_published }}{% endif %}
+                            {% if game.designer %}<br>{{ game.designer|truncatewords:2 }}{% endif %}
+                        </p>
+                        
+                        <div class="mb-2">
+                            <span class="badge badge-condition bg-primary">{{ game.get_condition_display }}</span>
+                            {% if game.stock_quantity > 1 %}
+                                <span class="badge bg-success">{{ game.stock_quantity }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if game.msrp_price %}
+                            <div class="mb-2">
+                                {% if game.discount_percentage > 0 %}
+                                    <div class="price-old small">€{{ game.msrp_price }}</div>
+                                    <div class="price-tag">€{{ game.final_price }}</div>
+                                    <span class="badge bg-success">-{{ game.discount_percentage }}%</span>
+                                {% else %}
+                                    <div class="price-tag">€{{ game.msrp_price }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mt-auto">
+                            <a href="{% url 'public_game_detail' game.pk %}" class="btn btn-outline-primary btn-sm w-100 mb-1">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            <a href="{% url 'add_to_cart' game.pk %}" class="btn btn-success btn-sm w-100">
+                                <i class="bi bi-cart-plus"></i> Add to Cart
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- List view content (hidden by default) -->
+                <div class="list-view-content d-none">
+                    <div class="row g-0">
+                        <div class="col-3">
+                            {% if game.thumbnail_url %}
+                                <img src="{{ game.thumbnail_url }}" class="game-card-img w-100" alt="{{ game.name }}">
+                            {% else %}
+                                <div class="game-card-img bg-secondary d-flex align-items-center justify-content-center w-100">
+                                    <i class="bi bi-image text-white"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-9">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-8">
+                                        <h6 class="card-title mb-1">{{ game.name }}</h6>
+                                        <p class="text-muted small mb-1">
+                                            {% if game.year_published %}{{ game.year_published }}{% endif %}
+                                            {% if game.designer %} • {{ game.designer|truncatewords:3 }}{% endif %}
+                                        </p>
+                                        <div class="mb-1">
+                                            <span class="badge badge-condition bg-primary">{{ game.get_condition_display }}</span>
+                                            {% if game.stock_quantity > 1 %}
+                                                <span class="badge bg-success">{{ game.stock_quantity }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-4 text-end">
+                                        {% if game.msrp_price %}
+                                            {% if game.discount_percentage > 0 %}
+                                                <div class="price-old small">€{{ game.msrp_price }}</div>
+                                                <div class="price-tag">€{{ game.final_price }}</div>
+                                                <span class="badge bg-success">-{{ game.discount_percentage }}%</span>
+                                            {% else %}
+                                                <div class="price-tag">€{{ game.msrp_price }}</div>
+                                            {% endif %}
+                                        {% endif %}
+                                        <div class="mt-2">
+                                            <a href="{% url 'public_game_detail' game.pk %}" class="btn btn-outline-primary btn-sm me-1">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{% url 'add_to_cart' game.pk %}" class="btn btn-success btn-sm">
+                                                <i class="bi bi-cart-plus"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -94,30 +170,86 @@
 
 <!-- Pagination -->
 {% if page_obj.has_other_pages %}
-    <nav aria-label="Page navigation">
+    <nav aria-label="Page navigation" class="mt-4">
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
                 <li class="page-item">
-                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">First</a>
+                    <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">Previous</a>
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
                 </li>
             {% endif %}
             
             <li class="page-item active">
-                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
             </li>
             
             {% if page_obj.has_next %}
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">Next</a>
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
                 </li>
                 <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">Last</a>
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if sort_by %}&sort={{ sort_by }}{% endif %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
                 </li>
             {% endif %}
         </ul>
     </nav>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleView(viewType) {
+    const container = document.getElementById('games-container');
+    const gridBtn = document.getElementById('grid-view');
+    const listBtn = document.getElementById('list-view');
+    
+    if (viewType === 'list') {
+        // Switch to list view
+        container.classList.remove('row-cols-sm-2', 'row-cols-md-3', 'row-cols-lg-4');
+        container.classList.add('list-view');
+        
+        // Show list content, hide grid content
+        document.querySelectorAll('.grid-view-content').forEach(el => el.classList.add('d-none'));
+        document.querySelectorAll('.list-view-content').forEach(el => el.classList.remove('d-none'));
+        
+        // Update button states
+        gridBtn.classList.remove('active');
+        listBtn.classList.add('active');
+        
+        // Store preference
+        localStorage.setItem('viewMode', 'list');
+    } else {
+        // Switch to grid view
+        container.classList.add('row-cols-sm-2', 'row-cols-md-3', 'row-cols-lg-4');
+        container.classList.remove('list-view');
+        
+        // Show grid content, hide list content
+        document.querySelectorAll('.grid-view-content').forEach(el => el.classList.remove('d-none'));
+        document.querySelectorAll('.list-view-content').forEach(el => el.classList.add('d-none'));
+        
+        // Update button states
+        gridBtn.classList.add('active');
+        listBtn.classList.remove('active');
+        
+        // Store preference
+        localStorage.setItem('viewMode', 'grid');
+    }
+}
+
+// Load saved view preference
+document.addEventListener('DOMContentLoaded', function() {
+    const savedView = localStorage.getItem('viewMode') || 'grid';
+    toggleView(savedView);
+});
+</script>
 {% endblock %}

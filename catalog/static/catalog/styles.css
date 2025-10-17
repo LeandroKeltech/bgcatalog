@@ -268,3 +268,69 @@ footer {
         padding: 1.5rem 0;
     }
 }
+
+/* Barcode Scanner Styles */
+.scanner-modal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    align-items: center;
+    justify-content: center;
+}
+
+.scanner-modal-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+.scanner-frame {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.6; }
+    50% { opacity: 1; }
+    100% { opacity: 0.6; }
+}
+
+.game-selection-card {
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.game-selection-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.scanner-shortcut {
+    border: 2px dashed #28a745;
+    background: rgba(40, 167, 69, 0.1);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.scanner-shortcut:hover {
+    background: rgba(40, 167, 69, 0.2);
+    transform: translateY(-2px);
+}
+
+.scanner-shortcut i {
+    font-size: 2rem;
+    color: #28a745;
+    margin-bottom: 10px;
+    display: block;
+}

@@ -166,6 +166,60 @@ def bgg_search(request):
         return render(request, 'catalog/bgg_search.html', context)
 
 
+@require_http_methods(["POST"])
+def bgg_search_barcode(request):
+    """Search BGG by barcode/UPC and return JSON response"""
+    try:
+        # Parse JSON request
+        data = json.loads(request.body)
+        barcode = data.get('barcode', '').strip()
+        
+        if not barcode:
+            return JsonResponse({
+                'success': False,
+                'error': 'No barcode provided'
+            })
+        
+        logger.info(f"Barcode search request: {barcode}")
+        
+        # Search BGG by barcode
+        results = BGGService.search_by_barcode(barcode)
+        
+        if results:
+            # Return game info for selection
+            games = []
+            for result in results:
+                games.append({
+                    'id': result['id'],
+                    'name': result['name'],
+                    'year': result.get('year'),
+                })
+            
+            return JsonResponse({
+                'success': True,
+                'games': games,
+                'barcode': barcode
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'No games found for this barcode',
+                'barcode': barcode
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        })
+    except Exception as e:
+        logger.error(f"Barcode search error: {e}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        })
+
+
 @ensure_csrf_cookie
 def bgg_import(request, bgg_id):
     """Import a game from BoardGameGeek with prices from multiple sources and show form to add to catalog"""

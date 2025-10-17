@@ -11,6 +11,7 @@ urlpatterns = [
     # BGG Integration
     path('bgg/search/', views.bgg_search, name='bgg_search'),
     path('bgg/import/<str:bgg_id>/', views.bgg_import, name='bgg_import'),
+    path('admin/bgg_search_barcode/', views.bgg_search_barcode, name='bgg_search_barcode'),
     
     # CRUD Operations
     path('game/create/', views.game_create_manual, name='game_create_manual'),
