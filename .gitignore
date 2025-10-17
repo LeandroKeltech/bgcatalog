@@ -114,9 +114,10 @@ venv.bak/
 google_credentials.json
 *.json
 
-# Static files
+# Static files (collected)
 staticfiles/
-static/
+# Allow app-specific static files
+!*/static/
 
 # Spyder project settings
 .spyderproject
