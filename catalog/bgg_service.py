@@ -389,20 +389,15 @@ class BGGService:
                     # Return top 5 results as possibilities
                     barcode_results = publisher_results[:5]
             
-            # Strategy 4: If still no results, return popular recent games as suggestions
+            # Strategy 4: Do not return unrelated popular games as fallbacks.
+            # Returning generic popular games for unknown barcodes leads to
+            # confusing / misleading suggestions (same results for all barcodes).
+            # Better behaviour is to return no results and let the client show
+            # "no matches" so the user can search manually or try another barcode.
             if not barcode_results:
-                # Common board games that might have barcodes
-                popular_searches = [
-                    'Wingspan', 'Azul', 'Ticket to Ride', 'Splendor', 'Catan',
-                    'Pandemic', 'King of Tokyo', '7 Wonders', 'Dominion'
-                ]
-                
-                for game_name in popular_searches[:3]:  # Try first 3
-                    results = BGGService.search_games(game_name, exact=True)
-                    if results:
-                        barcode_results.extend(results[:1])  # Add 1 result from each
-                        if len(barcode_results) >= 3:
-                            break
+                print(f"BGGService.search_by_barcode: no direct or prefix matches for barcode {barcode}")
+                # Note: In future we can add an external UPC/GS1 lookup here (e.g. upcitemdb)
+                # and then search BGG by the product name. For now, return empty list.
             
             return barcode_results
             

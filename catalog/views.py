@@ -184,7 +184,8 @@ def bgg_search_barcode(request):
         
         # Search BGG by barcode
         results = BGGService.search_by_barcode(barcode)
-        
+        logger.info(f"Barcode search raw results: {results}")
+
         if results:
             # Return game info for selection
             games = []
@@ -194,7 +195,7 @@ def bgg_search_barcode(request):
                     'name': result['name'],
                     'year': result.get('year'),
                 })
-            
+
             return JsonResponse({
                 'success': True,
                 'games': games,
