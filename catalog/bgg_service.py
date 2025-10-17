@@ -389,20 +389,126 @@ class BGGService:
                     # Return top 5 results as possibilities
                     barcode_results = publisher_results[:5]
             
-            # Strategy 4: Do not return unrelated popular games as fallbacks.
-            # Returning generic popular games for unknown barcodes leads to
-            # confusing / misleading suggestions (same results for all barcodes).
-            # Better behaviour is to return no results and let the client show
-            # "no matches" so the user can search manually or try another barcode.
+            # Strategy 4: Try external barcode lookup as fallback
             if not barcode_results:
-                print(f"BGGService.search_by_barcode: no direct or prefix matches for barcode {barcode}")
-                # Note: In future we can add an external UPC/GS1 lookup here (e.g. upcitemdb)
-                # and then search BGG by the product name. For now, return empty list.
+                print(f"BGGService.search_by_barcode: no BGG matches, trying external barcode lookup for {barcode}")
+                external_results = BGGService._lookup_external_barcode(barcode)
+                if external_results:
+                    barcode_results = external_results
             
             return barcode_results
             
         except Exception as e:
             print(f"Error searching BGG by barcode: {e}")
+            return []
+
+    @staticmethod
+    def _lookup_external_barcode(barcode):
+        """
+        Lookup barcode using GameUPC.com and then search BGG by product name
+        GameUPC.com is specialized for board games and has better coverage
+        
+        Args:
+            barcode (str): UPC/EAN barcode
+            
+        Returns:
+            list: List of BGG search results based on GameUPC product name
+        """
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            
+            print(f"Looking up barcode {barcode} on GameUPC.com...")
+            
+            # GameUPC.com search - they have a specific board game database
+            gameupc_url = f"https://www.gameupc.com/search.php?s={barcode}"
+            
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            
+            response = requests.get(gameupc_url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                
+                # Look for game title in the search results
+                # GameUPC typically shows results in a table or list format
+                game_links = soup.find_all('a', href=True)
+                
+                for link in game_links:
+                    href = link.get('href', '')
+                    if '/game/' in href or 'product' in href:
+                        game_name = link.get_text().strip()
+                        if game_name and len(game_name) > 3:
+                            print(f"GameUPC found: {game_name}")
+                            
+                            # Clean up the game name for BGG search
+                            clean_name = game_name
+                            # Remove common suffixes/prefixes
+                            for remove_text in [' - Board Game', ' Board Game', ' Game', ' (Board Game)', ' - Game']:
+                                clean_name = clean_name.replace(remove_text, '')
+                            
+                            clean_name = clean_name.strip()
+                            
+                            if clean_name and len(clean_name) > 2:
+                                print(f"Searching BGG with cleaned name: {clean_name}")
+                                bgg_results = BGGService.search_games(clean_name)
+                                if bgg_results:
+                                    print(f"Found {len(bgg_results)} BGG results for GameUPC product")
+                                    return bgg_results[:5]  # Return top 5 matches
+                
+                # If no direct links found, look for any text that might be a game name
+                search_results = soup.find_all(['td', 'div', 'span'], string=True)
+                for element in search_results:
+                    text = element.get_text().strip()
+                    # Look for text that might be a game name (contains letters and is reasonable length)
+                    if text and 5 < len(text) < 100 and any(c.isalpha() for c in text):
+                        # Skip common website text
+                        skip_words = ['search', 'results', 'upc', 'barcode', 'gameupc', 'com', 'www', 'http']
+                        if not any(skip in text.lower() for skip in skip_words):
+                            print(f"GameUPC potential game name: {text}")
+                            bgg_results = BGGService.search_games(text)
+                            if bgg_results:
+                                print(f"Found BGG results for potential game: {text}")
+                                return bgg_results[:3]
+            
+            # Fallback to UPCitemdb.com if GameUPC doesn't work
+            print(f"GameUPC didn't find results, trying UPCitemdb for {barcode}...")
+            response = requests.get(
+                f"https://api.upcitemdb.com/prod/v1/lookup",
+                params={'upc': barcode},
+                headers={'User-Agent': 'BoardGameCatalog/1.0'},
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('items') and len(data['items']) > 0:
+                    item = data['items'][0]
+                    product_name = item.get('title', '').strip()
+                    
+                    if product_name:
+                        print(f"UPCitemdb found product: {product_name}")
+                        
+                        # Clean up product name for better BGG search
+                        clean_name = product_name
+                        for remove_text in [' - Board Game', ' Board Game', ' Game', ' (Board Game)']:
+                            clean_name = clean_name.replace(remove_text, '')
+                        clean_name = ' '.join(clean_name.split()[:5])  # Take first 5 words
+                        
+                        if clean_name and len(clean_name) > 3:
+                            print(f"Searching BGG with UPCitemdb name: {clean_name}")
+                            bgg_results = BGGService.search_games(clean_name)
+                            if bgg_results:
+                                print(f"Found {len(bgg_results)} BGG results for UPCitemdb product")
+                                return bgg_results[:3]
+            
+            print(f"No external database matches found for barcode {barcode}")
+            return []
+            
+        except Exception as e:
+            print(f"Error in external barcode lookup: {e}")
             return []
 
     @staticmethod
