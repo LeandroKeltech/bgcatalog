@@ -355,17 +355,49 @@ class BGGService:
             list: List of dictionaries with game search results
         """
         try:
-            # Strategy 1: Search BGG directly with barcode
-            # Sometimes game titles include UPC or publishers add them
-            barcode_results = BGGService.search_games(barcode)
+            # Generate barcode variations to try (common formatting issues)
+            barcode_variations = []
             
-            # Strategy 2: Try common board game barcode patterns
-            # Many board games have predictable UPC patterns
-            if not barcode_results:
-                # Try searching without check digit for UPC-A
-                if len(barcode) == 12 or len(barcode) == 13:
-                    shortened_barcode = barcode[:-1]
-                    barcode_results = BGGService.search_games(shortened_barcode)
+            # Original barcode
+            barcode_variations.append(barcode)
+            
+            # Remove leading zeros (common issue)
+            barcode_variations.append(barcode.lstrip('0'))
+            
+            # Add single leading zero if missing
+            if not barcode.startswith('0') and len(barcode) < 13:
+                barcode_variations.append('0' + barcode)
+            
+            # Try without check digit
+            if len(barcode) >= 8:
+                barcode_variations.append(barcode[:-1])
+                barcode_variations.append(barcode[:-1].lstrip('0'))
+            
+            # Try 12-digit UPC-A format (remove leading zero from 13-digit EAN)
+            if len(barcode) == 13 and barcode.startswith('0'):
+                barcode_variations.append(barcode[1:])
+            
+            # Try 13-digit EAN format (add leading zero to 12-digit UPC)
+            if len(barcode) == 12:
+                barcode_variations.append('0' + barcode)
+            
+            # Remove duplicates while preserving order
+            unique_variations = []
+            for variation in barcode_variations:
+                if variation and variation not in unique_variations and len(variation) >= 8:
+                    unique_variations.append(variation)
+            
+            print(f"Trying barcode variations: {unique_variations}")
+            
+            # Strategy 1: Search BGG directly with all barcode variations
+            barcode_results = []
+            for variation in unique_variations:
+                print(f"Searching BGG for barcode variation: {variation}")
+                results = BGGService.search_games(variation)
+                if results:
+                    print(f"Found {len(results)} results for variation: {variation}")
+                    barcode_results = results
+                    break  # Use first successful variation
             
             # Strategy 3: Search common board game publishers by UPC prefix
             # This is a basic implementation - could be expanded with a UPC database
@@ -418,91 +450,114 @@ class BGGService:
             import requests
             from bs4 import BeautifulSoup
             
-            print(f"Looking up barcode {barcode} on GameUPC.com...")
+            # Generate same barcode variations for external lookup
+            barcode_variations = []
+            barcode_variations.append(barcode)
+            barcode_variations.append(barcode.lstrip('0'))
+            if not barcode.startswith('0') and len(barcode) < 13:
+                barcode_variations.append('0' + barcode)
+            if len(barcode) == 13 and barcode.startswith('0'):
+                barcode_variations.append(barcode[1:])
+            if len(barcode) == 12:
+                barcode_variations.append('0' + barcode)
             
-            # GameUPC.com search - they have a specific board game database
-            gameupc_url = f"https://www.gameupc.com/search.php?s={barcode}"
+            # Remove duplicates
+            unique_variations = list(dict.fromkeys([v for v in barcode_variations if v and len(v) >= 8]))
             
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
+            print(f"Looking up barcode variations on GameUPC.com: {unique_variations}")
             
-            response = requests.get(gameupc_url, headers=headers, timeout=10)
+            # Try GameUPC.com with each variation
+            for variation in unique_variations:
+                print(f"Trying GameUPC with variation: {variation}")
+                gameupc_url = f"https://www.gameupc.com/search.php?s={variation}"
             
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
                 
-                # Look for game title in the search results
-                # GameUPC typically shows results in a table or list format
-                game_links = soup.find_all('a', href=True)
+                response = requests.get(gameupc_url, headers=headers, timeout=10)
                 
-                for link in game_links:
-                    href = link.get('href', '')
-                    if '/game/' in href or 'product' in href:
-                        game_name = link.get_text().strip()
-                        if game_name and len(game_name) > 3:
-                            print(f"GameUPC found: {game_name}")
-                            
-                            # Clean up the game name for BGG search
-                            clean_name = game_name
-                            # Remove common suffixes/prefixes
-                            for remove_text in [' - Board Game', ' Board Game', ' Game', ' (Board Game)', ' - Game']:
-                                clean_name = clean_name.replace(remove_text, '')
-                            
-                            clean_name = clean_name.strip()
-                            
-                            if clean_name and len(clean_name) > 2:
-                                print(f"Searching BGG with cleaned name: {clean_name}")
-                                bgg_results = BGGService.search_games(clean_name)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    
+                    # Look for game title in the search results
+                    # GameUPC typically shows results in a table or list format
+                    game_links = soup.find_all('a', href=True)
+                    
+                    for link in game_links:
+                        href = link.get('href', '')
+                        if '/game/' in href or 'product' in href:
+                            game_name = link.get_text().strip()
+                            if game_name and len(game_name) > 3:
+                                print(f"GameUPC found with {variation}: {game_name}")
+                                
+                                # Clean up the game name for BGG search
+                                clean_name = game_name
+                                # Remove common suffixes/prefixes
+                                for remove_text in [' - Board Game', ' Board Game', ' Game', ' (Board Game)', ' - Game']:
+                                    clean_name = clean_name.replace(remove_text, '')
+                                
+                                clean_name = clean_name.strip()
+                                
+                                if clean_name and len(clean_name) > 2:
+                                    print(f"Searching BGG with cleaned name: {clean_name}")
+                                    bgg_results = BGGService.search_games(clean_name)
+                                    if bgg_results:
+                                        print(f"Found {len(bgg_results)} BGG results for GameUPC product")
+                                        return bgg_results[:5]  # Return top 5 matches
+                    
+                    # If no direct links found, look for any text that might be a game name
+                    search_results = soup.find_all(['td', 'div', 'span'], string=True)
+                    for element in search_results:
+                        text = element.get_text().strip()
+                        # Look for text that might be a game name (contains letters and is reasonable length)
+                        if text and 5 < len(text) < 100 and any(c.isalpha() for c in text):
+                            # Skip common website text
+                            skip_words = ['search', 'results', 'upc', 'barcode', 'gameupc', 'com', 'www', 'http']
+                            if not any(skip in text.lower() for skip in skip_words):
+                                print(f"GameUPC potential game name with {variation}: {text}")
+                                bgg_results = BGGService.search_games(text)
                                 if bgg_results:
-                                    print(f"Found {len(bgg_results)} BGG results for GameUPC product")
-                                    return bgg_results[:5]  # Return top 5 matches
+                                    print(f"Found BGG results for potential game: {text}")
+                                    return bgg_results[:3]
                 
-                # If no direct links found, look for any text that might be a game name
-                search_results = soup.find_all(['td', 'div', 'span'], string=True)
-                for element in search_results:
-                    text = element.get_text().strip()
-                    # Look for text that might be a game name (contains letters and is reasonable length)
-                    if text and 5 < len(text) < 100 and any(c.isalpha() for c in text):
-                        # Skip common website text
-                        skip_words = ['search', 'results', 'upc', 'barcode', 'gameupc', 'com', 'www', 'http']
-                        if not any(skip in text.lower() for skip in skip_words):
-                            print(f"GameUPC potential game name: {text}")
-                            bgg_results = BGGService.search_games(text)
-                            if bgg_results:
-                                print(f"Found BGG results for potential game: {text}")
-                                return bgg_results[:3]
+                print(f"No results found on GameUPC for variation: {variation}")
             
             # Fallback to UPCitemdb.com if GameUPC doesn't work
-            print(f"GameUPC didn't find results, trying UPCitemdb for {barcode}...")
-            response = requests.get(
-                f"https://api.upcitemdb.com/prod/v1/lookup",
-                params={'upc': barcode},
-                headers={'User-Agent': 'BoardGameCatalog/1.0'},
-                timeout=5
-            )
+            print(f"GameUPC didn't find results, trying UPCitemdb with variations: {unique_variations}")
             
-            if response.status_code == 200:
-                data = response.json()
-                if data.get('items') and len(data['items']) > 0:
-                    item = data['items'][0]
-                    product_name = item.get('title', '').strip()
-                    
-                    if product_name:
-                        print(f"UPCitemdb found product: {product_name}")
+            for variation in unique_variations:
+                print(f"Trying UPCitemdb with variation: {variation}")
+                response = requests.get(
+                    f"https://api.upcitemdb.com/prod/v1/lookup",
+                    params={'upc': variation},
+                    headers={'User-Agent': 'BoardGameCatalog/1.0'},
+                    timeout=5
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('items') and len(data['items']) > 0:
+                        item = data['items'][0]
+                        product_name = item.get('title', '').strip()
                         
-                        # Clean up product name for better BGG search
-                        clean_name = product_name
-                        for remove_text in [' - Board Game', ' Board Game', ' Game', ' (Board Game)']:
-                            clean_name = clean_name.replace(remove_text, '')
-                        clean_name = ' '.join(clean_name.split()[:5])  # Take first 5 words
-                        
-                        if clean_name and len(clean_name) > 3:
-                            print(f"Searching BGG with UPCitemdb name: {clean_name}")
-                            bgg_results = BGGService.search_games(clean_name)
-                            if bgg_results:
-                                print(f"Found {len(bgg_results)} BGG results for UPCitemdb product")
-                                return bgg_results[:3]
+                        if product_name:
+                            print(f"UPCitemdb found product with {variation}: {product_name}")
+                            
+                            # Clean up product name for better BGG search
+                            clean_name = product_name
+                            for remove_text in [' - Board Game', ' Board Game', ' Game', ' (Board Game)']:
+                                clean_name = clean_name.replace(remove_text, '')
+                            clean_name = ' '.join(clean_name.split()[:5])  # Take first 5 words
+                            
+                            if clean_name and len(clean_name) > 3:
+                                print(f"Searching BGG with UPCitemdb name: {clean_name}")
+                                bgg_results = BGGService.search_games(clean_name)
+                                if bgg_results:
+                                    print(f"Found {len(bgg_results)} BGG results for UPCitemdb product")
+                                    return bgg_results[:3]
+                
+                print(f"No results found on UPCitemdb for variation: {variation}")
             
             print(f"No external database matches found for barcode {barcode}")
             return []
