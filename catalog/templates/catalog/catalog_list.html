@@ -96,9 +96,9 @@
                     {% if game.msrp_price %}
                         <div class="mb-2">
                             {% if game.discount_percentage > 0 %}
-                                <div class="price-old">${{ game.msrp_price }}</div>
+                                <div class="price-old">€{{ game.msrp_price }}</div>
                             {% endif %}
-                            <div class="price-tag">${{ game.final_price|default:game.msrp_price }}</div>
+                            <div class="price-tag">€{{ game.final_price|default:game.msrp_price }}</div>
                             {% if game.discount_percentage > 0 %}
                                 <small class="text-success">{{ game.discount_percentage }}% off</small>
                             {% endif %}

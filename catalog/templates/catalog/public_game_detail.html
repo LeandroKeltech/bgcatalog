@@ -115,13 +115,13 @@
             <div class="card mb-4" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
                 <div class="card-body">
                     {% if game.discount_percentage > 0 %}
-                        <p class="price-old mb-2">Original Price: ${{ game.msrp_price }}</p>
-                        <h2 class="price-tag mb-2">${{ game.final_price }}</h2>
+                        <p class="price-old mb-2">Original Price: €{{ game.msrp_price }}</p>
+                        <h2 class="price-tag mb-2">€{{ game.final_price }}</h2>
                         <span class="badge bg-success" style="font-size: 1.2rem;">
-                            Save {{ game.discount_percentage }}% (${%  widthratio game.discount_percentage 1 game.msrp_price %})
+                            Save {{ game.discount_percentage }}% (€{% widthratio game.discount_percentage 1 game.msrp_price %})
                         </span>
                     {% else %}
-                        <h2 class="price-tag mb-0">${{ game.msrp_price }}</h2>
+                        <h2 class="price-tag mb-0">€{{ game.msrp_price }}</h2>
                     {% endif %}
                 </div>
             </div>

@@ -103,10 +103,10 @@
             <div class="card bg-light mb-3">
                 <div class="card-body">
                     {% if game.discount_percentage > 0 %}
-                        <p class="price-old mb-1">Original: ${{ game.msrp_price }}</p>
+                        <p class="price-old mb-1">Original: €{{ game.msrp_price }}</p>
                         <p class="text-danger mb-1">Discount: {{ game.discount_percentage }}%</p>
                     {% endif %}
-                    <h3 class="price-tag mb-0">Price: ${{ game.final_price|default:game.msrp_price }}</h3>
+                    <h3 class="price-tag mb-0">Price: €{{ game.final_price|default:game.msrp_price }}</h3>
                 </div>
             </div>
         {% endif %}
