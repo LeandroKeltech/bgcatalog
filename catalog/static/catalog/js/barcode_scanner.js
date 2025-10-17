@@ -38,7 +38,7 @@ class BoardGameBarcodeScanner {
                 'CODE_128', 'CODE_39', 'EAN_13', 'EAN_8', 'UPC_A', 'UPC_E',
                 'CODABAR', 'ITF', 'RSS_14', 'RSS_EXPANDED'
             ],
-            searchEndpoint: options.searchEndpoint || '/admin/bgg_search_barcode/',
+            searchEndpoint: options.searchEndpoint || '/bgg/search/barcode/',
             ...options
         };
 
@@ -73,8 +73,15 @@ class BoardGameBarcodeScanner {
         try {
             this.showStatus('Searching BoardGameGeek...', 'info');
             
+            // Construct the URL more carefully
+            const baseUrl = window.location.origin;
+            const searchUrl = `${baseUrl}/bgg/search/barcode/`;
+            
+            console.log(`Making request to: ${searchUrl}`);
+            console.log(`Barcode: ${barcode}`);
+            
             // Make request to BGG search endpoint
-            const response = await fetch(this.options.searchEndpoint, {
+            const response = await fetch(searchUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -83,7 +90,14 @@ class BoardGameBarcodeScanner {
                 body: JSON.stringify({ barcode: barcode })
             });
             
+            console.log(`Response status: ${response.status}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
+            console.log('Response data:', data);
             
             if (data.success) {
                 if (data.games && data.games.length > 0) {
@@ -99,6 +113,7 @@ class BoardGameBarcodeScanner {
             }
             
         } catch (error) {
+            console.error('Barcode search error:', error);
             this.showStatus('Search error: ' + error.message, 'error');
             await this.restartScanning();
         }
