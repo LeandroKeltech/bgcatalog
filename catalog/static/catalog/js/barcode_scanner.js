@@ -229,15 +229,18 @@ class BoardGameBarcodeScanner {
                                        class="w-100" style="height: 400px; object-fit: cover;"></video>
                                 <canvas id="${this.options.canvasId}" style="display: none;"></canvas>
                                 <div class="scanner-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
-                                    <div class="scanner-frame border border-light border-3 bg-transparent" 
-                                         style="width: 300px; height: 150px; border-style: dashed !important; opacity: 0.8;">
+                                    <div class="scanner-frame border border-warning border-3 bg-transparent" 
+                                         style="width: 320px; height: 120px; border-style: solid !important; border-radius: 8px;">
+                                        <div class="scanner-line position-absolute top-50 start-0 w-100 bg-warning" 
+                                             style="height: 2px; animation: scan 2s linear infinite;"></div>
                                     </div>
                                 </div>
                             </div>
                             <div class="scanner-instructions p-3 bg-light">
                                 <p class="mb-2 text-center">
                                     <i class="bi bi-info-circle text-primary"></i> 
-                                    ${this.options.instruction}
+                                    Position the barcode within the yellow frame.<br>
+                                    <small>Look for UPC/EAN barcode on game box (8-13 digits)</small>
                                 </p>
                                 <div id="scanner-status" class="alert alert-info" style="display: none;"></div>
                             </div>
@@ -448,26 +451,34 @@ class BoardGameBarcodeScanner {
             return;
         }
 
-        // Optimized QuaggaJS configuration for barcode detection
+        // Optimized QuaggaJS configuration for board game barcodes
         const quaggaConfig = {
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
                 target: this.video,
                 constraints: {
-                    width: { min: 640, ideal: 1280, max: 1920 },
-                    height: { min: 480, ideal: 720, max: 1080 },
-                    facingMode: "environment"
+                    width: { min: 800, ideal: 1280, max: 1920 },
+                    height: { min: 600, ideal: 720, max: 1080 },
+                    facingMode: "environment",
+                    focusMode: "continuous"
+                },
+                area: { // Focus scanning area to center region
+                    top: "20%",
+                    right: "20%", 
+                    left: "20%",
+                    bottom: "20%"
                 }
             },
             decoder: {
                 readers: [
-                    "code_128_reader",
-                    "ean_reader", 
-                    "ean_8_reader",
-                    "code_39_reader",
-                    "upc_reader",
-                    "upc_e_reader"
+                    // Primary board game barcode formats (most common first)
+                    "ean_reader",        // EAN-13 (most common for board games)
+                    "upc_reader",        // UPC-A (common in US board games)
+                    "code_128_reader",   // Code 128 (some publishers use this)
+                    "ean_8_reader",      // EAN-8 (smaller games)
+                    "upc_e_reader",      // UPC-E (compressed UPC)
+                    "code_39_reader"     // Code 39 (backup)
                 ],
                 debug: {
                     showCanvas: false,
@@ -482,23 +493,39 @@ class BoardGameBarcodeScanner {
                         showTransformedBox: false,
                         showBB: false
                     }
-                }
+                },
+                multiple: false  // Single barcode detection for better performance
             },
             locator: {
-                patchSize: "medium",
-                halfSample: false
+                patchSize: "large",     // Larger patches for better detection
+                halfSample: false,      // Use full resolution for better accuracy
+                showCanvas: false,
+                showPatches: false,
+                showFoundPatches: false,
+                showSkeleton: false,
+                showLabels: false,
+                showPatchLabels: false,
+                showRemainingPatchLabels: false,
+                boxFromPatches: {
+                    showTransformed: false,
+                    showTransformedBox: false,
+                    showBB: false
+                }
             },
-            numOfWorkers: 2,
-            frequency: 25,
+            numOfWorkers: 4,           // More workers for better performance
+            frequency: 10,             // Scan every 100ms (slower but more accurate)
             locate: true
         };
 
+        console.log('Starting barcode scanning with optimized config...');
         Quagga.init(quaggaConfig, (err) => {
             if (err) {
+                console.error('QuaggaJS init error:', err);
                 this.handleError('Scanner initialization failed', err);
                 return;
             }
             
+            console.log('QuaggaJS initialized successfully');
             Quagga.start();
             this.setupQuaggaListeners();
         });
@@ -511,18 +538,66 @@ class BoardGameBarcodeScanner {
         // Track detections to avoid duplicates
         let lastDetectionTime = 0;
         let lastCode = null;
+        let detectionAttempts = 0;
+        
+        // Show scanning status
+        this.showStatus('Scanning... Hold barcode steady in the frame', 'info');
+        
+        Quagga.onProcessed((result) => {
+            detectionAttempts++;
+            
+            // Give feedback every 50 attempts (about 5 seconds)
+            if (detectionAttempts % 50 === 0) {
+                console.log(`Scanning attempt ${detectionAttempts}...`);
+                this.showStatus('Still scanning... Make sure barcode is clear and well-lit', 'info');
+            }
+            
+            // Check for partial results to give feedback
+            if (result && result.codeResult && result.codeResult.code) {
+                const code = result.codeResult.code;
+                const format = result.codeResult.format;
+                
+                console.log(`Detected potential code: ${code} (format: ${format})`);
+                
+                // For board games, we expect 8-13 digit codes
+                if (code.length >= 8 && code.length <= 13) {
+                    // Check if it looks like a valid UPC/EAN
+                    if (/^\d+$/.test(code)) {
+                        const now = Date.now();
+                        
+                        // Avoid duplicate detections within 2000ms
+                        if (code !== lastCode || now - lastDetectionTime > 2000) {
+                            console.log(`Valid barcode detected: ${code}`);
+                            lastCode = code;
+                            lastDetectionTime = now;
+                            this.onBarcodeDetected(code, result);
+                        }
+                    }
+                }
+            }
+        });
         
         Quagga.onDetected((result) => {
             const code = result.codeResult.code;
+            const format = result.codeResult.format;
             const now = Date.now();
             
-            // Accept codes and avoid duplicate detections within 1000ms
-            if (code && code.length >= 8 && 
-                (code !== lastCode || now - lastDetectionTime > 1000)) {
+            console.log(`Barcode detected: ${code} (format: ${format})`);
+            
+            // For board games, accept codes between 8-13 digits
+            if (code && /^\d{8,13}$/.test(code) && 
+                (code !== lastCode || now - lastDetectionTime > 2000)) {
                 
+                console.log(`Processing valid board game barcode: ${code}`);
                 lastCode = code;
                 lastDetectionTime = now;
                 this.onBarcodeDetected(code, result);
+            } else if (code) {
+                console.log(`Rejected barcode: ${code} (invalid format or duplicate)`);
+                this.showStatus(`Invalid barcode format: ${code}. Please try again.`, 'warning');
+                setTimeout(() => {
+                    this.showStatus('Scanning... Hold barcode steady in the frame', 'info');
+                }, 2000);
             }
         });
     }

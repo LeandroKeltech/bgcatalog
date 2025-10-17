@@ -302,6 +302,11 @@ footer {
     100% { opacity: 0.6; }
 }
 
+@keyframes scan {
+    0% { transform: translateY(-60px); }
+    100% { transform: translateY(60px); }
+}
+
 .game-selection-card {
     cursor: pointer;
     transition: all 0.2s;
