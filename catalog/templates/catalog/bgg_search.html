@@ -139,25 +139,119 @@
 {% endblock %}
 
 {% block extra_js %}
-<!-- QuaggaJS Library -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<!-- QuaggaJS Library with fallback -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js" 
+        onerror="console.error('Failed to load QuaggaJS from CDNJS'); loadQuaggaFallback();"></script>
+
+<script>
+function loadQuaggaFallback() {
+    console.log('Loading QuaggaJS fallback...');
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/quagga@0.12.1/dist/quagga.min.js';
+    script.onerror = function() {
+        console.error('All QuaggaJS CDNs failed to load');
+        alert('Unable to load barcode scanning library. Please check your internet connection and try again.');
+    };
+    script.onload = function() {
+        console.log('QuaggaJS fallback loaded successfully');
+    };
+    document.head.appendChild(script);
+}
+
+// Check if QuaggaJS loaded
+setTimeout(function() {
+    if (typeof Quagga === 'undefined') {
+        console.error('QuaggaJS not loaded after timeout');
+        loadQuaggaFallback();
+    } else {
+        console.log('QuaggaJS loaded successfully');
+    }
+}, 2000);
+</script>
 
 <!-- Barcode Scanner -->
 <script src="{% static 'catalog/js/barcode_scanner.js' %}"></script>
 
 <script>
 function openBarcodeScanner() {
-    if (window.boardGameScanner) {
-        window.boardGameScanner.open();
-    } else {
-        alert('Barcode scanner not available. Please ensure your browser supports camera access.');
+    console.log('Opening barcode scanner...');
+    
+    // Check if scanner is available
+    if (!window.boardGameScanner) {
+        console.error('Barcode scanner not initialized');
+        
+        // Try to initialize now
+        if (typeof Quagga === 'undefined') {
+            alert('QuaggaJS library not loaded. Please refresh the page and try again.');
+            return;
+        }
+        
+        try {
+            console.log('Attempting to initialize scanner now...');
+            window.boardGameScanner = new BoardGameBarcodeScanner({
+                title: 'Scan Board Game Barcode',
+                instruction: 'Position the barcode within the frame to search BoardGameGeek'
+            });
+            console.log('Scanner initialized successfully');
+        } catch (error) {
+            console.error('Failed to initialize scanner:', error);
+            alert('Failed to initialize barcode scanner: ' + error.message);
+            return;
+        }
     }
+    
+    // Check camera permissions and HTTPS
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        alert('Camera access requires HTTPS. Please use HTTPS or localhost for barcode scanning.');
+        return;
+    }
+    
+    // Check getUserMedia support
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Your browser does not support camera access. Please use a modern browser like Chrome, Firefox, or Safari.');
+        return;
+    }
+    
+    // Open scanner
+    try {
+        window.boardGameScanner.open();
+    } catch (error) {
+        console.error('Failed to open scanner:', error);
+        alert('Failed to open barcode scanner: ' + error.message);
+    }
+}
+
+// Debug function to check scanner status
+function checkScannerStatus() {
+    console.log('=== Barcode Scanner Debug Info ===');
+    console.log('QuaggaJS available:', typeof Quagga !== 'undefined');
+    console.log('Scanner instance:', !!window.boardGameScanner);
+    console.log('Current protocol:', location.protocol);
+    console.log('MediaDevices supported:', !!navigator.mediaDevices);
+    console.log('getUserMedia supported:', !!navigator.mediaDevices?.getUserMedia);
+    console.log('Current pathname:', window.location.pathname);
 }
 
 // Initialize scanner when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    // Scanner is already initialized in barcode_scanner.js
-    console.log('Barcode scanner ready');
+    console.log('BGG Search page loaded, checking scanner status...');
+    checkScannerStatus();
+    
+    // Wait a bit for QuaggaJS to load if it's still loading
+    setTimeout(function() {
+        if (!window.boardGameScanner && typeof Quagga !== 'undefined') {
+            console.log('QuaggaJS loaded, initializing scanner...');
+            try {
+                window.boardGameScanner = new BoardGameBarcodeScanner({
+                    title: 'Scan Board Game Barcode',
+                    instruction: 'Position the barcode within the frame to search BoardGameGeek'
+                });
+                console.log('Scanner initialized on BGG search page');
+            } catch (error) {
+                console.error('Failed to initialize scanner on BGG search page:', error);
+            }
+        }
+    }, 1000);
 });
 </script>
 {% endblock %}

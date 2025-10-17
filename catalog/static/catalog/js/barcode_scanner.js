@@ -638,11 +638,29 @@ class BoardGameBarcodeScanner {
 
 // Initialize global scanner instance when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    // Only initialize if we're on an admin page
-    if (window.location.pathname.includes('/admin/')) {
-        window.boardGameScanner = new BoardGameBarcodeScanner({
-            title: 'Scan Board Game Barcode',
-            instruction: 'Position the barcode within the frame to search BoardGameGeek'
-        });
+    // Initialize on admin pages AND BGG search page
+    const currentPath = window.location.pathname;
+    const shouldInitialize = currentPath.includes('/admin/') || 
+                           currentPath.includes('/bgg/search/') ||
+                           currentPath.includes('/catalog/');
+    
+    if (shouldInitialize) {
+        try {
+            // Check if QuaggaJS is available
+            if (typeof Quagga === 'undefined') {
+                console.error('QuaggaJS library not loaded. Barcode scanner will not be available.');
+                return;
+            }
+            
+            console.log('Initializing barcode scanner...');
+            window.boardGameScanner = new BoardGameBarcodeScanner({
+                title: 'Scan Board Game Barcode',
+                instruction: 'Position the barcode within the frame to search BoardGameGeek'
+            });
+            console.log('Barcode scanner initialized successfully');
+            
+        } catch (error) {
+            console.error('Failed to initialize barcode scanner:', error);
+        }
     }
 });
