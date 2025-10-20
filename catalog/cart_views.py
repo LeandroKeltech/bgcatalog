@@ -151,6 +151,13 @@ This is a quote request. Please contact the customer to confirm the purchase.
 """
         
         try:
+            print(f"Attempting to send email...")
+            print(f"EMAIL_BACKEND: {settings.EMAIL_BACKEND}")
+            print(f"EMAIL_HOST: {getattr(settings, 'EMAIL_HOST', 'Not set')}")
+            print(f"EMAIL_HOST_USER: {getattr(settings, 'EMAIL_HOST_USER', 'Not set')}")
+            print(f"DEFAULT_FROM_EMAIL: {settings.DEFAULT_FROM_EMAIL}")
+            print(f"ADMIN_EMAIL: {settings.ADMIN_EMAIL}")
+            
             send_mail(
                 subject=f'New Quote Request - {customer_name}',
                 message=message_body,
@@ -159,6 +166,8 @@ This is a quote request. Please contact the customer to confirm the purchase.
                 fail_silently=False,
             )
             
+            print("Email sent successfully!")
+            
             # Clear cart after sending email
             cart_items.delete()
             
@@ -166,7 +175,10 @@ This is a quote request. Please contact the customer to confirm the purchase.
             return redirect('public_catalog')
             
         except Exception as e:
-            messages.error(request, f'Error sending request. Please try again.')
+            print(f"Email sending failed: {str(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
+            messages.error(request, f'Error sending request: {str(e)}. Please try again.')
             return redirect('cart_view')
     
     return redirect('cart_view')
