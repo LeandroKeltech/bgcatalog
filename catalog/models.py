@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from django.db.models import Sum
 import json
 
 
@@ -160,6 +161,27 @@ class BoardGame(models.Model):
     def in_stock(self):
         """Check if game is in stock"""
         return self.stock_quantity > 0 and not self.is_sold
+    
+    @property
+    def available_quantity(self):
+        """Get available quantity considering reservations"""
+        reserved = self.get_reserved_quantity()
+        return max(0, self.stock_quantity - reserved)
+    
+    def get_reserved_quantity(self):
+        """Get total reserved quantity for this game"""
+        from django.utils import timezone
+        return self.stockreservation_set.filter(
+            expires_at__gt=timezone.now(),
+            status='active'
+        ).aggregate(
+            total=Sum('quantity')
+        )['total'] or 0
+    
+    @property
+    def is_available(self):
+        """Check if game is available for purchase (considering reservations)"""
+        return self.available_quantity > 0 and not self.is_sold
 
 
 class CartItem(models.Model):
@@ -182,3 +204,115 @@ class CartItem(models.Model):
         if self.game.final_price:
             return self.game.final_price * self.quantity
         return 0
+
+
+class StockReservation(models.Model):
+    """Model to track temporary stock reservations when users request quotes"""
+    
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('confirmed', 'Confirmed Sale'),
+        ('cancelled', 'Cancelled'),
+        ('expired', 'Expired'),
+    ]
+    
+    game = models.ForeignKey(BoardGame, on_delete=models.CASCADE, help_text="Reserved game")
+    quantity = models.IntegerField(validators=[MinValueValidator(1)], help_text="Reserved quantity")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    
+    # Customer information from quote request
+    customer_name = models.CharField(max_length=255, help_text="Customer name")
+    customer_email = models.EmailField(help_text="Customer email")
+    customer_phone = models.CharField(max_length=50, blank=True, help_text="Customer phone")
+    customer_message = models.TextField(blank=True, help_text="Customer message")
+    
+    # Session tracking
+    session_key = models.CharField(max_length=40, help_text="Session ID")
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True, help_text="When reservation was created")
+    expires_at = models.DateTimeField(help_text="When reservation expires")
+    confirmed_at = models.DateTimeField(null=True, blank=True, help_text="When sale was confirmed")
+    
+    # Admin notes
+    admin_notes = models.TextField(blank=True, help_text="Admin notes about this reservation")
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Stock Reservation"
+        verbose_name_plural = "Stock Reservations"
+    
+    def __str__(self):
+        return f"{self.game.name} x{self.quantity} - {self.customer_name} ({self.status})"
+    
+    def save(self, *args, **kwargs):
+        """Set expiration time if not set"""
+        if not self.expires_at:
+            # Default: 30 minutes from creation
+            self.expires_at = timezone.now() + timezone.timedelta(minutes=30)
+        super().save(*args, **kwargs)
+    
+    @property
+    def is_expired(self):
+        """Check if reservation has expired"""
+        return timezone.now() > self.expires_at
+    
+    @property
+    def time_remaining(self):
+        """Get remaining time for reservation"""
+        if self.is_expired:
+            return timezone.timedelta(0)
+        return self.expires_at - timezone.now()
+    
+    def confirm_sale(self, admin_notes=""):
+        """Confirm the sale and reduce actual stock"""
+        if self.status != 'active':
+            raise ValueError("Can only confirm active reservations")
+        
+        # Check if there's still enough stock
+        if self.game.stock_quantity < self.quantity:
+            raise ValueError("Not enough stock to confirm sale")
+        
+        # Update reservation
+        self.status = 'confirmed'
+        self.confirmed_at = timezone.now()
+        if admin_notes:
+            self.admin_notes = admin_notes
+        self.save()
+        
+        # Reduce actual stock
+        self.game.stock_quantity -= self.quantity
+        if self.game.stock_quantity == 0:
+            self.game.is_sold = True
+        self.game.save()
+    
+    def cancel_reservation(self, admin_notes=""):
+        """Cancel the reservation and free up stock"""
+        if self.status not in ['active', 'expired']:
+            raise ValueError("Can only cancel active or expired reservations")
+        
+        self.status = 'cancelled'
+        if admin_notes:
+            self.admin_notes = admin_notes
+        self.save()
+    
+    def extend_reservation(self, minutes=30):
+        """Extend reservation time"""
+        if self.status != 'active':
+            raise ValueError("Can only extend active reservations")
+        
+        self.expires_at = timezone.now() + timezone.timedelta(minutes=minutes)
+        self.save()
+    
+    @classmethod
+    def cleanup_expired(cls):
+        """Cleanup expired reservations"""
+        expired_reservations = cls.objects.filter(
+            status='active',
+            expires_at__lt=timezone.now()
+        )
+        
+        count = expired_reservations.count()
+        expired_reservations.update(status='expired')
+        
+        return count

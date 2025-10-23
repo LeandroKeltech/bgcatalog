@@ -8,7 +8,7 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Sum, Q
-from .models import BoardGame, CartItem
+from .models import BoardGame, CartItem, StockReservation
 
 
 def get_or_create_session_key(request):
@@ -37,7 +37,7 @@ def add_to_cart(request, pk):
     """Add game to shopping cart"""
     game = get_object_or_404(BoardGame, pk=pk)
     
-    if not game.in_stock:
+    if not game.is_available:
         messages.error(request, 'This game is not available at the moment.')
         return redirect('public_catalog')
     
@@ -50,7 +50,8 @@ def add_to_cart(request, pk):
     )
     
     if not created:
-        if cart_item.quantity < game.stock_quantity:
+        available = game.available_quantity
+        if cart_item.quantity < available:
             cart_item.quantity += 1
             cart_item.save()
             messages.success(request, f'Quantity of "{game.name}" updated in cart!')
@@ -82,12 +83,13 @@ def update_cart_quantity(request, pk):
         
         try:
             quantity = int(request.POST.get('quantity', 1))
-            if quantity > 0 and quantity <= cart_item.game.stock_quantity:
+            available = cart_item.game.available_quantity
+            if quantity > 0 and quantity <= available:
                 cart_item.quantity = quantity
                 cart_item.save()
                 messages.success(request, 'Quantity updated!')
             else:
-                messages.error(request, 'Invalid quantity.')
+                messages.error(request, f'Invalid quantity. Maximum available: {available}')
         except ValueError:
             messages.error(request, 'Invalid quantity.')
     
@@ -95,7 +97,7 @@ def update_cart_quantity(request, pk):
 
 
 def send_cart_email(request):
-    """Send cart contents to admin email"""
+    """Send cart contents to admin email and create stock reservations"""
     if request.method == 'POST':
         session_key = get_or_create_session_key(request)
         cart_items = CartItem.objects.filter(session_key=session_key)
@@ -109,6 +111,41 @@ def send_cart_email(request):
         customer_email = request.POST.get('customer_email', '')
         customer_phone = request.POST.get('customer_phone', '')
         customer_message = request.POST.get('message', '')
+        
+        # Check availability and create reservations first
+        reservations_created = []
+        availability_errors = []
+        
+        for item in cart_items:
+            available = item.game.available_quantity
+            if item.quantity > available:
+                availability_errors.append(
+                    f"{item.game.name}: requested {item.quantity}, only {available} available"
+                )
+            else:
+                # Create reservation
+                try:
+                    reservation = StockReservation.objects.create(
+                        game=item.game,
+                        quantity=item.quantity,
+                        customer_name=customer_name,
+                        customer_email=customer_email,
+                        customer_phone=customer_phone,
+                        customer_message=customer_message,
+                        session_key=session_key,
+                    )
+                    reservations_created.append(reservation)
+                except Exception as e:
+                    availability_errors.append(f"{item.game.name}: reservation failed - {str(e)}")
+        
+        # If there are availability errors, cancel all reservations and show error
+        if availability_errors:
+            for reservation in reservations_created:
+                reservation.delete()
+            
+            error_message = "Some items are no longer available:\n" + "\n".join(availability_errors)
+            messages.error(request, error_message)
+            return redirect('cart_view')
         
         # Build email message
         total = sum(item.subtotal for item in cart_items)
@@ -147,6 +184,12 @@ Stock Available: {game.stock_quantity}
 TOTAL: €{total:.2f}
 {'='*60}
 
+*** STOCK RESERVED ***
+Items have been temporarily reserved for 30 minutes.
+Please confirm or cancel the sale in the admin panel.
+
+Reservation IDs: {', '.join([str(r.id) for r in reservations_created])}
+
 This is a quote request. Please contact the customer to confirm the purchase.
 """
         
@@ -159,7 +202,7 @@ This is a quote request. Please contact the customer to confirm the purchase.
             print(f"ADMIN_EMAIL: {settings.ADMIN_EMAIL}")
             
             send_mail(
-                subject=f'New Quote Request - {customer_name}',
+                subject=f'New Quote Request - {customer_name} [STOCK RESERVED]',
                 message=message_body,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[settings.ADMIN_EMAIL],
@@ -167,17 +210,27 @@ This is a quote request. Please contact the customer to confirm the purchase.
             )
             
             print("Email sent successfully!")
+            print(f"Created {len(reservations_created)} stock reservations")
             
-            # Clear cart after sending email
+            # Clear cart after sending email and creating reservations
             cart_items.delete()
             
-            messages.success(request, 'Your request was sent successfully! We will contact you soon.')
+            messages.success(request, 
+                f'Your request was sent successfully! '
+                f'We have reserved {len(reservations_created)} item(s) for 30 minutes. '
+                f'We will contact you soon to confirm your purchase.'
+            )
             return redirect('public_catalog')
             
         except Exception as e:
             print(f"Email sending failed: {str(e)}")
             import traceback
             print(f"Full traceback: {traceback.format_exc()}")
+            
+            # If email fails, cancel reservations
+            for reservation in reservations_created:
+                reservation.delete()
+            
             messages.error(request, f'Error sending request: {str(e)}. Please try again.')
             return redirect('cart_view')
     
@@ -242,6 +295,9 @@ def admin_panel(request):
     if sort_by:
         games = games.order_by(sort_by)
     
+    # Get active reservations
+    active_reservations = StockReservation.objects.filter(status='active').order_by('-created_at')
+    
     # Statistics
     stats = {
         'total_games': BoardGame.objects.count(),
@@ -250,6 +306,8 @@ def admin_panel(request):
         'total_value': BoardGame.objects.filter(is_sold=False).aggregate(
             total=Sum('final_price')
         )['total'] or 0,
+        'active_reservations': active_reservations.count(),
+        'reserved_items': sum(r.quantity for r in active_reservations),
     }
     
     context = {
@@ -258,6 +316,91 @@ def admin_panel(request):
         'condition_choices': BoardGame.CONDITION_CHOICES,
         'sort_by': sort_by,
         'stats': stats,
+        'active_reservations': active_reservations,
     }
     
     return render(request, 'catalog/admin_panel.html', context)
+
+
+@login_required
+def reservation_management(request):
+    """Manage stock reservations"""
+    # Cleanup expired reservations first
+    expired_count = StockReservation.cleanup_expired()
+    if expired_count > 0:
+        messages.info(request, f'Cleaned up {expired_count} expired reservations.')
+    
+    reservations = StockReservation.objects.all().order_by('-created_at')
+    
+    # Filter by status
+    status_filter = request.GET.get('status', '')
+    if status_filter:
+        reservations = reservations.filter(status=status_filter)
+    
+    context = {
+        'reservations': reservations,
+        'status_filter': status_filter,
+        'status_choices': StockReservation.STATUS_CHOICES,
+    }
+    
+    return render(request, 'catalog/reservation_management.html', context)
+
+
+@login_required
+def confirm_reservation(request, pk):
+    """Confirm a reservation and complete the sale"""
+    reservation = get_object_or_404(StockReservation, pk=pk)
+    
+    if request.method == 'POST':
+        admin_notes = request.POST.get('admin_notes', '')
+        
+        try:
+            reservation.confirm_sale(admin_notes)
+            messages.success(request, 
+                f'Sale confirmed for {reservation.game.name} x{reservation.quantity}. '
+                f'Stock reduced from {reservation.game.stock_quantity + reservation.quantity} '
+                f'to {reservation.game.stock_quantity}.'
+            )
+        except ValueError as e:
+            messages.error(request, f'Cannot confirm sale: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'Error confirming sale: {str(e)}')
+    
+    return redirect('reservation_management')
+
+
+@login_required
+def cancel_reservation(request, pk):
+    """Cancel a reservation"""
+    reservation = get_object_or_404(StockReservation, pk=pk)
+    
+    if request.method == 'POST':
+        admin_notes = request.POST.get('admin_notes', '')
+        
+        try:
+            reservation.cancel_reservation(admin_notes)
+            messages.success(request, f'Reservation cancelled for {reservation.game.name} x{reservation.quantity}.')
+        except ValueError as e:
+            messages.error(request, f'Cannot cancel reservation: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'Error cancelling reservation: {str(e)}')
+    
+    return redirect('reservation_management')
+
+
+@login_required
+def extend_reservation(request, pk):
+    """Extend a reservation time"""
+    reservation = get_object_or_404(StockReservation, pk=pk)
+    
+    if request.method == 'POST':
+        try:
+            minutes = int(request.POST.get('minutes', 30))
+            reservation.extend_reservation(minutes)
+            messages.success(request, f'Reservation extended by {minutes} minutes.')
+        except ValueError as e:
+            messages.error(request, f'Cannot extend reservation: {str(e)}')
+        except Exception as e:
+            messages.error(request, f'Error extending reservation: {str(e)}')
+    
+    return redirect('reservation_management')

@@ -38,4 +38,10 @@ urlpatterns = [
     path('admin-login/', cart_views.admin_login, name='admin_login'),
     path('admin-logout/', cart_views.admin_logout, name='admin_logout'),
     path('admin-panel/', cart_views.admin_panel, name='admin_panel'),
+    
+    # Stock Reservations Management
+    path('admin/reservations/', cart_views.reservation_management, name='reservation_management'),
+    path('admin/reservation/<int:pk>/confirm/', cart_views.confirm_reservation, name='confirm_reservation'),
+    path('admin/reservation/<int:pk>/cancel/', cart_views.cancel_reservation, name='cancel_reservation'),
+    path('admin/reservation/<int:pk>/extend/', cart_views.extend_reservation, name='extend_reservation'),
 ]

@@ -59,7 +59,7 @@
     
     <!-- Statistics -->
     <div class="row mb-4">
-        <div class="col-md-3">
+        <div class="col-md-3 col-6 mb-3">
             <div class="card bg-primary text-white">
                 <div class="card-body">
                     <h3>{{ stats.total_games }}</h3>
@@ -67,7 +67,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-6 mb-3">
             <div class="card bg-success text-white">
                 <div class="card-body">
                     <h3>{{ stats.in_stock }}</h3>
@@ -75,7 +75,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-6 mb-3">
             <div class="card bg-warning text-white">
                 <div class="card-body">
                     <h3>{{ stats.sold }}</h3>
@@ -83,7 +83,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-6 mb-3">
             <div class="card bg-info text-white">
                 <div class="card-body">
                     <h3>€{{ stats.total_value|floatformat:2 }}</h3>
@@ -92,6 +92,24 @@
             </div>
         </div>
     </div>
+    
+    <!-- Active Reservations Alert -->
+    {% if stats.active_reservations > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
+                <div>
+                    <i class="bi bi-hourglass-split"></i>
+                    <strong>{{ stats.active_reservations }} Active Reservation{{ stats.active_reservations|pluralize }}</strong>
+                    - {{ stats.reserved_items }} item{{ stats.reserved_items|pluralize }} temporarily held
+                </div>
+                <a href="{% url 'reservation_management' %}" class="btn btn-warning btn-sm">
+                    <i class="bi bi-gear"></i> Manage Reservations
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
     
     <!-- Actions -->
     <div class="row mb-4">
