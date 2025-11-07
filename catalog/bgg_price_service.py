@@ -410,20 +410,27 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
     """
     Fetch game details from Board Game Atlas API.
     """
+    print(f"Fetching Board Game Atlas details for ID: {bga_id}")
     try:
         params = {
             "ids": bga_id,
             "client_id": BGA_CLIENT_ID
         }
         
+        print(f"BGA API request: {BGA_SEARCH_URL} with params {params}")
         response = requests.get(BGA_SEARCH_URL, params=params, timeout=10)
         
+        print(f"BGA API response status: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
             games = data.get("games", [])
             
+            print(f"BGA API returned {len(games)} games")
+            
             if games:
                 game = games[0]
+                
+                print(f"Processing BGA game: {game.get('name')}")
                 
                 # Map BGA data to our format
                 result = {
@@ -457,13 +464,18 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
                 }
                 
                 print(f"Board Game Atlas details succeeded for {game.get('name')}")
+                print(f"Result: name={result['name']}, players={result['min_players']}-{result['max_players']}, year={result['year_published']}")
                 return result
+            else:
+                print("BGA API returned empty games array")
         
         print(f"Board Game Atlas details failed with status {response.status_code}")
         return {"error": "Board Game Atlas API failed"}
         
     except Exception as e:
         print(f"Error fetching BGA details: {e}")
+        import traceback
+        traceback.print_exc()
         return {"error": str(e)}
 
 
