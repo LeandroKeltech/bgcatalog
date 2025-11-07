@@ -409,6 +409,7 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
 def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
     """
     Fetch game details from Board Game Atlas API.
+    Then try to enrich with BGG data.
     """
     print(f"Fetching Board Game Atlas details for ID: {bga_id}")
     try:
@@ -431,6 +432,7 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
                 game = games[0]
                 
                 print(f"Processing BGA game: {game.get('name')}")
+                print(f"BGA game data keys: {list(game.keys())}")
                 
                 # Extract designers from primary_designer or designers array
                 designers = []
@@ -443,48 +445,54 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
                 
                 # Try to get the actual BGG ID from the game's URL or rules_url
                 actual_bgg_id = None
-                if game.get("rules_url"):
-                    rules_url = game.get("rules_url")
-                    if "boardgamegeek.com" in rules_url:
-                        # Extract BGG ID from URL like https://boardgamegeek.com/boardgame/13/catan
-                        import re
-                        match = re.search(r'/boardgame/(\d+)', rules_url)
+                
+                # Check multiple fields for BGG ID
+                for url_field in ['url', 'rules_url', 'official_url']:
+                    url_value = game.get(url_field, '')
+                    if url_value and "boardgamegeek.com" in url_value:
+                        match = re.search(r'/boardgame/(\d+)', url_value)
                         if match:
                             actual_bgg_id = match.group(1)
-                            print(f"Found BGG ID {actual_bgg_id} from rules_url")
+                            print(f"Found BGG ID {actual_bgg_id} from {url_field}")
+                            break
                 
-                # If we have a real BGG ID, try to get better details via web scraping
+                # Get full description
+                description = game.get("description") or game.get("description_preview") or "No description available"
+                
+                year_published = game.get("year_published")
+                min_players = game.get("min_players")
+                max_players = game.get("max_players")
+                min_playtime = game.get("min_playtime")
+                max_playtime = game.get("max_playtime")
+                min_age = game.get("min_age")
+                
+                # If we have a real BGG ID, try to get complete details via web scraping
                 if actual_bgg_id:
-                    print(f"Attempting to enrich BGA data with BGG web scraping for ID {actual_bgg_id}")
+                    print(f"Found BGG ID {actual_bgg_id}, attempting comprehensive BGG web scraping...")
                     try:
-                        from bs4 import BeautifulSoup
+                        bgg_data = scrape_bgg_game_page(actual_bgg_id)
                         
-                        game_url = f"https://boardgamegeek.com/boardgame/{actual_bgg_id}"
-                        headers = {
-                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                        }
-                        
-                        resp = requests.get(game_url, headers=headers, timeout=10, verify=False)
-                        if resp.status_code == 200:
-                            soup = BeautifulSoup(resp.text, 'html.parser')
+                        # Override with BGG data where available (it's usually more complete)
+                        if bgg_data.get("designer"):
+                            designer = bgg_data["designer"]
+                            print(f"Using BGG designer: {designer}")
+                        if bgg_data.get("year_published"):
+                            year_published = bgg_data["year_published"]
+                            print(f"Using BGG year: {year_published}")
+                        if bgg_data.get("description") and len(bgg_data["description"]) > len(description):
+                            description = bgg_data["description"]
+                            print(f"Using BGG description (longer)")
+                        if bgg_data.get("min_players"):
+                            min_players = bgg_data["min_players"]
+                            max_players = bgg_data["max_players"]
+                        if bgg_data.get("min_playtime"):
+                            min_playtime = bgg_data["min_playtime"]
+                            max_playtime = bgg_data["max_playtime"]
+                        if bgg_data.get("min_age"):
+                            min_age = bgg_data["min_age"]
                             
-                            # Try to get better description
-                            meta_desc = soup.find('meta', attrs={'name': 'description'})
-                            if meta_desc:
-                                scraped_desc = meta_desc.get('content', '').strip()
-                                if scraped_desc and len(scraped_desc) > len(description):
-                                    description = scraped_desc
-                                    print(f"Enhanced description from BGG scraping")
-                            
-                            # Try to get designer if not found
-                            if not designer:
-                                designer_link = soup.find('a', href=re.compile(r'/boardgamedesigner/'))
-                                if designer_link:
-                                    designer = designer_link.get_text().strip()
-                                    print(f"Found designer from BGG: {designer}")
                     except Exception as scrape_err:
-                        print(f"BGG enrichment failed: {scrape_err}")
+                        print(f"BGG scraping failed but continuing with BGA data: {scrape_err}")
                 
                 # Extract categories
                 categories = []
@@ -500,24 +508,21 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
                     if isinstance(mech_list, list):
                         mechanics = [m.get("id") if isinstance(m, dict) else str(m) for m in mech_list[:5]]
                 
-                # Get full description (not just preview)
-                description = game.get("description") or game.get("description_preview") or "No description available"
-                
                 # Map BGA data to our format
                 result = {
                     "bgg_id": f"bga_{bga_id}",
                     "name": game.get("name"),
-                    "year_published": game.get("year_published"),
+                    "year_published": year_published,
                     "description": description,
                     "image_url": game.get("image_url"),
                     "thumbnail_url": game.get("thumb_url") or game.get("image_url"),
                     "designer": designer,
-                    "min_players": game.get("min_players"),
-                    "max_players": game.get("max_players"),
-                    "min_playtime": game.get("min_playtime"),
-                    "max_playtime": game.get("max_playtime"),
-                    "playing_time": game.get("max_playtime"),
-                    "min_age": game.get("min_age"),
+                    "min_players": min_players,
+                    "max_players": max_players,
+                    "min_playtime": min_playtime,
+                    "max_playtime": max_playtime,
+                    "playing_time": max_playtime,
+                    "min_age": min_age,
                     "categories": ", ".join(categories) if categories else None,
                     "mechanics": ", ".join(mechanics) if mechanics else None,
                     "rating_average": game.get("average_user_rating"),
@@ -534,8 +539,7 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
                     "last_seen": None,
                 }
                 
-                print(f"Board Game Atlas details succeeded for {game.get('name')}")
-                print(f"Result: name={result['name']}, designer={result['designer']}, players={result['min_players']}-{result['max_players']}, year={result['year_published']}")
+                print(f"Final result: designer={result['designer']}, year={result['year_published']}, players={result['min_players']}-{result['max_players']}")
                 return result
             else:
                 print("BGA API returned empty games array")
@@ -548,6 +552,87 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
         import traceback
         traceback.print_exc()
         return {"error": str(e)}
+
+
+def scrape_bgg_game_page(bgg_id: str) -> Dict[str, Any]:
+    """
+    Comprehensive web scraping of BGG game page to extract all details.
+    """
+    try:
+        from bs4 import BeautifulSoup
+        
+        game_url = f"https://boardgamegeek.com/boardgame/{bgg_id}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Referer": "https://boardgamegeek.com/",
+        }
+        
+        print(f"Scraping BGG game page: {game_url}")
+        response = requests.get(game_url, headers=headers, timeout=15, verify=False)
+        
+        if response.status_code != 200:
+            print(f"BGG scraping returned status {response.status_code}")
+            return {}
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        page_text = soup.get_text()
+        
+        result = {}
+        
+        # Extract year
+        year_match = re.search(r'\((\d{4})\)', soup.find('title').get_text() if soup.find('title') else '')
+        if year_match:
+            result["year_published"] = int(year_match.group(1))
+        
+        # Extract designer
+        designer_link = soup.find('a', href=re.compile(r'/boardgamedesigner/'))
+        if designer_link:
+            result["designer"] = designer_link.get_text().strip()
+        
+        # Extract description
+        meta_desc = soup.find('meta', attrs={'name': 'description'})
+        if meta_desc:
+            result["description"] = meta_desc.get('content', '').strip()
+        
+        # Extract players (e.g., "2-4 Players")
+        players_match = re.search(r'(\d+)[-–](\d+)\s+[Pp]layers?', page_text)
+        if players_match:
+            result["min_players"] = int(players_match.group(1))
+            result["max_players"] = int(players_match.group(2))
+        else:
+            players_match = re.search(r'(\d+)\s+[Pp]layers?', page_text)
+            if players_match:
+                result["min_players"] = int(players_match.group(1))
+                result["max_players"] = result["min_players"]
+        
+        # Extract playtime (e.g., "30-60 Min")
+        playtime_match = re.search(r'(\d+)[-–](\d+)\s+[Mm]in', page_text)
+        if playtime_match:
+            result["min_playtime"] = int(playtime_match.group(1))
+            result["max_playtime"] = int(playtime_match.group(2))
+        else:
+            playtime_match = re.search(r'(\d+)\s+[Mm]in', page_text)
+            if playtime_match:
+                result["min_playtime"] = int(playtime_match.group(1))
+                result["max_playtime"] = result["min_playtime"]
+        
+        # Extract age (e.g., "10+")
+        age_match = re.search(r'[Aa]ge[:\s]+(\d+)', page_text)
+        if age_match:
+            result["min_age"] = int(age_match.group(1))
+        else:
+            age_match = re.search(r'(\d+)\+', page_text)
+            if age_match:
+                result["min_age"] = int(age_match.group(1))
+        
+        print(f"BGG scraping extracted: {list(result.keys())}")
+        return result
+        
+    except Exception as e:
+        print(f"Error scraping BGG page: {e}")
+        return {}
 
 
 def get_bgg_game_details(bgg_id: str) -> Dict[str, Any]:
