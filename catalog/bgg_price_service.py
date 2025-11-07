@@ -583,15 +583,22 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict[str, Any]:
         
         result = {}
         
-        # Extract year
-        year_match = re.search(r'\((\d{4})\)', soup.find('title').get_text() if soup.find('title') else '')
-        if year_match:
-            result["year_published"] = int(year_match.group(1))
+        # Extract year from title
+        title_tag = soup.find('title')
+        if title_tag:
+            title_text = title_tag.get_text()
+            year_match = re.search(r'\((\d{4})\)', title_text)
+            if year_match:
+                result["year_published"] = int(year_match.group(1))
+                print(f"Extracted year from title: {result['year_published']}")
+            else:
+                print(f"No year found in title: {title_text}")
         
         # Extract designer
         designer_link = soup.find('a', href=re.compile(r'/boardgamedesigner/'))
         if designer_link:
             result["designer"] = designer_link.get_text().strip()
+            print(f"Extracted designer: {result['designer']}")
         
         # Extract description
         meta_desc = soup.find('meta', attrs={'name': 'description'})
