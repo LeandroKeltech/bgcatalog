@@ -19,13 +19,34 @@ BGG_SEARCH_URL = "https://boardgamegeek.com/xmlapi2/search"
 BGG_THING_URL = "https://boardgamegeek.com/xmlapi2/thing"
 BOARDGAMEPRICES_URL = "https://www.boardgameprices.co.uk/plugin/info"
 
+# More complete browser-like headers to avoid 401
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/xml, text/xml, */*",
     "Accept-Language": "en-US,en;q=0.9",
     "Accept-Encoding": "gzip, deflate, br",
     "Connection": "keep-alive",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "DNT": "1",
+    "Upgrade-Insecure-Requests": "1"
 }
+
+# Create a session to maintain cookies
+_bgg_session = None
+
+def get_bgg_session():
+    """Get or create a requests session with BGG cookies"""
+    global _bgg_session
+    if _bgg_session is None:
+        _bgg_session = requests.Session()
+        # Visit main page to get cookies
+        try:
+            _bgg_session.get("https://boardgamegeek.com/", headers=HEADERS, timeout=10, verify=False)
+        except:
+            pass
+    return _bgg_session
 
 
 def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
@@ -39,31 +60,31 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
         "exact": 1 if exact else 0
     }
     
+    # Get session with cookies
+    session = get_bgg_session()
+    
     # Try multiple strategies to avoid 401 errors
     strategies = [
-        # Strategy 1: Standard headers with SSL
+        # Strategy 1: Use session with full headers
         {
+            "use_session": True,
             "headers": HEADERS,
-            "verify": True,
+            "verify": False,
             "delay": 0
         },
-        # Strategy 2: Minimal headers with SSL
+        # Strategy 2: Session with minimal headers
         {
-            "headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
-            "verify": True,
-            "delay": 1
-        },
-        # Strategy 3: Minimal headers without SSL
-        {
+            "use_session": True,
             "headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
             "verify": False,
-            "delay": 2
-        },
-        # Strategy 4: Different User-Agent
-        {
-            "headers": {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"},
-            "verify": False,
             "delay": 1
+        },
+        # Strategy 3: Direct request without session
+        {
+            "use_session": False,
+            "headers": HEADERS,
+            "verify": False,
+            "delay": 0.5
         },
     ]
     
@@ -73,13 +94,23 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
                 time.sleep(strategy["delay"])
             
             print(f"Trying BGG search strategy {i+1}/{len(strategies)}")
-            response = requests.get(
-                BGG_SEARCH_URL, 
-                params=params, 
-                headers=strategy["headers"],
-                timeout=15,
-                verify=strategy["verify"]
-            )
+            
+            if strategy["use_session"]:
+                response = session.get(
+                    BGG_SEARCH_URL, 
+                    params=params, 
+                    headers=strategy["headers"],
+                    timeout=15,
+                    verify=strategy["verify"]
+                )
+            else:
+                response = requests.get(
+                    BGG_SEARCH_URL, 
+                    params=params, 
+                    headers=strategy["headers"],
+                    timeout=15,
+                    verify=strategy["verify"]
+                )
             
             # If we get a response (even if it's an error), check it
             if response.status_code == 200:
@@ -145,7 +176,7 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
         }
         
         print(f"Trying to scrape BGG search page: {search_url}")
-        response = requests.get(search_url, headers=headers, timeout=15, verify=False)
+        response = session.get(search_url, headers=headers, timeout=15, verify=False)
         
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
@@ -201,8 +232,12 @@ def get_bgg_game_details(bgg_id: str) -> Dict[str, Any]:
     """
     params = {"id": bgg_id, "stats": 1}
     
+    # Get session with cookies
+    session = get_bgg_session()
+    
     try:
-        response = requests.get(BGG_THING_URL, params=params, headers=HEADERS, timeout=10)
+        # Try with session first
+        response = session.get(BGG_THING_URL, params=params, headers=HEADERS, timeout=15, verify=False)
         response.raise_for_status()
         
         root = ET.fromstring(response.text)
