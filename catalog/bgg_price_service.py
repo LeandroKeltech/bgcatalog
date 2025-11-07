@@ -182,46 +182,63 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
             
+            # Debug: print a sample of the HTML to understand structure
+            print(f"Received HTML page with length: {len(response.text)} chars")
+            
             results = []
             # Look for game links in search results with thumbnails
             # BGG search results typically have rows with game info
             
             # Try to find game rows/items
-            game_rows = soup.find_all('tr', id=re.compile(r'row_')) or soup.find_all('div', class_=re.compile(r'game|item'))
+            game_rows = soup.find_all('tr', id=re.compile(r'row_'))
+            print(f"Found {len(game_rows)} table rows with id pattern 'row_'")
             
             if not game_rows:
-                # Fallback: look for links
-                for link in soup.find_all('a', href=True):
+                game_rows = soup.find_all('div', class_=re.compile(r'game|item'))
+                print(f"Found {len(game_rows)} divs with class pattern 'game' or 'item'")
+            
+            if not game_rows:
+                # Fallback: look for ANY links with /boardgame/ pattern
+                print("No structured rows found, searching for boardgame links...")
+                all_links = soup.find_all('a', href=re.compile(r'/boardgame/\d+'))
+                print(f"Found {len(all_links)} links matching /boardgame/XXXXX pattern")
+                
+                for link in all_links:
                     href = link.get('href', '')
-                    if '/boardgame/' in href and href.count('/') >= 3:
+                    if '/boardgame/' in href:
                         try:
                             # Extract BGG ID from URL like /boardgame/13/catan
                             parts = href.split('/')
-                            if len(parts) >= 3 and parts[1] == 'boardgame':
-                                bgg_id = parts[2]
-                                if bgg_id.isdigit():
-                                    game_name = link.get_text().strip()
-                                    if game_name and len(game_name) > 1:
-                                        # Avoid duplicates
-                                        if not any(r['bgg_id'] == bgg_id for r in results):
-                                            # Try to find nearby image
-                                            thumbnail = None
-                                            parent = link.parent
-                                            if parent:
-                                                img = parent.find('img')
-                                                if img:
-                                                    thumbnail = img.get('src')
-                                            
-                                            results.append({
-                                                "bgg_id": bgg_id,
-                                                "name": game_name,
-                                                "year": None,
-                                                "type": "boardgame",
-                                                "thumbnail": thumbnail
-                                            })
-                                            if len(results) >= 20:
-                                                break
+                            # Find the boardgame part and get the next element (ID)
+                            if 'boardgame' in parts:
+                                idx = parts.index('boardgame')
+                                if idx + 1 < len(parts):
+                                    bgg_id = parts[idx + 1]
+                                    if bgg_id.isdigit():
+                                        game_name = link.get_text().strip()
+                                        if game_name and len(game_name) > 1:
+                                            # Avoid duplicates
+                                            if not any(r['bgg_id'] == bgg_id for r in results):
+                                                # Try to find nearby image
+                                                thumbnail = None
+                                                parent = link.parent
+                                                if parent:
+                                                    img = parent.find('img')
+                                                    if img:
+                                                        thumbnail = img.get('src') or img.get('data-src')
+                                                
+                                                print(f"Found game via link: {game_name} (ID: {bgg_id})")
+                                                results.append({
+                                                    "bgg_id": bgg_id,
+                                                    "name": game_name,
+                                                    "year": None,
+                                                    "type": "boardgame",
+                                                    "thumbnail": thumbnail
+                                                })
+                                                if len(results) >= 20:
+                                                    break
                         except Exception as parse_error:
+                            print(f"Error parsing link {href}: {parse_error}")
                             continue
             else:
                 # Parse structured rows
