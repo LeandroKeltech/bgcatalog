@@ -432,28 +432,99 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
                 
                 print(f"Processing BGA game: {game.get('name')}")
                 
+                # Extract designers from primary_designer or designers array
+                designers = []
+                if game.get("primary_designer"):
+                    designers.append(game.get("primary_designer"))
+                elif game.get("designers"):
+                    designers = game.get("designers", [])[:3]  # Limit to 3
+                
+                designer = ", ".join(designers) if designers else None
+                
+                # Try to get the actual BGG ID from the game's URL or rules_url
+                actual_bgg_id = None
+                if game.get("rules_url"):
+                    rules_url = game.get("rules_url")
+                    if "boardgamegeek.com" in rules_url:
+                        # Extract BGG ID from URL like https://boardgamegeek.com/boardgame/13/catan
+                        import re
+                        match = re.search(r'/boardgame/(\d+)', rules_url)
+                        if match:
+                            actual_bgg_id = match.group(1)
+                            print(f"Found BGG ID {actual_bgg_id} from rules_url")
+                
+                # If we have a real BGG ID, try to get better details via web scraping
+                if actual_bgg_id:
+                    print(f"Attempting to enrich BGA data with BGG web scraping for ID {actual_bgg_id}")
+                    try:
+                        from bs4 import BeautifulSoup
+                        
+                        game_url = f"https://boardgamegeek.com/boardgame/{actual_bgg_id}"
+                        headers = {
+                            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                        }
+                        
+                        resp = requests.get(game_url, headers=headers, timeout=10, verify=False)
+                        if resp.status_code == 200:
+                            soup = BeautifulSoup(resp.text, 'html.parser')
+                            
+                            # Try to get better description
+                            meta_desc = soup.find('meta', attrs={'name': 'description'})
+                            if meta_desc:
+                                scraped_desc = meta_desc.get('content', '').strip()
+                                if scraped_desc and len(scraped_desc) > len(description):
+                                    description = scraped_desc
+                                    print(f"Enhanced description from BGG scraping")
+                            
+                            # Try to get designer if not found
+                            if not designer:
+                                designer_link = soup.find('a', href=re.compile(r'/boardgamedesigner/'))
+                                if designer_link:
+                                    designer = designer_link.get_text().strip()
+                                    print(f"Found designer from BGG: {designer}")
+                    except Exception as scrape_err:
+                        print(f"BGG enrichment failed: {scrape_err}")
+                
+                # Extract categories
+                categories = []
+                if game.get("categories"):
+                    cat_list = game.get("categories", [])
+                    if isinstance(cat_list, list):
+                        categories = [c.get("id") if isinstance(c, dict) else str(c) for c in cat_list[:5]]
+                
+                # Extract mechanics
+                mechanics = []
+                if game.get("mechanics"):
+                    mech_list = game.get("mechanics", [])
+                    if isinstance(mech_list, list):
+                        mechanics = [m.get("id") if isinstance(m, dict) else str(m) for m in mech_list[:5]]
+                
+                # Get full description (not just preview)
+                description = game.get("description") or game.get("description_preview") or "No description available"
+                
                 # Map BGA data to our format
                 result = {
                     "bgg_id": f"bga_{bga_id}",
                     "name": game.get("name"),
                     "year_published": game.get("year_published"),
-                    "description": game.get("description_preview") or game.get("description"),
+                    "description": description,
                     "image_url": game.get("image_url"),
                     "thumbnail_url": game.get("thumb_url") or game.get("image_url"),
-                    "designer": None,  # BGA doesn't provide designer in simple format
+                    "designer": designer,
                     "min_players": game.get("min_players"),
                     "max_players": game.get("max_players"),
                     "min_playtime": game.get("min_playtime"),
                     "max_playtime": game.get("max_playtime"),
                     "playing_time": game.get("max_playtime"),
                     "min_age": game.get("min_age"),
-                    "categories": None,
-                    "mechanics": None,
+                    "categories": ", ".join(categories) if categories else None,
+                    "mechanics": ", ".join(mechanics) if mechanics else None,
                     "rating_average": game.get("average_user_rating"),
                     "rating_bayes": None,
                     "rank_overall": game.get("rank"),
                     "num_ratings": game.get("num_user_ratings"),
-                    # Price data - try to fetch from BoardGamePrices if we have BGG ID
+                    # Price data
                     "msrp_price": game.get("msrp"),
                     "price_incl_shipping": None,
                     "store_name": None,
@@ -464,7 +535,7 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
                 }
                 
                 print(f"Board Game Atlas details succeeded for {game.get('name')}")
-                print(f"Result: name={result['name']}, players={result['min_players']}-{result['max_players']}, year={result['year_published']}")
+                print(f"Result: name={result['name']}, designer={result['designer']}, players={result['min_players']}-{result['max_players']}, year={result['year_published']}")
                 return result
             else:
                 print("BGA API returned empty games array")
