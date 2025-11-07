@@ -242,44 +242,60 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
                             continue
             else:
                 # Parse structured rows
+                print(f"Processing {len(game_rows)} structured rows...")
                 for row in game_rows:
                     try:
-                        # Find game link
-                        link = row.find('a', href=re.compile(r'/boardgame/\d+/'))
+                        # Find game link - try multiple patterns
+                        link = row.find('a', href=re.compile(r'/boardgame/\d+'))
                         if not link:
                             continue
                         
                         href = link.get('href', '')
+                        
+                        # Extract BGG ID from URL - handle different URL formats
+                        # Could be: /boardgame/123/name or boardgame/123/name or https://...
                         parts = href.split('/')
-                        if len(parts) >= 3 and parts[1] == 'boardgame':
-                            bgg_id = parts[2]
-                            if bgg_id.isdigit():
-                                game_name = link.get_text().strip()
-                                
-                                # Try to find thumbnail
-                                thumbnail = None
-                                img = row.find('img')
-                                if img:
-                                    thumbnail = img.get('src')
-                                
-                                # Try to find year
-                                year = None
-                                year_match = re.search(r'\((\d{4})\)', row.get_text())
-                                if year_match:
-                                    year = int(year_match.group(1))
-                                
-                                if game_name and len(game_name) > 1:
-                                    if not any(r['bgg_id'] == bgg_id for r in results):
-                                        results.append({
-                                            "bgg_id": bgg_id,
-                                            "name": game_name,
-                                            "year": year,
-                                            "type": "boardgame",
-                                            "thumbnail": thumbnail
-                                        })
-                                        if len(results) >= 20:
-                                            break
+                        bgg_id = None
+                        
+                        # Find 'boardgame' in parts and get the next element
+                        for i, part in enumerate(parts):
+                            if part == 'boardgame' and i + 1 < len(parts):
+                                potential_id = parts[i + 1]
+                                if potential_id.isdigit():
+                                    bgg_id = potential_id
+                                    break
+                        
+                        if not bgg_id:
+                            continue
+                        
+                        game_name = link.get_text().strip()
+                        
+                        # Try to find thumbnail
+                        thumbnail = None
+                        img = row.find('img')
+                        if img:
+                            thumbnail = img.get('src') or img.get('data-src')
+                        
+                        # Try to find year
+                        year = None
+                        year_match = re.search(r'\((\d{4})\)', row.get_text())
+                        if year_match:
+                            year = int(year_match.group(1))
+                        
+                        if game_name and len(game_name) > 1:
+                            if not any(r['bgg_id'] == bgg_id for r in results):
+                                print(f"Found game from row: {game_name} (ID: {bgg_id}, Year: {year})")
+                                results.append({
+                                    "bgg_id": bgg_id,
+                                    "name": game_name,
+                                    "year": year,
+                                    "type": "boardgame",
+                                    "thumbnail": thumbnail
+                                })
+                                if len(results) >= 20:
+                                    break
                     except Exception as parse_error:
+                        print(f"Error parsing row: {parse_error}")
                         continue
             
             if results:
