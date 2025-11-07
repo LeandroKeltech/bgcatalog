@@ -130,8 +130,68 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
             print(f"Strategy {i+1} unexpected error: {e}")
             continue
     
-    # All strategies failed
-    print(f"All {len(strategies)} strategies failed for BGG search")
+    # All API strategies failed, try web scraping as fallback
+    print(f"All {len(strategies)} API strategies failed, trying web scraping fallback...")
+    try:
+        from bs4 import BeautifulSoup
+        
+        # Try scraping BGG search page
+        search_url = f"https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q={query}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Referer": "https://boardgamegeek.com/",
+        }
+        
+        print(f"Trying to scrape BGG search page: {search_url}")
+        response = requests.get(search_url, headers=headers, timeout=15, verify=False)
+        
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            results = []
+            # Look for game links in search results
+            # BGG search results typically have links like /boardgame/XXXXX/game-name
+            for link in soup.find_all('a', href=True):
+                href = link.get('href', '')
+                if '/boardgame/' in href and href.count('/') >= 3:
+                    try:
+                        # Extract BGG ID from URL like /boardgame/13/catan
+                        parts = href.split('/')
+                        if len(parts) >= 3 and parts[1] == 'boardgame':
+                            bgg_id = parts[2]
+                            if bgg_id.isdigit():
+                                game_name = link.get_text().strip()
+                                if game_name and len(game_name) > 1:
+                                    # Avoid duplicates
+                                    if not any(r['bgg_id'] == bgg_id for r in results):
+                                        results.append({
+                                            "bgg_id": bgg_id,
+                                            "name": game_name,
+                                            "year": None,
+                                            "type": "boardgame"
+                                        })
+                                        if len(results) >= 20:
+                                            break
+                    except Exception as parse_error:
+                        continue
+            
+            if results:
+                print(f"Web scraping succeeded! Found {len(results)} results")
+                return results
+            else:
+                print("Web scraping found no results")
+        else:
+            print(f"Web scraping failed with status {response.status_code}")
+            
+    except ImportError:
+        print("BeautifulSoup not available for web scraping fallback")
+    except Exception as scrape_error:
+        print(f"Web scraping error: {scrape_error}")
+    
+    # Ultimate fallback - return empty list
+    print("All strategies including web scraping failed")
     return []
 
 
