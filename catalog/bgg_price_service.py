@@ -243,11 +243,15 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
             else:
                 # Parse structured rows
                 print(f"Processing {len(game_rows)} structured rows...")
+                processed = 0
                 for row in game_rows:
                     try:
+                        processed += 1
                         # Find game link - try multiple patterns
                         link = row.find('a', href=re.compile(r'/boardgame/\d+'))
                         if not link:
+                            if processed <= 3:  # Debug first 3 rows
+                                print(f"Row {processed}: No link found with /boardgame/ pattern")
                             continue
                         
                         href = link.get('href', '')
@@ -266,9 +270,14 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
                                     break
                         
                         if not bgg_id:
+                            if processed <= 3:  # Debug first 3 rows
+                                print(f"Row {processed}: Found link {href} but couldn't extract ID")
                             continue
                         
                         game_name = link.get_text().strip()
+                        
+                        if processed <= 3:  # Debug first 3 rows
+                            print(f"Row {processed}: Found link text '{game_name}' for ID {bgg_id}")
                         
                         # Try to find thumbnail
                         thumbnail = None
@@ -294,8 +303,12 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
                                 })
                                 if len(results) >= 20:
                                     break
+                        else:
+                            if processed <= 3:  # Debug first 3 rows
+                                print(f"Row {processed}: Game name too short or empty: '{game_name}'")
                     except Exception as parse_error:
-                        print(f"Error parsing row: {parse_error}")
+                        if processed <= 3:  # Debug first 3 rows
+                            print(f"Row {processed} error: {parse_error}")
                         continue
             
             if results:
