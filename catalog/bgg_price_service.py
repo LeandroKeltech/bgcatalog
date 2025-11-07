@@ -4,6 +4,7 @@ BoardGameGeek and BoardGamePrices integration service
 import requests
 import urllib3
 import xml.etree.ElementTree as ET
+import time
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
@@ -38,59 +39,65 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
         "exact": 1 if exact else 0
     }
     
-    try:
-        response = requests.get(BGG_SEARCH_URL, params=params, headers=HEADERS, timeout=10)
-        response.raise_for_status()
-        
-        root = ET.fromstring(response.text)
-        items = root.findall("item")
-        
-        results = []
-        for item in items[:20]:  # Limit to first 20 results
-            bgg_id = item.attrib.get("id")
-            game_type = item.attrib.get("type")
-            
-            # Get primary name
-            name_elem = item.find("name[@type='primary']")
-            if name_elem is None:
-                name_elem = item.find("name")
-            name = name_elem.attrib.get("value", "Unknown") if name_elem is not None else "Unknown"
-            
-            # Get year
-            year_elem = item.find("yearpublished")
-            year = year_elem.attrib.get("value") if year_elem is not None else None
-            
-            results.append({
-                "bgg_id": bgg_id,
-                "name": name,
-                "year": int(year) if year else None,
-                "type": game_type
-            })
-        
-        return results
+    # Try multiple strategies to avoid 401 errors
+    strategies = [
+        # Strategy 1: Standard headers with SSL
+        {
+            "headers": HEADERS,
+            "verify": True,
+            "delay": 0
+        },
+        # Strategy 2: Minimal headers with SSL
+        {
+            "headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+            "verify": True,
+            "delay": 1
+        },
+        # Strategy 3: Minimal headers without SSL
+        {
+            "headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"},
+            "verify": False,
+            "delay": 2
+        },
+        # Strategy 4: Different User-Agent
+        {
+            "headers": {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"},
+            "verify": False,
+            "delay": 1
+        },
+    ]
     
-    except requests.exceptions.HTTPError as e:
-        if e.response.status_code == 401:
-            print(f"BGG API returned 401 Unauthorized. Trying with simpler headers...")
-            # Retry with minimal headers
-            try:
-                simple_headers = {
-                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                }
-                response = requests.get(BGG_SEARCH_URL, params=params, headers=simple_headers, timeout=10, verify=False)
-                response.raise_for_status()
-                
+    for i, strategy in enumerate(strategies):
+        try:
+            if strategy["delay"] > 0:
+                time.sleep(strategy["delay"])
+            
+            print(f"Trying BGG search strategy {i+1}/{len(strategies)}")
+            response = requests.get(
+                BGG_SEARCH_URL, 
+                params=params, 
+                headers=strategy["headers"],
+                timeout=15,
+                verify=strategy["verify"]
+            )
+            
+            # If we get a response (even if it's an error), check it
+            if response.status_code == 200:
                 root = ET.fromstring(response.text)
                 items = root.findall("item")
                 
                 results = []
-                for item in items[:20]:
+                for item in items[:20]:  # Limit to first 20 results
                     bgg_id = item.attrib.get("id")
                     game_type = item.attrib.get("type")
+                    
+                    # Get primary name
                     name_elem = item.find("name[@type='primary']")
                     if name_elem is None:
                         name_elem = item.find("name")
                     name = name_elem.attrib.get("value", "Unknown") if name_elem is not None else "Unknown"
+                    
+                    # Get year
                     year_elem = item.find("yearpublished")
                     year = year_elem.attrib.get("value") if year_elem is not None else None
                     
@@ -101,23 +108,31 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
                         "type": game_type
                     })
                 
-                print(f"Retry succeeded with simple headers, found {len(results)} results")
+                print(f"Strategy {i+1} succeeded! Found {len(results)} results")
                 return results
-            except Exception as retry_error:
-                print(f"Retry also failed: {retry_error}")
-                return []
-        else:
-            print(f"HTTP Error searching BGG: {e}")
-        return []
-    except requests.exceptions.RequestException as e:
-        print(f"Network error searching BGG: {e}")
-        return []
-    except ET.ParseError as e:
-        print(f"XML parsing error from BGG response: {e}")
-        return []
-    except Exception as e:
-        print(f"Unexpected error searching BGG: {e}")
-        return []
+            elif response.status_code == 401:
+                print(f"Strategy {i+1} got 401, trying next strategy...")
+                continue
+            else:
+                print(f"Strategy {i+1} got status {response.status_code}, trying next...")
+                continue
+                
+        except requests.exceptions.HTTPError as e:
+            print(f"Strategy {i+1} HTTP error: {e}")
+            continue
+        except requests.exceptions.RequestException as e:
+            print(f"Strategy {i+1} network error: {e}")
+            continue
+        except ET.ParseError as e:
+            print(f"Strategy {i+1} XML parse error: {e}")
+            continue
+        except Exception as e:
+            print(f"Strategy {i+1} unexpected error: {e}")
+            continue
+    
+    # All strategies failed
+    print(f"All {len(strategies)} strategies failed for BGG search")
+    return []
 
 
 def get_bgg_game_details(bgg_id: str) -> Dict[str, Any]:
