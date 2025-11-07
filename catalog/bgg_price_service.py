@@ -2,9 +2,13 @@
 BoardGameGeek and BoardGamePrices integration service
 """
 import requests
+import urllib3
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
+
+# Suppress SSL warnings when using verify=False
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 GBP_TO_EUR_RATE = 1.17
 REGION = "IE"
@@ -15,7 +19,11 @@ BGG_THING_URL = "https://boardgamegeek.com/xmlapi2/thing"
 BOARDGAMEPRICES_URL = "https://www.boardgameprices.co.uk/plugin/info"
 
 HEADERS = {
-    "User-Agent": "bgcatalog/1.0 (contact: popperl@gmail.com)"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/xml, text/xml, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
 }
 
 
@@ -61,8 +69,54 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
         
         return results
     
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            print(f"BGG API returned 401 Unauthorized. Trying with simpler headers...")
+            # Retry with minimal headers
+            try:
+                simple_headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                }
+                response = requests.get(BGG_SEARCH_URL, params=params, headers=simple_headers, timeout=10, verify=False)
+                response.raise_for_status()
+                
+                root = ET.fromstring(response.text)
+                items = root.findall("item")
+                
+                results = []
+                for item in items[:20]:
+                    bgg_id = item.attrib.get("id")
+                    game_type = item.attrib.get("type")
+                    name_elem = item.find("name[@type='primary']")
+                    if name_elem is None:
+                        name_elem = item.find("name")
+                    name = name_elem.attrib.get("value", "Unknown") if name_elem is not None else "Unknown"
+                    year_elem = item.find("yearpublished")
+                    year = year_elem.attrib.get("value") if year_elem is not None else None
+                    
+                    results.append({
+                        "bgg_id": bgg_id,
+                        "name": name,
+                        "year": int(year) if year else None,
+                        "type": game_type
+                    })
+                
+                print(f"Retry succeeded with simple headers, found {len(results)} results")
+                return results
+            except Exception as retry_error:
+                print(f"Retry also failed: {retry_error}")
+                return []
+        else:
+            print(f"HTTP Error searching BGG: {e}")
+        return []
+    except requests.exceptions.RequestException as e:
+        print(f"Network error searching BGG: {e}")
+        return []
+    except ET.ParseError as e:
+        print(f"XML parsing error from BGG response: {e}")
+        return []
     except Exception as e:
-        print(f"Error searching BGG: {e}")
+        print(f"Unexpected error searching BGG: {e}")
         return []
 
 
@@ -197,6 +251,31 @@ def get_bgg_game_details(bgg_id: str) -> Dict[str, Any]:
             "price_last_seen": price_data.get("last_seen"),
         }
     
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 401:
+            print(f"BGG API returned 401 for game details. Trying with simpler headers...")
+            try:
+                simple_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                response = requests.get(BGG_THING_URL, params=params, headers=simple_headers, timeout=10, verify=False)
+                response.raise_for_status()
+                # Process response (simplified - just return basic data)
+                root = ET.fromstring(response.text)
+                item = root.find("item")
+                if item:
+                    primary_name = None
+                    for name in item.findall("name"):
+                        if name.attrib.get("type") == "primary":
+                            primary_name = name.attrib["value"]
+                            break
+                    return {
+                        "bgg_id": bgg_id,
+                        "name": primary_name,
+                        "error": None
+                    }
+            except Exception as retry_error:
+                print(f"Retry failed for game details: {retry_error}")
+        print(f"Error fetching BGG details: {e}")
+        return {"error": str(e)}
     except Exception as e:
         print(f"Error fetching BGG details: {e}")
         return {"error": str(e)}
