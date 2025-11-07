@@ -433,6 +433,8 @@ def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
                 
                 print(f"Processing BGA game: {game.get('name')}")
                 print(f"BGA game data keys: {list(game.keys())}")
+                print(f"BGA raw data - year: {game.get('year_published')}, designer: {game.get('primary_designer')}, designers: {game.get('designers')}")
+                print(f"BGA raw data - url: {game.get('url')}, rules_url: {game.get('rules_url')}, official_url: {game.get('official_url')}")
                 
                 # Extract designers from primary_designer or designers array
                 designers = []
