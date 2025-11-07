@@ -5,6 +5,7 @@ import requests
 import urllib3
 import xml.etree.ElementTree as ET
 import time
+import re
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
@@ -182,26 +183,82 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
             soup = BeautifulSoup(response.text, 'html.parser')
             
             results = []
-            # Look for game links in search results
-            # BGG search results typically have links like /boardgame/XXXXX/game-name
-            for link in soup.find_all('a', href=True):
-                href = link.get('href', '')
-                if '/boardgame/' in href and href.count('/') >= 3:
+            # Look for game links in search results with thumbnails
+            # BGG search results typically have rows with game info
+            
+            # Try to find game rows/items
+            game_rows = soup.find_all('tr', id=re.compile(r'row_')) or soup.find_all('div', class_=re.compile(r'game|item'))
+            
+            if not game_rows:
+                # Fallback: look for links
+                for link in soup.find_all('a', href=True):
+                    href = link.get('href', '')
+                    if '/boardgame/' in href and href.count('/') >= 3:
+                        try:
+                            # Extract BGG ID from URL like /boardgame/13/catan
+                            parts = href.split('/')
+                            if len(parts) >= 3 and parts[1] == 'boardgame':
+                                bgg_id = parts[2]
+                                if bgg_id.isdigit():
+                                    game_name = link.get_text().strip()
+                                    if game_name and len(game_name) > 1:
+                                        # Avoid duplicates
+                                        if not any(r['bgg_id'] == bgg_id for r in results):
+                                            # Try to find nearby image
+                                            thumbnail = None
+                                            parent = link.parent
+                                            if parent:
+                                                img = parent.find('img')
+                                                if img:
+                                                    thumbnail = img.get('src')
+                                            
+                                            results.append({
+                                                "bgg_id": bgg_id,
+                                                "name": game_name,
+                                                "year": None,
+                                                "type": "boardgame",
+                                                "thumbnail": thumbnail
+                                            })
+                                            if len(results) >= 20:
+                                                break
+                        except Exception as parse_error:
+                            continue
+            else:
+                # Parse structured rows
+                for row in game_rows:
                     try:
-                        # Extract BGG ID from URL like /boardgame/13/catan
+                        # Find game link
+                        link = row.find('a', href=re.compile(r'/boardgame/\d+/'))
+                        if not link:
+                            continue
+                        
+                        href = link.get('href', '')
                         parts = href.split('/')
                         if len(parts) >= 3 and parts[1] == 'boardgame':
                             bgg_id = parts[2]
                             if bgg_id.isdigit():
                                 game_name = link.get_text().strip()
+                                
+                                # Try to find thumbnail
+                                thumbnail = None
+                                img = row.find('img')
+                                if img:
+                                    thumbnail = img.get('src')
+                                
+                                # Try to find year
+                                year = None
+                                year_match = re.search(r'\((\d{4})\)', row.get_text())
+                                if year_match:
+                                    year = int(year_match.group(1))
+                                
                                 if game_name and len(game_name) > 1:
-                                    # Avoid duplicates
                                     if not any(r['bgg_id'] == bgg_id for r in results):
                                         results.append({
                                             "bgg_id": bgg_id,
                                             "name": game_name,
-                                            "year": None,
-                                            "type": "boardgame"
+                                            "year": year,
+                                            "type": "boardgame",
+                                            "thumbnail": thumbnail
                                         })
                                         if len(results) >= 20:
                                             break
@@ -396,23 +453,178 @@ def get_bgg_game_details(bgg_id: str) -> Dict[str, Any]:
                         if h1_tag:
                             primary_name = h1_tag.get_text().strip()
                     
-                    # Try to find year
+                    # Try to find year - multiple approaches
                     year_published = None
-                    year_span = soup.find('span', class_='yearpublished')
-                    if year_span:
-                        year_text = year_span.get_text().strip('()')
-                        if year_text.isdigit():
-                            year_published = int(year_text)
+                    # Try meta tags first
+                    for meta in soup.find_all('meta'):
+                        if meta.get('property') == 'og:title' or meta.get('name') == 'title':
+                            content = meta.get('content', '')
+                            # Look for (YYYY) pattern
+                            import re
+                            year_match = re.search(r'\((\d{4})\)', content)
+                            if year_match:
+                                year_published = int(year_match.group(1))
+                                break
                     
-                    # Try to find thumbnail
+                    # Fallback to searching in page text
+                    if not year_published:
+                        year_span = soup.find('span', class_='yearpublished')
+                        if year_span:
+                            year_text = year_span.get_text().strip('()')
+                            if year_text.isdigit():
+                                year_published = int(year_text)
+                    
+                    # Try to find designer
+                    designer = None
+                    # Look for designer link or text
+                    designer_link = soup.find('a', href=re.compile(r'/boardgamedesigner/'))
+                    if designer_link:
+                        designer = designer_link.get_text().strip()
+                    
+                    # Try to find description
+                    description = None
+                    # Try meta description first
+                    meta_desc = soup.find('meta', attrs={'name': 'description'})
+                    if meta_desc:
+                        description = meta_desc.get('content', '').strip()
+                    
+                    # Fallback to og:description
+                    if not description:
+                        og_desc = soup.find('meta', property='og:description')
+                        if og_desc:
+                            description = og_desc.get('content', '').strip()
+                    
+                    # Fallback to article or main content
+                    if not description:
+                        article = soup.find('article') or soup.find('div', class_='game-description')
+                        if article:
+                            # Get first paragraph
+                            first_p = article.find('p')
+                            if first_p:
+                                description = first_p.get_text().strip()
+                    
+                    # Try to find thumbnail/image
                     thumbnail_url = None
-                    img_tag = soup.find('img', class_='game-image')
-                    if not img_tag:
-                        img_tag = soup.find('meta', property='og:image')
+                    image_url = None
+                    
+                    # Try og:image first (usually the best quality)
+                    og_image = soup.find('meta', property='og:image')
+                    if og_image:
+                        image_url = og_image.get('content')
+                        thumbnail_url = image_url
+                    
+                    # Fallback to game-image class
+                    if not thumbnail_url:
+                        img_tag = soup.find('img', class_='game-image')
                         if img_tag:
-                            thumbnail_url = img_tag.get('content')
+                            thumbnail_url = img_tag.get('src')
+                            image_url = thumbnail_url
+                    
+                    # Fallback to any img with boardgame in src
+                    if not thumbnail_url:
+                        for img in soup.find_all('img'):
+                            src = img.get('src', '')
+                            if 'boardgame' in src.lower() or 'geekdo' in src.lower():
+                                thumbnail_url = src
+                                image_url = src
+                                break
+                    
+                    # Try to extract game stats (players, playtime, age)
+                    min_players = None
+                    max_players = None
+                    min_playtime = None
+                    max_playtime = None
+                    playing_time = None
+                    min_age = None
+                    
+                    # Look for gameplay info sections
+                    # BGG often has divs/spans with specific classes or data attributes
+                    page_text = soup.get_text()
+                    
+                    # Try to find number of players (e.g., "2-4 Players")
+                    players_match = re.search(r'(\d+)[-–](\d+)\s+[Pp]layers?', page_text)
+                    if players_match:
+                        min_players = int(players_match.group(1))
+                        max_players = int(players_match.group(2))
                     else:
-                        thumbnail_url = img_tag.get('src')
+                        # Single player count
+                        players_match = re.search(r'(\d+)\s+[Pp]layers?', page_text)
+                        if players_match:
+                            min_players = int(players_match.group(1))
+                            max_players = min_players
+                    
+                    # Try to find playtime (e.g., "30-60 Min", "45 Minutes")
+                    playtime_match = re.search(r'(\d+)[-–](\d+)\s+[Mm]in', page_text)
+                    if playtime_match:
+                        min_playtime = int(playtime_match.group(1))
+                        max_playtime = int(playtime_match.group(2))
+                        playing_time = max_playtime
+                    else:
+                        # Single playtime
+                        playtime_match = re.search(r'(\d+)\s+[Mm]in', page_text)
+                        if playtime_match:
+                            playing_time = int(playtime_match.group(1))
+                            min_playtime = playing_time
+                            max_playtime = playing_time
+                    
+                    # Try to find minimum age (e.g., "10+", "Age: 12+")
+                    age_match = re.search(r'[Aa]ge[:\s]+(\d+)', page_text)
+                    if age_match:
+                        min_age = int(age_match.group(1))
+                    else:
+                        age_match = re.search(r'(\d+)\+', page_text)
+                        if age_match:
+                            min_age = int(age_match.group(1))
+                    
+                    # Try to extract rating and rank
+                    rating_average = None
+                    num_ratings = None
+                    rank_overall = None
+                    
+                    # Look for rating pattern (e.g., "7.5" or "Rating: 8.2")
+                    rating_match = re.search(r'[Rr]ating[:\s]+(\d+\.?\d*)', page_text)
+                    if rating_match:
+                        try:
+                            rating_average = float(rating_match.group(1))
+                        except:
+                            pass
+                    
+                    # Look for number of ratings (e.g., "1234 ratings")
+                    num_ratings_match = re.search(r'(\d+)\s+[Rr]atings?', page_text)
+                    if num_ratings_match:
+                        try:
+                            num_ratings = int(num_ratings_match.group(1))
+                        except:
+                            pass
+                    
+                    # Look for rank (e.g., "Rank: #42" or "#42 Overall")
+                    rank_match = re.search(r'#(\d+)', page_text)
+                    if rank_match:
+                        try:
+                            rank_overall = int(rank_match.group(1))
+                        except:
+                            pass
+                    
+                    # Try to extract categories and mechanics
+                    categories = []
+                    mechanics = []
+                    
+                    # Look for category links (e.g., href="/boardgamecategory/...")
+                    category_links = soup.find_all('a', href=re.compile(r'/boardgamecategory/'))
+                    for link in category_links[:5]:  # Limit to 5
+                        cat_text = link.get_text().strip()
+                        if cat_text and len(cat_text) > 2:
+                            categories.append(cat_text)
+                    
+                    # Look for mechanic links (e.g., href="/boardgamemechanic/...")
+                    mechanic_links = soup.find_all('a', href=re.compile(r'/boardgamemechanic/'))
+                    for link in mechanic_links[:5]:  # Limit to 5
+                        mech_text = link.get_text().strip()
+                        if mech_text and len(mech_text) > 2:
+                            mechanics.append(mech_text)
+                    
+                    # Get price data
+                    price_data = fetch_boardgameprices(bgg_id)
                     
                     # Basic scraped data
                     scraped_data = {
@@ -420,31 +632,31 @@ def get_bgg_game_details(bgg_id: str) -> Dict[str, Any]:
                         "name": primary_name or f"Game {bgg_id}",
                         "year_published": year_published,
                         "thumbnail_url": thumbnail_url,
-                        "description": "Details available on BoardGameGeek",
-                        "image_url": thumbnail_url,
-                        "designer": None,
-                        "min_players": None,
-                        "max_players": None,
-                        "min_playtime": None,
-                        "max_playtime": None,
-                        "playing_time": None,
-                        "min_age": None,
-                        "categories": None,
-                        "mechanics": None,
-                        "rating_average": None,
+                        "description": description or "Visit BoardGameGeek for full description",
+                        "image_url": image_url,
+                        "designer": designer,
+                        "min_players": min_players,
+                        "max_players": max_players,
+                        "min_playtime": min_playtime,
+                        "max_playtime": max_playtime,
+                        "playing_time": playing_time,
+                        "min_age": min_age,
+                        "categories": ", ".join(categories) if categories else None,
+                        "mechanics": ", ".join(mechanics) if mechanics else None,
+                        "rating_average": rating_average,
                         "rating_bayes": None,
-                        "rank_overall": None,
-                        "num_ratings": None,
-                        "msrp_price": None,
-                        "price_incl_shipping": None,
-                        "store_name": None,
-                        "store_url": None,
-                        "price_status": "scraped",
-                        "price_currency_source": "unknown",
-                        "price_last_seen": None,
+                        "rank_overall": rank_overall,
+                        "num_ratings": num_ratings,
+                        "msrp_price": price_data.get("base_price_eur"),
+                        "price_incl_shipping": price_data.get("base_price_eur_incl_shipping"),
+                        "store_name": price_data.get("store_name"),
+                        "store_url": price_data.get("store_url"),
+                        "price_status": price_data.get("price_status"),
+                        "price_currency_source": price_data.get("price_currency_source"),
+                        "price_last_seen": price_data.get("last_seen"),
                     }
                     
-                    print(f"Web scraping succeeded for game {bgg_id}: {primary_name}")
+                    print(f"Web scraping succeeded for game {bgg_id}: {primary_name} ({year_published})")
                     return scraped_data
                 else:
                     print(f"Web scraping failed with status {response.status_code}")

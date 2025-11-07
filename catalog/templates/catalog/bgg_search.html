@@ -127,6 +127,13 @@
                 {% for result in results %}
                     <div class="col">
                         <div class="card h-100">
+                            {% if result.thumbnail %}
+                                <img src="{{ result.thumbnail }}" class="card-img-top" alt="{{ result.name }}" style="height: 200px; object-fit: cover;">
+                            {% else %}
+                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                                    <i class="bi bi-dice-6" style="font-size: 4rem; color: #ccc;"></i>
+                                </div>
+                            {% endif %}
                             <div class="card-body">
                                 <h5 class="card-title">{{ result.name }}</h5>
                                 <p class="card-text text-muted mb-2">

@@ -135,11 +135,77 @@
         
         {% if game.bgg_id %}
             <a href="https://boardgamegeek.com/boardgame/{{ game.bgg_id }}" target="_blank" 
-               class="btn btn-outline-secondary w-100">
+               class="btn btn-outline-secondary w-100 mb-3">
                 <i class="bi bi-box-arrow-up-right"></i> View on BoardGameGeek
             </a>
         {% endif %}
     </div>
+</div>
+
+<!-- BGG Rating & Community Info -->
+{% if game.rating_average or game.num_ratings %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-warning bg-opacity-10">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-star-fill text-warning"></i> BoardGameGeek Rating</h5>
+                    <div class="row text-center">
+                        {% if game.rating_average %}
+                            <div class="col-md-4">
+                                <h3 class="mb-0 text-warning">{{ game.rating_average|floatformat:2 }}/10</h3>
+                                <small class="text-muted">Average Rating</small>
+                            </div>
+                        {% endif %}
+                        {% if game.num_ratings %}
+                            <div class="col-md-4">
+                                <h3 class="mb-0">{{ game.num_ratings }}</h3>
+                                <small class="text-muted">User Ratings</small>
+                            </div>
+                        {% endif %}
+                        {% if game.rank_overall %}
+                            <div class="col-md-4">
+                                <h3 class="mb-0 text-primary">#{{ game.rank_overall }}</h3>
+                                <small class="text-muted">Overall Rank</small>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Categories & Mechanics -->
+<div class="row mt-4">
+    {% if game.categories %}
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-tag-fill"></i> Categories</h5>
+                </div>
+                <div class="card-body">
+                    {% for category in game.categories.split:', ' %}
+                        <span class="badge bg-info me-1 mb-1">{{ category }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    {% if game.mechanics %}
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-gear-fill"></i> Mechanics</h5>
+                </div>
+                <div class="card-body">
+                    {% for mechanic in game.mechanics.split:', ' %}
+                        <span class="badge bg-secondary me-1 mb-1">{{ mechanic }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
 </div>
 
 <!-- Description -->
