@@ -328,27 +328,97 @@ def get_bgg_game_details(bgg_id: str) -> Dict[str, Any]:
     
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 401:
-            print(f"BGG API returned 401 for game details. Trying with simpler headers...")
+            print(f"BGG API returned 401 for game details. Trying web scraping fallback...")
             try:
-                simple_headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-                response = requests.get(BGG_THING_URL, params=params, headers=simple_headers, timeout=10, verify=False)
-                response.raise_for_status()
-                # Process response (simplified - just return basic data)
-                root = ET.fromstring(response.text)
-                item = root.find("item")
-                if item:
+                from bs4 import BeautifulSoup
+                
+                # Try scraping BGG game page
+                game_url = f"https://boardgamegeek.com/boardgame/{bgg_id}"
+                headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.5",
+                    "Referer": "https://boardgamegeek.com/",
+                }
+                
+                print(f"Scraping BGG game page: {game_url}")
+                response = requests.get(game_url, headers=headers, timeout=15, verify=False)
+                
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.text, 'html.parser')
+                    
+                    # Extract game name from title or h1
                     primary_name = None
-                    for name in item.findall("name"):
-                        if name.attrib.get("type") == "primary":
-                            primary_name = name.attrib["value"]
-                            break
-                    return {
+                    title_tag = soup.find('title')
+                    if title_tag:
+                        # Title is usually like "Game Name | Board Game | BoardGameGeek"
+                        title_text = title_tag.get_text()
+                        if '|' in title_text:
+                            primary_name = title_text.split('|')[0].strip()
+                    
+                    if not primary_name:
+                        h1_tag = soup.find('h1')
+                        if h1_tag:
+                            primary_name = h1_tag.get_text().strip()
+                    
+                    # Try to find year
+                    year_published = None
+                    year_span = soup.find('span', class_='yearpublished')
+                    if year_span:
+                        year_text = year_span.get_text().strip('()')
+                        if year_text.isdigit():
+                            year_published = int(year_text)
+                    
+                    # Try to find thumbnail
+                    thumbnail_url = None
+                    img_tag = soup.find('img', class_='game-image')
+                    if not img_tag:
+                        img_tag = soup.find('meta', property='og:image')
+                        if img_tag:
+                            thumbnail_url = img_tag.get('content')
+                    else:
+                        thumbnail_url = img_tag.get('src')
+                    
+                    # Basic scraped data
+                    scraped_data = {
                         "bgg_id": bgg_id,
-                        "name": primary_name,
-                        "error": None
+                        "name": primary_name or f"Game {bgg_id}",
+                        "year_published": year_published,
+                        "thumbnail_url": thumbnail_url,
+                        "description": "Details available on BoardGameGeek",
+                        "image_url": thumbnail_url,
+                        "designer": None,
+                        "min_players": None,
+                        "max_players": None,
+                        "min_playtime": None,
+                        "max_playtime": None,
+                        "playing_time": None,
+                        "min_age": None,
+                        "categories": None,
+                        "mechanics": None,
+                        "rating_average": None,
+                        "rating_bayes": None,
+                        "rank_overall": None,
+                        "num_ratings": None,
+                        "msrp_price": None,
+                        "price_incl_shipping": None,
+                        "store_name": None,
+                        "store_url": None,
+                        "price_status": "scraped",
+                        "price_currency_source": "unknown",
+                        "price_last_seen": None,
                     }
-            except Exception as retry_error:
-                print(f"Retry failed for game details: {retry_error}")
+                    
+                    print(f"Web scraping succeeded for game {bgg_id}: {primary_name}")
+                    return scraped_data
+                else:
+                    print(f"Web scraping failed with status {response.status_code}")
+                    
+            except ImportError:
+                print("BeautifulSoup not available for web scraping fallback")
+            except Exception as scrape_error:
+                print(f"Web scraping error for game details: {scrape_error}")
+        
         print(f"Error fetching BGG details: {e}")
         return {"error": str(e)}
     except Exception as e:
