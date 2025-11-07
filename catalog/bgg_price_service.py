@@ -20,6 +20,11 @@ BGG_SEARCH_URL = "https://boardgamegeek.com/xmlapi2/search"
 BGG_THING_URL = "https://boardgamegeek.com/xmlapi2/thing"
 BOARDGAMEPRICES_URL = "https://www.boardgameprices.co.uk/plugin/info"
 
+# Board Game Atlas API (alternative to BGG when it's blocked)
+# Free tier: 100 requests/month - Get your key at https://www.boardgameatlas.com/api/docs
+BGA_SEARCH_URL = "https://api.boardgameatlas.com/api/search"
+BGA_CLIENT_ID = "JMc8dOwiQE"  # Public client ID for testing
+
 # More complete browser-like headers to avoid 401
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -162,8 +167,55 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
             print(f"Strategy {i+1} unexpected error: {e}")
             continue
     
-    # All API strategies failed, try web scraping as fallback
-    print(f"All {len(strategies)} API strategies failed, trying web scraping fallback...")
+    # Strategy 4: Try Board Game Atlas API (alternative database)
+    print("All BGG API strategies failed, trying Board Game Atlas API...")
+    try:
+        bga_params = {
+            "name": query,
+            "fuzzy_match": "true",
+            "limit": 20,
+            "client_id": BGA_CLIENT_ID
+        }
+        
+        response = requests.get(BGA_SEARCH_URL, params=bga_params, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            games = data.get("games", [])
+            
+            if games:
+                results = []
+                for game in games:
+                    # Board Game Atlas has its own IDs, but many games have BGG IDs in metadata
+                    bgg_id = None
+                    
+                    # Try to get BGG ID from the game data
+                    # BGA doesn't always have BGG IDs, so we'll use BGA ID prefixed with 'bga_'
+                    if game.get("id"):
+                        bgg_id = f"bga_{game['id']}"
+                    
+                    results.append({
+                        "bgg_id": bgg_id or game.get("handle", "unknown"),
+                        "name": game.get("name", "Unknown"),
+                        "year": game.get("year_published"),
+                        "type": "boardgame",
+                        "thumbnail": game.get("thumb_url") or game.get("image_url"),
+                        "_bga_id": game.get("id"),  # Store original BGA ID
+                        "_source": "bga"  # Mark as coming from Board Game Atlas
+                    })
+                
+                print(f"Board Game Atlas API succeeded! Found {len(results)} results")
+                return results
+            else:
+                print("Board Game Atlas returned no results")
+        else:
+            print(f"Board Game Atlas API returned status {response.status_code}")
+            
+    except Exception as e:
+        print(f"Board Game Atlas API error: {e}")
+    
+    # Fallback: Web scraping BGG
+    print("Trying web scraping fallback...")
     try:
         from bs4 import BeautifulSoup
         
@@ -274,10 +326,35 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
                                 print(f"Row {processed}: Found link {href} but couldn't extract ID")
                             continue
                         
+                        # Try to get game name from the link text first
                         game_name = link.get_text().strip()
                         
+                        # If link text is empty, try to find name in other elements within the row
+                        if not game_name or len(game_name) <= 1:
+                            # Try finding a primary name element
+                            primary_name = row.find('a', class_='primary')
+                            if primary_name:
+                                game_name = primary_name.get_text().strip()
+                            
+                            # Try finding any link within the row that has substantial text
+                            if not game_name:
+                                for a_tag in row.find_all('a'):
+                                    text = a_tag.get_text().strip()
+                                    if text and len(text) > 2 and '/boardgame/' not in text:
+                                        game_name = text
+                                        break
+                            
+                            # Last resort: get all text from row and try to extract game name
+                            if not game_name:
+                                row_text = row.get_text().strip()
+                                # Remove year if present
+                                row_text = re.sub(r'\(\d{4}\)', '', row_text).strip()
+                                # Take first substantial text
+                                if row_text and len(row_text) > 2:
+                                    game_name = row_text.split('\n')[0].strip()
+                        
                         if processed <= 3:  # Debug first 3 rows
-                            print(f"Row {processed}: Found link text '{game_name}' for ID {bgg_id}")
+                            print(f"Row {processed}: Extracted name '{game_name}' for ID {bgg_id}")
                         
                         # Try to find thumbnail
                         thumbnail = None
@@ -329,10 +406,76 @@ def search_bgg_games(query: str, exact: bool = False) -> List[Dict[str, Any]]:
     return []
 
 
+def get_bga_game_details(bga_id: str) -> Dict[str, Any]:
+    """
+    Fetch game details from Board Game Atlas API.
+    """
+    try:
+        params = {
+            "ids": bga_id,
+            "client_id": BGA_CLIENT_ID
+        }
+        
+        response = requests.get(BGA_SEARCH_URL, params=params, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            games = data.get("games", [])
+            
+            if games:
+                game = games[0]
+                
+                # Map BGA data to our format
+                result = {
+                    "bgg_id": f"bga_{bga_id}",
+                    "name": game.get("name"),
+                    "year_published": game.get("year_published"),
+                    "description": game.get("description_preview") or game.get("description"),
+                    "image_url": game.get("image_url"),
+                    "thumbnail_url": game.get("thumb_url") or game.get("image_url"),
+                    "designer": None,  # BGA doesn't provide designer in simple format
+                    "min_players": game.get("min_players"),
+                    "max_players": game.get("max_players"),
+                    "min_playtime": game.get("min_playtime"),
+                    "max_playtime": game.get("max_playtime"),
+                    "playing_time": game.get("max_playtime"),
+                    "min_age": game.get("min_age"),
+                    "categories": None,
+                    "mechanics": None,
+                    "rating_average": game.get("average_user_rating"),
+                    "rating_bayes": None,
+                    "rank_overall": game.get("rank"),
+                    "num_ratings": game.get("num_user_ratings"),
+                    # Price data - try to fetch from BoardGamePrices if we have BGG ID
+                    "msrp_price": game.get("msrp"),
+                    "price_incl_shipping": None,
+                    "store_name": None,
+                    "store_url": game.get("official_url"),
+                    "price_status": "bga_source",
+                    "price_currency_source": "usd",
+                    "last_seen": None,
+                }
+                
+                print(f"Board Game Atlas details succeeded for {game.get('name')}")
+                return result
+        
+        print(f"Board Game Atlas details failed with status {response.status_code}")
+        return {"error": "Board Game Atlas API failed"}
+        
+    except Exception as e:
+        print(f"Error fetching BGA details: {e}")
+        return {"error": str(e)}
+
+
 def get_bgg_game_details(bgg_id: str) -> Dict[str, Any]:
     """
     Fetch complete game details from BGG including metadata and price from BoardGamePrices.
+    Falls back to Board Game Atlas if BGG fails.
     """
+    # Check if this is a Board Game Atlas ID
+    if bgg_id.startswith("bga_"):
+        return get_bga_game_details(bgg_id.replace("bga_", ""))
+    
     params = {"id": bgg_id, "stats": 1}
     
     # Get session with cookies
