@@ -166,7 +166,8 @@ SESSION_SAVE_EVERY_REQUEST = True
 
 # Security settings for production
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # Fly.io already handles SSL/TLS termination, so we don't need Django to redirect
+    # SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
