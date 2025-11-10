@@ -1,0 +1,84 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Reservation Management - Board Game Catalog{% endblock %}
+
+{% block content %}
+<h1><i class="bi bi-clock-history"></i> Stock Reservations</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-10">
+                <select name="status" class="form-select" onchange="this.form.submit()">
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Game</th>
+                <th>Customer</th>
+                <th>Email</th>
+                <th>Quantity</th>
+                <th>Status</th>
+                <th>Reserved At</th>
+                <th>Expires At</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reservation in reservations %}
+            <tr>
+                <td>{{ reservation.id }}</td>
+                <td>{{ reservation.game.name }}</td>
+                <td>{{ reservation.customer_name }}</td>
+                <td>{{ reservation.customer_email }}</td>
+                <td>{{ reservation.quantity }}</td>
+                <td>
+                    <span class="badge
+                        {% if reservation.status == 'active' %}bg-warning
+                        {% elif reservation.status == 'confirmed' %}bg-success
+                        {% elif reservation.status == 'cancelled' %}bg-secondary
+                        {% else %}bg-danger{% endif %}">
+                        {{ reservation.get_status_display }}
+                    </span>
+                </td>
+                <td>{{ reservation.reserved_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    {% if reservation.status == 'active' %}
+                    {{ reservation.expires_at|date:"Y-m-d H:i" }}
+                    {% else %}-{% endif %}
+                </td>
+                <td>
+                    {% if reservation.status == 'active' %}
+                    <div class="btn-group btn-group-sm">
+                        <a href="{% url 'confirm_reservation' reservation.id %}" class="btn btn-success" title="Confirm">
+                            <i class="bi bi-check-circle"></i>
+                        </a>
+                        <a href="{% url 'extend_reservation' reservation.id %}" class="btn btn-info" title="Extend">
+                            <i class="bi bi-clock"></i>
+                        </a>
+                        <a href="{% url 'cancel_reservation' reservation.id %}" class="btn btn-danger" title="Cancel">
+                            <i class="bi bi-x-circle"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="9" class="text-center text-muted">No reservations found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

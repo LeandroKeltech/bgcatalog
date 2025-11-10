@@ -1,0 +1,20 @@
+{% extends 'catalog/base.html' %}
+{% block content %}
+<div class="card border-danger">
+    <div class="card-header bg-danger text-white">
+        <h3>Cancel Reservation</h3>
+    </div>
+    <div class="card-body">
+        <p>Cancel this reservation?</p>
+        <div class="alert alert-warning">
+            <strong>Game:</strong> {{ reservation.game.name }}<br>
+            <strong>Customer:</strong> {{ reservation.customer_name }}
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Cancel Reservation</button>
+            <a href="{% url 'reservation_management' %}" class="btn btn-secondary">Back</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

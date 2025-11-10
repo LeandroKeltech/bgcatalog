@@ -1,0 +1,21 @@
+{% extends 'catalog/base.html' %}
+{% block content %}
+<div class="card border-success">
+    <div class="card-header bg-success text-white">
+        <h3>Confirm Reservation</h3>
+    </div>
+    <div class="card-body">
+        <p>Confirm sale for this reservation?</p>
+        <div class="alert alert-info">
+            <strong>Game:</strong> {{ reservation.game.name }}<br>
+            <strong>Customer:</strong> {{ reservation.customer_name }}<br>
+            <strong>Quantity:</strong> {{ reservation.quantity }}
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Confirm Sale</button>
+            <a href="{% url 'reservation_management' %}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

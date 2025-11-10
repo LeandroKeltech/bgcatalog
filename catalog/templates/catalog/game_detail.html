@@ -1,0 +1,157 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}{{ game.name }} - Board Game Catalog{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'catalog' %}">Catalog</a></li>
+        <li class="breadcrumb-item active">{{ game.name }}</li>
+    </ol>
+</nav>
+
+<div class="row">
+    <div class="col-md-4">
+        {% if game.image_url %}
+        <img src="{{ game.image_url }}" class="img-fluid rounded shadow" alt="{{ game.name }}">
+        {% else %}
+        <div class="bg-secondary rounded shadow d-flex align-items-center justify-content-center" style="height: 400px;">
+            <i class="bi bi-image text-white" style="font-size: 5rem;"></i>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-8">
+        <h1>{{ game.name }}</h1>
+        {% if game.year_published %}
+        <p class="text-muted">Year Published: {{ game.year_published }}</p>
+        {% endif %}
+        {% if game.designer %}
+        <p><strong>Designer:</strong> {{ game.designer }}</p>
+        {% endif %}
+        
+        <!-- Ratings -->
+        {% if game.rating_average %}
+        <div class="mb-3">
+            <span class="h4">
+                <i class="bi bi-star-fill text-warning"></i> {{ game.rating_average|floatformat:2 }}/10
+            </span>
+            {% if game.num_ratings %}
+            <span class="text-muted">({{ game.num_ratings }} ratings)</span>
+            {% endif %}
+            {% if game.rank_overall %}
+            <span class="badge bg-primary">Rank #{{ game.rank_overall }}</span>
+            {% endif %}
+        </div>
+        {% endif %}
+        
+        <!-- Gameplay Info -->
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="bi bi-people fs-2"></i>
+                        <p class="mb-0">{{ game.players_display }}</p>
+                        <small class="text-muted">Players</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="bi bi-clock fs-2"></i>
+                        <p class="mb-0">{{ game.playtime_display }}</p>
+                        <small class="text-muted">Playtime</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="bi bi-person-badge fs-2"></i>
+                        <p class="mb-0">{% if game.min_age %}{{ game.min_age }}+{% else %}N/A{% endif %}</p>
+                        <small class="text-muted">Age</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Price and Stock -->
+        <div class="card bg-light mb-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        {% if game.final_price %}
+                        <h2 class="text-primary mb-0">
+                            €{{ game.final_price }}
+                            {% if game.discount_percentage > 0 %}
+                            <small class="text-muted text-decoration-line-through">€{{ game.msrp_price }}</small>
+                            {% endif %}
+                        </h2>
+                        {% if game.discount_percentage > 0 %}
+                        <span class="badge bg-danger">Save {{ game.discount_percentage }}%</span>
+                        {% endif %}
+                        {% endif %}
+                        <p class="mb-0 mt-2">
+                            <span class="badge bg-info">{{ game.get_condition_display }}</span>
+                            <span class="badge {% if game.available_quantity > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ game.available_quantity }} in stock
+                            </span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        {% if game.available_quantity > 0 and not game.is_sold %}
+                        <form method="post" action="{% url 'add_to_cart' game.id %}">
+                            {% csrf_token %}
+                            <div class="input-group mb-2">
+                                <input type="number" name="quantity" class="form-control" value="1" min="1" max="{{ game.available_quantity }}">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-cart-plus"></i> Add to Cart
+                                </button>
+                            </div>
+                        </form>
+                        {% else %}
+                        <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Description -->
+        {% if game.description %}
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-card-text"></i> Description</h5>
+            </div>
+            <div class="card-body">
+                {{ game.description|linebreaks }}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Categories and Mechanics -->
+        {% if game.categories or game.mechanics %}
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-tags"></i> Categories & Mechanics</h5>
+            </div>
+            <div class="card-body">
+                {% if game.categories %}
+                <p><strong>Categories:</strong> {{ game.categories }}</p>
+                {% endif %}
+                {% if game.mechanics %}
+                <p class="mb-0"><strong>Mechanics:</strong> {{ game.mechanics }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="mt-4">
+    <a href="{% url 'catalog' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Catalog
+    </a>
+</div>
+{% endblock %}

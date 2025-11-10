@@ -1,0 +1,22 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Checkout Success - Board Game Catalog{% endblock %}
+
+{% block content %}
+<div class="text-center py-5">
+    <div class="mb-4">
+        <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+    </div>
+    <h1>Quote Request Submitted!</h1>
+    <p class="lead">Thank you for your interest in our board games.</p>
+    <div class="alert alert-info d-inline-block">
+        <i class="bi bi-clock-history"></i> Your items are reserved for 30 minutes
+    </div>
+    <p>We'll send you a quote via email shortly and contact you to complete the purchase.</p>
+    <div class="mt-4">
+        <a href="{% url 'catalog' %}" class="btn btn-primary">
+            <i class="bi bi-arrow-left"></i> Back to Catalog
+        </a>
+    </div>
+</div>
+{% endblock %}

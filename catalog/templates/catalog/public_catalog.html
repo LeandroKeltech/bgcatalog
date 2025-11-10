@@ -1,0 +1,111 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Catalog - Board Game Catalog{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h1><i class="bi bi-grid"></i> Board Game Catalog</h1>
+        <p class="text-muted">Browse our collection of board games</p>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Search</label>
+                <input type="text" name="search" class="form-control" placeholder="Search by name or designer" value="{{ search_query }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Condition</label>
+                <select name="condition" class="form-select">
+                    <option value="">All Conditions</option>
+                    {% for value, label in condition_choices %}
+                    <option value="{{ value }}" {% if condition == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Min Price (€)</label>
+                <input type="number" name="min_price" class="form-control" step="0.01" value="{{ min_price }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Max Price (€)</label>
+                <input type="number" name="max_price" class="form-control" step="0.01" value="{{ max_price }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Sort By</label>
+                <select name="sort" class="form-select">
+                    <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest</option>
+                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
+                    <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Name (Z-A)</option>
+                    <option value="msrp_price" {% if sort_by == 'msrp_price' %}selected{% endif %}>Price (Low-High)</option>
+                    <option value="-msrp_price" {% if sort_by == '-msrp_price' %}selected{% endif %}>Price (High-Low)</option>
+                </select>
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Apply Filters</button>
+                <a href="{% url 'catalog' %}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Games Grid -->
+{% if games %}
+<div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+    {% for game in games %}
+    <div class="col">
+        <div class="card h-100 game-card">
+            {% if game.thumbnail_url %}
+            <img src="{{ game.thumbnail_url }}" class="card-img-top" alt="{{ game.name }}">
+            {% else %}
+            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                <i class="bi bi-image text-white" style="font-size: 3rem;"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ game.name }}</h5>
+                <p class="card-text text-muted small">
+                    {% if game.year_published %}{{ game.year_published }} | {% endif %}
+                    {% if game.designer %}{{ game.designer|truncatewords:3 }}{% endif %}
+                </p>
+                <div class="game-details small mb-2">
+                    <div><i class="bi bi-people"></i> {{ game.players_display }} players</div>
+                    <div><i class="bi bi-clock"></i> {{ game.playtime_display }}</div>
+                    {% if game.rating_average %}
+                    <div><i class="bi bi-star-fill text-warning"></i> {{ game.rating_average|floatformat:1 }}/10</div>
+                    {% endif %}
+                </div>
+                <div class="mb-2">
+                    <span class="badge bg-info">{{ game.get_condition_display }}</span>
+                    <span class="badge bg-success">{{ game.available_quantity }} in stock</span>
+                </div>
+                {% if game.final_price %}
+                <div class="h5 text-primary mb-2">
+                    €{{ game.final_price }}
+                    {% if game.discount_percentage > 0 %}
+                    <small class="text-muted text-decoration-line-through">€{{ game.msrp_price }}</small>
+                    <span class="badge bg-danger">-{{ game.discount_percentage }}%</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-white border-0">
+                <a href="{% url 'game_detail' game.id %}" class="btn btn-primary w-100">
+                    <i class="bi bi-eye"></i> View Details
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i> No games found. Try adjusting your filters.
+</div>
+{% endif %}
+
+{% endblock %}

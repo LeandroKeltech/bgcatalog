@@ -1,0 +1,178 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Edit Game - Board Game Catalog{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'admin_panel' %}">Admin Panel</a></li>
+        <li class="breadcrumb-item active">Edit Game</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-pencil"></i> Edit Game</h1>
+    {% if game.bgg_id %}
+    <a href="{% url 'refresh_game_data' game.id %}" class="btn btn-info">
+        <i class="bi bi-arrow-repeat"></i> Refresh from BGG/BGA
+    </a>
+    {% endif %}
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Basic Information -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Name *</label>
+                        <input type="text" name="name" class="form-control" value="{{ game.name }}" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Designer</label>
+                            <input type="text" name="designer" class="form-control" value="{{ game.designer }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Year Published</label>
+                            <input type="number" name="year_published" class="form-control" value="{{ game.year_published }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea name="description" class="form-control" rows="5">{{ game.description }}</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Gameplay Details -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Gameplay Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Min Players</label>
+                            <input type="number" name="min_players" class="form-control" value="{{ game.min_players }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Max Players</label>
+                            <input type="number" name="max_players" class="form-control" value="{{ game.max_players }}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Min Playtime (min)</label>
+                            <input type="number" name="min_playtime" class="form-control" value="{{ game.min_playtime }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Max Playtime (min)</label>
+                            <input type="number" name="max_playtime" class="form-control" value="{{ game.max_playtime }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Minimum Age</label>
+                        <input type="number" name="min_age" class="form-control" value="{{ game.min_age }}">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Admin Notes -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Admin Notes</h5>
+                </div>
+                <div class="card-body">
+                    <textarea name="notes" class="form-control" rows="3">{{ game.notes }}</textarea>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Image Preview -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Image</h5>
+                </div>
+                <div class="card-body text-center">
+                    {% if game.image_url %}
+                    <img src="{{ game.image_url }}" class="img-fluid rounded" alt="{{ game.name }}">
+                    {% else %}
+                    <div class="bg-secondary rounded d-flex align-items-center justify-content-center" style="height: 200px;">
+                        <i class="bi bi-image text-white" style="font-size: 3rem;"></i>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Inventory -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Inventory</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Stock Quantity</label>
+                        <input type="number" name="stock_quantity" class="form-control" value="{{ game.stock_quantity }}" min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Condition</label>
+                        <select name="condition" class="form-select">
+                            {% for value, label in condition_choices %}
+                            <option value="{{ value }}" {% if game.condition == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="is_sold" id="is_sold" {% if game.is_sold %}checked{% endif %}>
+                        <label class="form-check-label" for="is_sold">
+                            Mark as Sold
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pricing -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Pricing</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">MSRP Price (€)</label>
+                        <input type="number" name="msrp_price" class="form-control" step="0.01" value="{{ game.msrp_price }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Discount (%)</label>
+                        <input type="number" name="discount_percentage" class="form-control" min="0" max="100" value="{{ game.discount_percentage }}">
+                    </div>
+                    {% if game.final_price %}
+                    <div class="alert alert-info">
+                        <strong>Final Price:</strong> €{{ game.final_price }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Save Changes
+                </button>
+                <a href="{% url 'admin_panel' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+                <a href="{% url 'delete_game' game.id %}" class="btn btn-outline-danger">
+                    <i class="bi bi-trash"></i> Delete Game
+                </a>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}

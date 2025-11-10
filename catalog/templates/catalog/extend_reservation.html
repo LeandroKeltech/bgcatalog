@@ -1,0 +1,24 @@
+{% extends 'catalog/base.html' %}
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3>Extend Reservation</h3>
+    </div>
+    <div class="card-body">
+        <p>Extend expiry time for this reservation?</p>
+        <div class="alert alert-info">
+            <strong>Game:</strong> {{ reservation.game.name }}<br>
+            <strong>Current Expiry:</strong> {{ reservation.expires_at }}
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Extend by (minutes)</label>
+                <input type="number" name="minutes" class="form-control" value="30" min="1">
+            </div>
+            <button type="submit" class="btn btn-primary">Extend</button>
+            <a href="{% url 'reservation_management' %}" class="btn btn-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

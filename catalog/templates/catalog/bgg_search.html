@@ -1,0 +1,89 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}BGG Search - Board Game Catalog{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/quagga@0.12.1/dist/quagga.min.js"></script>
+{% load static %}
+<script src="{% static 'catalog/js/barcode_scanner.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'admin_panel' %}">Admin Panel</a></li>
+        <li class="breadcrumb-item active">BGG/BGA Search</li>
+    </ol>
+</nav>
+
+<h1><i class="bi bi-search"></i> Search BoardGameGeek / Board Game Atlas</h1>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-10">
+                <input type="text" name="search" id="searchInput" class="form-control" placeholder="Enter game name or scan barcode..." value="{{ search_query }}" required>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> Search
+                </button>
+            </div>
+            <div class="col-12">
+                <button type="button" class="btn btn-outline-secondary" id="startScanner">
+                    <i class="bi bi-upc-scan"></i> Scan Barcode
+                </button>
+            </div>
+        </form>
+        
+        <!-- Barcode Scanner -->
+        <div id="scanner-container" class="mt-3" style="display: none;">
+            <div id="interactive" class="viewport"></div>
+            <button type="button" class="btn btn-danger mt-2" id="stopScanner">
+                <i class="bi bi-stop-circle"></i> Stop Scanner
+            </button>
+        </div>
+    </div>
+</div>
+
+{% if games %}
+<h3>Search Results ({{ games|length }})</h3>
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for game in games %}
+    <div class="col">
+        <div class="card h-100">
+            {% if game.thumbnail %}
+            <img src="{{ game.thumbnail }}" class="card-img-top" alt="{{ game.name }}">
+            {% else %}
+            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                <i class="bi bi-image text-white" style="font-size: 3rem;"></i>
+            </div>
+            {% endif %}
+            <div class="card-body">
+                <h5 class="card-title">{{ game.name }}</h5>
+                <p class="card-text text-muted">
+                    {% if game.year %}({{ game.year }}){% endif %}
+                </p>
+                <p class="text-muted small">
+                    <strong>ID:</strong> {{ game.bgg_id }}
+                </p>
+            </div>
+            <div class="card-footer bg-white">
+                <form method="post" action="{% url 'import_from_bgg' game.bgg_id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-download"></i> Import Game
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% elif search_query %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i> No games found for "{{ search_query }}". Try a different search term.
+</div>
+{% endif %}
+
+{% endblock %}
