@@ -24,6 +24,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project
 COPY . .
 
+# Collect static files for production
+RUN python manage.py collectstatic --noinput
+
 # Create startup script
 RUN echo '#!/bin/sh\n\
 set -e\n\
