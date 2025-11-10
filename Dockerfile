@@ -30,8 +30,8 @@ RUN python manage.py collectstatic --noinput
 # Create startup script
 RUN echo '#!/bin/sh\n\
 set -e\n\
-echo "Resetting database tables..."\n\
-python -c "import os; os.environ.setdefault(\"DJANGO_SETTINGS_MODULE\", \"bgcatalog_project.settings\"); import django; django.setup(); from django.db import connection; cursor = connection.cursor(); cursor.execute(\"DROP TABLE IF EXISTS catalog_stockreservation CASCADE;\"); cursor.execute(\"DROP TABLE IF EXISTS catalog_boardgame CASCADE;\"); print(\"Tables dropped\")"\n\
+echo "Resetting database schema..."\n\
+python reset_db.py || echo "Reset failed, continuing..."\n\
 echo "Running migrations..."\n\
 python manage.py migrate --noinput\n\
 echo "Creating admin user..."\n\

@@ -1,5 +1,5 @@
 """
-Script to reset the database schema.
+Script to reset the database schema - auto mode for deployment.
 Run this with: python reset_db.py
 """
 import os
@@ -18,17 +18,10 @@ def reset_database():
         # Drop tables in correct order (respecting foreign keys)
         cursor.execute("DROP TABLE IF EXISTS catalog_stockreservation CASCADE;")
         cursor.execute("DROP TABLE IF EXISTS catalog_boardgame CASCADE;")
+        cursor.execute("DROP TABLE IF EXISTS django_migrations CASCADE;")
         
         print("Tables dropped successfully!")
-        print("\nNow run: python manage.py migrate")
 
 if __name__ == '__main__':
-    import sys
-    
-    response = input("This will DELETE ALL DATA. Are you sure? (yes/no): ")
-    if response.lower() == 'yes':
-        reset_database()
-        print("\nDatabase reset complete. Run migrations now:")
-        print("python manage.py migrate")
-    else:
-        print("Operation cancelled.")
+    reset_database()
+    print("Database reset complete.")
