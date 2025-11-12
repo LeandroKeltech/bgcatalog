@@ -58,8 +58,37 @@ def import_from_bgg(request, bgg_id):
     game_data = bgg_price_service.get_bgg_game_details(bgg_id)
     
     if not game_data:
-        messages.error(request, 'Failed to fetch game details from BGG/BGA')
-        return redirect('bgg_search')
+        # Try a few graceful fallbacks so the admin can still import a minimal record
+        messages.warning(request, 'Primary fetch failed — attempting lightweight fallbacks')
+        try:
+            # If this looks like a BGA id, try the BGA details directly
+            if bgg_id.startswith('bga_'):
+                bga_id = bgg_id[4:]
+                game_data = bgg_price_service.get_bga_game_details(bga_id)
+        except Exception as e:
+            # swallow and continue to other fallbacks
+            game_data = {}
+
+    # If we still have no detailed data, try to at least fetch a thumbnail and set a name
+    if not game_data:
+        try:
+            # If numeric BGG id, try fetching thumbnail
+            if bgg_id.isdigit():
+                thumb = bgg_price_service.fetch_bgg_thumbnail(bgg_id)
+                game_data = {
+                    'name': f'BGG #{bgg_id}',
+                    'image_url': thumb or '',
+                    'thumbnail_url': thumb or '',
+                    'description': '',
+                }
+                messages.info(request, f'Imported minimal record for BGG id {bgg_id}')
+            else:
+                # As a last resort create minimal record with id as name
+                game_data = {'name': bgg_id, 'image_url': '', 'thumbnail_url': '', 'description': ''}
+                messages.info(request, 'Imported minimal record using id as name')
+        except Exception as e:
+            messages.error(request, f'Failed to fetch fallback data: {e}')
+            return redirect('bgg_search')
     
     # Fetch pricing
     pricing = bgg_price_service.fetch_boardgameprices(bgg_id)
