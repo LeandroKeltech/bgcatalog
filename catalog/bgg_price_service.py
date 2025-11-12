@@ -248,7 +248,7 @@ def get_bgg_game_details(bgg_id: str) -> Dict:
 def fetch_bgg_thumbnail(bgg_id: str) -> str:
     """Fetch only the thumbnail (or image) URL for a given BGG id using the thing API.
 
-    Returns an empty string if not available or on error.
+    Returns an empty string if not available or on error. Forces HTTPS for security/mixed-content.
     """
     try:
         params = {'id': bgg_id}
@@ -261,10 +261,17 @@ def fetch_bgg_thumbnail(bgg_id: str) -> str:
             return ''
         thumb = item.find('thumbnail')
         if thumb is not None and thumb.text:
-            return thumb.text
+            url = thumb.text.strip()
+            # Force HTTPS to avoid mixed-content blocking on HTTPS sites
+            if url.startswith('http://'):
+                url = 'https://' + url[7:]
+            return url
         img = item.find('image')
         if img is not None and img.text:
-            return img.text
+            url = img.text.strip()
+            if url.startswith('http://'):
+                url = 'https://' + url[7:]
+            return url
         return ''
     except Exception:
         return ''
