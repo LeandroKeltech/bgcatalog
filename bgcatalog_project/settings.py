@@ -170,6 +170,12 @@ if not DEBUG:
     # SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # When the app is behind Fly.io (reverse proxy) we need to honor the X-Forwarded-Proto header
+    # so Django knows the original request was HTTPS. This helps CSRF and secure cookie handling.
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # Trust the Fly.io hostname for CSRF checks. You can set CSRF_TRUSTED_ORIGINS in the
+    # environment (comma-separated) if you have multiple origins.
+    CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://bgcatalog.fly.dev').split(',')
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
