@@ -52,8 +52,8 @@
     {% for game in games %}
     <div class="col">
         <div class="card h-100">
-            {% if game.thumbnail %}
-            <img src="{{ game.thumbnail }}" class="card-img-top" alt="{{ game.name }}">
+            {% if game.thumbnail or game.thumbnail_url or game.image_url %}
+            <img src="{{ game.thumbnail|default:game.thumbnail_url|default:game.image_url }}" class="card-img-top" alt="{{ game.name }}">
             {% else %}
             <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
                 <i class="bi bi-image text-white" style="font-size: 3rem;"></i>

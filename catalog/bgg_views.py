@@ -8,6 +8,9 @@ from django.contrib import messages
 from django.http import JsonResponse
 from .models import BoardGame
 from . import bgg_price_service
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @staff_member_required
@@ -31,7 +34,9 @@ def bgg_search(request):
                     thumb = bgg_price_service.fetch_bgg_thumbnail(g['bgg_id'])
                     if thumb:
                         g['thumbnail'] = thumb
-                except Exception:
+                        logger.info(f"Fetched thumbnail for BGG id {g.get('bgg_id')}: {thumb}")
+                except Exception as e:
+                    logger.warning(f"Failed to fetch thumbnail for {g.get('bgg_id')}: {e}")
                     continue
     
     context = {
