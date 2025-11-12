@@ -19,9 +19,20 @@ def bgg_search(request):
     if search_query:
         # Check if this is a barcode (numeric, 12-13 digits)
         is_barcode = search_query.isdigit() and len(search_query) in [12, 13]
-        
+
         # Search using the service
         games = bgg_price_service.search_bgg_games(search_query, exact=is_barcode)
+
+        # Populate thumbnails for results that lack them by fetching BGG thing thumbnail.
+        # This adds a few extra API calls but greatly improves UX in the admin search.
+        for g in games:
+            if not g.get('thumbnail') and g.get('bgg_id') and not g.get('bgg_id').startswith('bga_'):
+                try:
+                    thumb = bgg_price_service.fetch_bgg_thumbnail(g['bgg_id'])
+                    if thumb:
+                        g['thumbnail'] = thumb
+                except Exception:
+                    continue
     
     context = {
         'search_query': search_query,

@@ -245,6 +245,31 @@ def get_bgg_game_details(bgg_id: str) -> Dict:
     return {}
 
 
+def fetch_bgg_thumbnail(bgg_id: str) -> str:
+    """Fetch only the thumbnail (or image) URL for a given BGG id using the thing API.
+
+    Returns an empty string if not available or on error.
+    """
+    try:
+        params = {'id': bgg_id}
+        response = requests.get(BGG_THING_URL, params=params, timeout=8)
+        if response.status_code != 200:
+            return ''
+        root = ET.fromstring(response.text)
+        item = root.find('.//item[@type="boardgame"]')
+        if item is None:
+            return ''
+        thumb = item.find('thumbnail')
+        if thumb is not None and thumb.text:
+            return thumb.text
+        img = item.find('image')
+        if img is not None and img.text:
+            return img.text
+        return ''
+    except Exception:
+        return ''
+
+
 def _get_bgg_xml_details(bgg_id: str) -> Dict:
     """Fetch game details from BGG XML API."""
     try:
