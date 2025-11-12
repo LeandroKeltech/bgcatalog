@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @staff_member_required
 def bgg_search(request):
-    """Search BGG/BGA for games."""
+    """Search BGG/BGA for games and populate missing thumbnails."""
     search_query = request.GET.get('search', '')
     games = []
     
