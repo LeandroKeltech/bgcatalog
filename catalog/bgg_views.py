@@ -28,6 +28,7 @@ def bgg_search(request):
 
         # Populate thumbnails for results that lack them by fetching BGG thing thumbnail.
         # This adds a few extra API calls but greatly improves UX in the admin search.
+        logger.info(f"Processing {len(games)} games to populate missing thumbnails")
         for g in games:
             if not g.get('thumbnail') and g.get('bgg_id') and not g.get('bgg_id').startswith('bga_'):
                 try:
