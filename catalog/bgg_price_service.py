@@ -585,45 +585,76 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
         # Extract gameplay info using regex from page text
         text = soup.get_text()
         
-        # Players - try multiple patterns
-        players_match = re.search(r'(\d+)[-–—](\d+)\s+(?:Players?|player)', text, re.IGNORECASE)
+        # Players - try multiple patterns including just numbers
+        players_match = re.search(r'(\d+)[-–—]\s*(\d+)\s*(?:Players?|player|Community)', text, re.IGNORECASE)
+        if not players_match:
+            # Try pattern like "3-4" near "Community" or "Best"
+            players_match = re.search(r'(\d+)\s*[-–—]\s*(\d+)', text)
+        
         if players_match:
             game_data['min_players'] = int(players_match.group(1))
             game_data['max_players'] = int(players_match.group(2))
             logger.info(f"Extracted players: {game_data['min_players']}-{game_data['max_players']}")
         else:
+            # Try single player count
             single_player_match = re.search(r'(\d+)\s+(?:Players?|player)', text, re.IGNORECASE)
             if single_player_match:
                 game_data['min_players'] = int(single_player_match.group(1))
                 game_data['max_players'] = int(single_player_match.group(1))
                 logger.info(f"Extracted single player count: {game_data['min_players']}")
         
-        # Playtime - try multiple patterns
-        time_match = re.search(r'(\d+)[-–—](\d+)\s+(?:Min|Minutes?)', text, re.IGNORECASE)
+        # Playtime - be more flexible with patterns
+        time_match = re.search(r'(\d+)\s*[-–—]\s*(\d+)\s*(?:Min|Minutes?|m\b)', text, re.IGNORECASE)
+        if not time_match:
+            # Try pattern with just numbers followed by "Playing Time" or similar
+            time_match = re.search(r'(\d+)\s*[-–—]\s*(\d+)(?:\s+Playing Time|\s+Time)', text, re.IGNORECASE)
+        
         if time_match:
             game_data['min_playtime'] = int(time_match.group(1))
             game_data['max_playtime'] = int(time_match.group(2))
             logger.info(f"Extracted playtime: {game_data['min_playtime']}-{game_data['max_playtime']}")
         else:
-            single_time_match = re.search(r'(\d+)\s+(?:Min|Minutes?)', text, re.IGNORECASE)
+            # Try single playtime
+            single_time_match = re.search(r'(\d+)\s+(?:Min|Minutes?|m\b)', text, re.IGNORECASE)
             if single_time_match:
                 game_data['min_playtime'] = int(single_time_match.group(1))
                 game_data['max_playtime'] = int(single_time_match.group(1))
                 logger.info(f"Extracted single playtime: {game_data['min_playtime']}")
         
-        # Age - try multiple patterns
+        # Age - multiple patterns
         age_match = re.search(r'(?:Age|Ages?):\s*(\d+)\+', text, re.IGNORECASE)
         if not age_match:
-            age_match = re.search(r'(\d+)\+\s+(?:yrs|years?)', text, re.IGNORECASE)
+            age_match = re.search(r'(\d+)\+\s*(?:yrs|years?|Age)', text, re.IGNORECASE)
+        if not age_match:
+            # Try pattern like "10 and up" or "Ages 10+"
+            age_match = re.search(r'(?:Ages?|Community)\s+(\d+)', text, re.IGNORECASE)
+        
         if age_match:
             game_data['min_age'] = int(age_match.group(1))
             logger.info(f"Extracted min age: {game_data['min_age']}")
         
-        # Extract designer
+        # Extract designer - try multiple selectors
         designer_elem = soup.select_one('a[href*="/boardgamedesigner/"]')
+        if not designer_elem:
+            # Try finding in structured data or spans
+            designer_elem = soup.select_one('span[itemprop="author"], div.credits a')
+        
         if designer_elem:
             game_data['designer'] = designer_elem.get_text(strip=True)
             logger.info(f"Extracted designer: {game_data['designer']}")
+        
+        # Try to extract categories and mechanics
+        category_elems = soup.select('a[href*="/boardgamecategory/"]')
+        if category_elems:
+            categories = [elem.get_text(strip=True) for elem in category_elems[:5]]
+            game_data['categories'] = ', '.join(categories)
+            logger.info(f"Extracted categories: {game_data['categories']}")
+        
+        mechanic_elems = soup.select('a[href*="/boardgamemechanic/"]')
+        if mechanic_elems:
+            mechanics = [elem.get_text(strip=True) for elem in mechanic_elems[:5]]
+            game_data['mechanics'] = ', '.join(mechanics)
+            logger.info(f"Extracted mechanics: {game_data['mechanics']}")
         
         # Extract rating
         rating_elem = soup.select_one('span.rating-value, div[class*="rating"]')
