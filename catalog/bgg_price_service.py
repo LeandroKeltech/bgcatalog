@@ -632,6 +632,7 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
             rating_match = re.search(r'(\d+\.\d+)', rating_text)
             if rating_match:
                 game_data['rating_average'] = float(rating_match.group(1))
+                logger.info(f"Extracted rating: {game_data['rating_average']}")
         
         # Extract rank
         rank_elem = soup.select_one('span[class*="rank"], div[class*="rank"]')
@@ -640,8 +641,10 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
             rank_match = re.search(r'#(\d+)', rank_text)
             if rank_match:
                 game_data['rank_overall'] = int(rank_match.group(1))
+                logger.info(f"Extracted rank: {game_data['rank_overall']}")
         
-        logger.info(f"Scraped game data: {game_data.get('name', 'Unknown')}")
+        logger.info(f"Scraped game data complete. Fields found: {list(game_data.keys())}")
+        logger.info(f"Full data: {game_data}")
         return game_data
     except Exception as e:
         logger.error(f"BGG page scraping exception: {str(e)}")
