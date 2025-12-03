@@ -246,34 +246,37 @@ def get_bgg_game_details(bgg_id: str) -> Dict:
 
 
 def fetch_bgg_thumbnail(bgg_id: str) -> str:
-    """Fetch only the thumbnail (or image) URL for a given BGG id using the thing API.
+    """Fetch thumbnail by scraping BGG game page since Thing API returns 401.
 
-    Returns an empty string if not available or on error. Forces HTTPS for security/mixed-content.
+    Returns an empty string if not available or on error. Forces HTTPS for security.
     """
     try:
-        params = {'id': bgg_id}
-        response = requests.get(BGG_THING_URL, params=params, timeout=8)
+        url = f"https://boardgamegeek.com/boardgame/{bgg_id}"
+        response = requests.get(url, timeout=8, verify=False)
         if response.status_code != 200:
             return ''
-        root = ET.fromstring(response.text)
-        item = root.find('.//item[@type="boardgame"]')
-        if item is None:
-            return ''
-        thumb = item.find('thumbnail')
-        if thumb is not None and thumb.text:
-            url = thumb.text.strip()
-            # Force HTTPS to avoid mixed-content blocking on HTTPS sites
-            if url.startswith('http://'):
-                url = 'https://' + url[7:]
-            return url
-        img = item.find('image')
-        if img is not None and img.text:
-            url = img.text.strip()
-            if url.startswith('http://'):
-                url = 'https://' + url[7:]
-            return url
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Try meta og:image first (most reliable)
+        meta_img = soup.select_one('meta[property="og:image"]')
+        if meta_img and meta_img.get('content'):
+            img_url = meta_img.get('content').strip()
+            if img_url.startswith('http://'):
+                img_url = 'https://' + img_url[7:]
+            return img_url
+        
+        # Fallback to game header image
+        header_img = soup.select_one('img.game-header-image, img[alt*="game"]')
+        if header_img and header_img.get('src'):
+            img_url = header_img.get('src').strip()
+            if img_url.startswith('http://'):
+                img_url = 'https://' + img_url[7:]
+            return img_url
+        
         return ''
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Scraping thumbnail failed for {bgg_id}: {e}")
         return ''
 
 
