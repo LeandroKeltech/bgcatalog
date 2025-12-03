@@ -57,41 +57,26 @@ def preview_bgg_game(request, bgg_id):
         messages.warning(request, f'Game already exists: {existing_game.name}')
         return redirect('edit_game', game_id=existing_game.id)
     
-    # Fetch game details
+    # Fetch complete game details from APIs
+    logger.info(f"Fetching complete details for BGG ID: {bgg_id}")
     game_data = bgg_price_service.get_bgg_game_details(bgg_id)
     
-    if not game_data:
-        # Try a few graceful fallbacks so the admin can still import a minimal record
-        messages.warning(request, 'Primary fetch failed — attempting lightweight fallbacks')
-        try:
-            # If this looks like a BGA id, try the BGA details directly
-            if bgg_id.startswith('bga_'):
-                bga_id = bgg_id[4:]
-                game_data = bgg_price_service.get_bga_game_details(bga_id)
-        except Exception as e:
-            # swallow and continue to other fallbacks
-            game_data = {}
-
-    # If we still have no detailed data, try to at least fetch a thumbnail and set a name
-    if not game_data:
-        try:
-            # If numeric BGG id, try fetching thumbnail
-            if bgg_id.isdigit():
-                thumb = bgg_price_service.fetch_bgg_thumbnail(bgg_id)
-                game_data = {
-                    'name': f'BGG #{bgg_id}',
-                    'image_url': thumb or '',
-                    'thumbnail_url': thumb or '',
-                    'description': '',
-                }
-                messages.info(request, f'Imported minimal record for BGG id {bgg_id}')
-            else:
-                # As a last resort create minimal record with id as name
-                game_data = {'name': bgg_id, 'image_url': '', 'thumbnail_url': '', 'description': ''}
-                messages.info(request, 'Imported minimal record using id as name')
-        except Exception as e:
-            messages.error(request, f'Failed to fetch fallback data: {e}')
-            return redirect('bgg_search')
+    # If no data from main API, try scraping as fallback
+    if not game_data or not game_data.get('name'):
+        logger.warning(f"No data from BGG API for {bgg_id}, attempting web scraping")
+        game_data = bgg_price_service.scrape_bgg_game_page(bgg_id)
+    
+    # If still no data, create minimal entry
+    if not game_data or not game_data.get('name'):
+        logger.error(f"Failed to fetch any data for {bgg_id}")
+        thumb = bgg_price_service.fetch_bgg_thumbnail(bgg_id)
+        game_data = {
+            'name': f'BGG #{bgg_id}',
+            'image_url': thumb or '',
+            'thumbnail_url': thumb or '',
+            'description': '',
+        }
+        messages.warning(request, f'Could not fetch complete data for BGG ID {bgg_id}. Please fill in details manually.')
     
     # Fetch pricing
     pricing = bgg_price_service.fetch_boardgameprices(bgg_id)
