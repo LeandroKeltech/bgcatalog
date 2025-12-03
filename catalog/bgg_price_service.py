@@ -241,20 +241,29 @@ def get_bgg_game_details(bgg_id: str) -> Dict:
         bga_id = bgg_id[4:]  # Remove 'bga_' prefix
         return get_bga_game_details(bga_id)
     
-    # Try BGG XML API
-    game_data = _get_bgg_xml_details(bgg_id)
-    if game_data:
-        logger.info("BGG XML API returned game details")
-        return game_data
+    # Try BGG XML API first
+    try:
+        logger.info(f"Trying BGG XML API for {bgg_id}")
+        game_data = _get_bgg_xml_details(bgg_id)
+        if game_data and game_data.get('name'):
+            logger.info(f"BGG XML API SUCCESS: {game_data.get('name')}")
+            return game_data
+        logger.warning(f"BGG XML API returned empty or no name for {bgg_id}")
+    except Exception as e:
+        logger.error(f"BGG XML API exception: {e}")
     
     # Fallback to web scraping
-    logger.warning("BGG XML API failed, trying web scraping")
-    game_data = scrape_bgg_game_page(bgg_id)
-    if game_data:
-        logger.info("Web scraping returned game details")
-        return game_data
+    try:
+        logger.warning(f"BGG XML API failed, trying web scraping for {bgg_id}")
+        game_data = scrape_bgg_game_page(bgg_id)
+        if game_data and game_data.get('name'):
+            logger.info(f"Web scraping SUCCESS: {game_data.get('name')}")
+            return game_data
+        logger.error(f"Web scraping returned empty or no name for {bgg_id}")
+    except Exception as e:
+        logger.error(f"Web scraping exception: {e}")
     
-    logger.error(f"Failed to fetch details for BGG ID: {bgg_id}")
+    logger.error(f"All methods failed to fetch details for BGG ID: {bgg_id}")
     return {}
 
 
@@ -512,10 +521,26 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
         soup = BeautifulSoup(response.text, 'html.parser')
         game_data = {}
         
-        # Extract game name
-        name_elem = soup.select_one('h1.game-header-title-info a, h1 a[href*="/boardgame/"]')
+        # Extract game name - try multiple selectors
+        name_elem = soup.select_one('h1.game-header-title-info a, h1 a[href*="/boardgame/"], meta[property="og:title"]')
         if name_elem:
-            game_data['name'] = name_elem.get_text(strip=True)
+            if name_elem.name == 'meta':
+                game_data['name'] = name_elem.get('content', '').strip()
+            else:
+                game_data['name'] = name_elem.get_text(strip=True)
+        
+        # If still no name, try from page title
+        if not game_data.get('name'):
+            title_elem = soup.find('title')
+            if title_elem:
+                title_text = title_elem.get_text(strip=True)
+                # Extract game name from title like "CATAN | Board Game | BoardGameGeek"
+                if '|' in title_text:
+                    game_data['name'] = title_text.split('|')[0].strip()
+                else:
+                    game_data['name'] = title_text.strip()
+        
+        logger.info(f"Extracted name: {game_data.get('name', 'NO NAME FOUND')}")
         
         # Extract year
         year_match = re.search(r'\((\d{4})\)', soup.get_text())
