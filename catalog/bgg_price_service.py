@@ -31,6 +31,16 @@ BOARDGAMEPRICES_API = "https://www.boardgameprices.co.uk/plugin/info"
 # Exchange rate GBP to EUR
 GBP_TO_EUR = 1.17
 
+# HTTP headers to mimic a browser
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1'
+}
+
 
 def search_bgg_games(query: str, exact: bool = False) -> List[Dict]:
     """
@@ -157,11 +167,14 @@ def _search_bga_api(query: str) -> List[Dict]:
 
 def _search_bgg_web_scraping(query: str) -> List[Dict]:
     """Scrape BGG website for search results."""
+    import warnings
+    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+    
     try:
         search_url = f"{BGG_WEB_BASE}/geeksearch.php"
         params = {'action': 'search', 'objecttype': 'boardgame', 'q': query}
         
-        response = requests.get(search_url, params=params, timeout=15, verify=False)
+        response = requests.get(search_url, params=params, headers=HEADERS, timeout=15, verify=False)
         
         if response.status_code != 200:
             logger.error(f"BGG web scraping failed: {response.status_code}")
@@ -256,7 +269,7 @@ def fetch_bgg_thumbnail(bgg_id: str) -> str:
     try:
         url = f"https://boardgamegeek.com/boardgame/{bgg_id}"
         logger.info(f"Fetching thumbnail for BGG {bgg_id} from {url}")
-        response = requests.get(url, timeout=8, verify=False)
+        response = requests.get(url, headers=HEADERS, timeout=8, verify=False)
         logger.info(f"BGG page response: {response.status_code}")
         if response.status_code != 200:
             return ''
@@ -295,7 +308,7 @@ def _get_bgg_xml_details(bgg_id: str) -> Dict:
     """Fetch game details from BGG XML API."""
     try:
         params = {'id': bgg_id, 'stats': '1'}
-        response = requests.get(BGG_THING_URL, params=params, timeout=10)
+        response = requests.get(BGG_THING_URL, params=params, headers=HEADERS, timeout=10)
         
         if response.status_code != 200:
             logger.error(f"BGG XML details failed: {response.status_code}")
@@ -483,11 +496,14 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
     Returns:
         Dictionary with extracted game data
     """
+    import warnings
+    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+    
     try:
         url = f"{BGG_WEB_BASE}/boardgame/{bgg_id}"
         logger.info(f"Scraping BGG page: {url}")
         
-        response = requests.get(url, timeout=15, verify=False)
+        response = requests.get(url, headers=HEADERS, timeout=15, verify=False)
         
         if response.status_code != 200:
             logger.error(f"BGG page scraping failed: {response.status_code}")
