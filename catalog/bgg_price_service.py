@@ -250,6 +250,9 @@ def fetch_bgg_thumbnail(bgg_id: str) -> str:
 
     Returns an empty string if not available or on error. Forces HTTPS for security.
     """
+    import warnings
+    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+    
     try:
         url = f"https://boardgamegeek.com/boardgame/{bgg_id}"
         logger.info(f"Fetching thumbnail for BGG {bgg_id} from {url}")
@@ -281,7 +284,10 @@ def fetch_bgg_thumbnail(bgg_id: str) -> str:
         logger.warning(f"No thumbnail found for BGG {bgg_id}")
         return ''
     except Exception as e:
-        logger.warning(f"Scraping thumbnail failed for {bgg_id}: {e}")
+        try:
+            logger.error(f"Scraping thumbnail failed for {bgg_id}: {e}")
+        except:
+            pass
         return ''
 
 
