@@ -542,59 +542,88 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
         
         logger.info(f"Extracted name: {game_data.get('name', 'NO NAME FOUND')}")
         
-        # Extract year
-        year_match = re.search(r'\((\d{4})\)', soup.get_text())
-        if year_match:
-            game_data['year_published'] = int(year_match.group(1))
+        # Extract year from meta or text
+        year_elem = soup.select_one('meta[property="og:description"]')
+        if year_elem:
+            desc = year_elem.get('content', '')
+            year_match = re.search(r'\((\d{4})\)', desc)
+            if year_match:
+                game_data['year_published'] = int(year_match.group(1))
+                logger.info(f"Extracted year from meta: {game_data['year_published']}")
         
-        # Extract image
-        image_elem = soup.select_one('img.game-header-image, meta[property="og:image"]')
+        if not game_data.get('year_published'):
+            year_match = re.search(r'\((\d{4})\)', soup.get_text())
+            if year_match:
+                game_data['year_published'] = int(year_match.group(1))
+                logger.info(f"Extracted year from text: {game_data['year_published']}")
+        
+        # Extract image from meta tags (most reliable)
+        image_elem = soup.select_one('meta[property="og:image"]')
         if image_elem:
-            if image_elem.name == 'meta':
-                game_data['image_url'] = image_elem.get('content', '')
-            else:
-                game_data['image_url'] = image_elem.get('src', '')
+            game_data['image_url'] = image_elem.get('content', '')
             game_data['thumbnail_url'] = game_data['image_url']
+            logger.info(f"Extracted image from og:image")
+        else:
+            # Fallback to img tag
+            image_elem = soup.select_one('img.game-header-image, img[alt*="game"]')
+            if image_elem:
+                game_data['image_url'] = image_elem.get('src', '')
+                game_data['thumbnail_url'] = game_data['image_url']
+                logger.info(f"Extracted image from img tag")
         
-        # Extract description
-        desc_elem = soup.select_one('div.game-description-body, div[class*="description"]')
+        # Extract description from meta or div
+        desc_elem = soup.select_one('meta[property="og:description"]')
         if desc_elem:
-            game_data['description'] = desc_elem.get_text(strip=True)[:1000]
+            game_data['description'] = desc_elem.get('content', '')[:1000]
+            logger.info(f"Extracted description from meta ({len(game_data['description'])} chars)")
+        else:
+            desc_elem = soup.select_one('div.game-description-body, div[class*="description"], p[class*="description"]')
+            if desc_elem:
+                game_data['description'] = desc_elem.get_text(strip=True)[:1000]
+                logger.info(f"Extracted description from div ({len(game_data['description'])} chars)")
         
-        # Extract gameplay info using regex
+        # Extract gameplay info using regex from page text
         text = soup.get_text()
         
-        # Players
-        players_match = re.search(r'(\d+)[-–](\d+)\s+Players?', text, re.IGNORECASE)
+        # Players - try multiple patterns
+        players_match = re.search(r'(\d+)[-–—](\d+)\s+(?:Players?|player)', text, re.IGNORECASE)
         if players_match:
             game_data['min_players'] = int(players_match.group(1))
             game_data['max_players'] = int(players_match.group(2))
+            logger.info(f"Extracted players: {game_data['min_players']}-{game_data['max_players']}")
         else:
-            single_player_match = re.search(r'(\d+)\s+Players?', text, re.IGNORECASE)
+            single_player_match = re.search(r'(\d+)\s+(?:Players?|player)', text, re.IGNORECASE)
             if single_player_match:
                 game_data['min_players'] = int(single_player_match.group(1))
                 game_data['max_players'] = int(single_player_match.group(1))
+                logger.info(f"Extracted single player count: {game_data['min_players']}")
         
-        # Playtime
-        time_match = re.search(r'(\d+)[-–](\d+)\s+Min', text, re.IGNORECASE)
+        # Playtime - try multiple patterns
+        time_match = re.search(r'(\d+)[-–—](\d+)\s+(?:Min|Minutes?)', text, re.IGNORECASE)
         if time_match:
             game_data['min_playtime'] = int(time_match.group(1))
             game_data['max_playtime'] = int(time_match.group(2))
+            logger.info(f"Extracted playtime: {game_data['min_playtime']}-{game_data['max_playtime']}")
         else:
-            single_time_match = re.search(r'(\d+)\s+Min', text, re.IGNORECASE)
+            single_time_match = re.search(r'(\d+)\s+(?:Min|Minutes?)', text, re.IGNORECASE)
             if single_time_match:
                 game_data['min_playtime'] = int(single_time_match.group(1))
                 game_data['max_playtime'] = int(single_time_match.group(1))
+                logger.info(f"Extracted single playtime: {game_data['min_playtime']}")
         
-        # Age
-        age_match = re.search(r'Age:\s*(\d+)\+', text, re.IGNORECASE)
+        # Age - try multiple patterns
+        age_match = re.search(r'(?:Age|Ages?):\s*(\d+)\+', text, re.IGNORECASE)
+        if not age_match:
+            age_match = re.search(r'(\d+)\+\s+(?:yrs|years?)', text, re.IGNORECASE)
         if age_match:
             game_data['min_age'] = int(age_match.group(1))
+            logger.info(f"Extracted min age: {game_data['min_age']}")
         
         # Extract designer
         designer_elem = soup.select_one('a[href*="/boardgamedesigner/"]')
         if designer_elem:
             game_data['designer'] = designer_elem.get_text(strip=True)
+            logger.info(f"Extracted designer: {game_data['designer']}")
         
         # Extract rating
         rating_elem = soup.select_one('span.rating-value, div[class*="rating"]')
