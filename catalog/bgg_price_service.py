@@ -252,7 +252,9 @@ def fetch_bgg_thumbnail(bgg_id: str) -> str:
     """
     try:
         url = f"https://boardgamegeek.com/boardgame/{bgg_id}"
+        logger.info(f"Fetching thumbnail for BGG {bgg_id} from {url}")
         response = requests.get(url, timeout=8, verify=False)
+        logger.info(f"BGG page response: {response.status_code}")
         if response.status_code != 200:
             return ''
         
@@ -264,6 +266,7 @@ def fetch_bgg_thumbnail(bgg_id: str) -> str:
             img_url = meta_img.get('content').strip()
             if img_url.startswith('http://'):
                 img_url = 'https://' + img_url[7:]
+            logger.info(f"Found thumbnail via og:image: {img_url}")
             return img_url
         
         # Fallback to game header image
@@ -272,8 +275,10 @@ def fetch_bgg_thumbnail(bgg_id: str) -> str:
             img_url = header_img.get('src').strip()
             if img_url.startswith('http://'):
                 img_url = 'https://' + img_url[7:]
+            logger.info(f"Found thumbnail via header img: {img_url}")
             return img_url
         
+        logger.warning(f"No thumbnail found for BGG {bgg_id}")
         return ''
     except Exception as e:
         logger.warning(f"Scraping thumbnail failed for {bgg_id}: {e}")
