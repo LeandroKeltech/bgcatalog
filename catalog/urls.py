@@ -18,6 +18,7 @@ urlpatterns = [
     
     # BGG search and import
     path('admin-panel/bgg-search/', bgg_views.bgg_search, name='bgg_search'),
+    path('admin-panel/preview/<str:bgg_id>/', bgg_views.preview_bgg_game, name='preview_bgg_game'),
     path('admin-panel/import/<str:bgg_id>/', bgg_views.import_from_bgg, name='import_from_bgg'),
     path('admin-panel/game/<int:game_id>/refresh/', bgg_views.refresh_game_data, name='refresh_game_data'),
     

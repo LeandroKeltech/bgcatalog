@@ -49,11 +49,8 @@ def bgg_search(request):
 
 
 @staff_member_required
-def import_from_bgg(request, bgg_id):
-    """Import game details from BGG/BGA and create new game entry."""
-    if request.method != 'POST':
-        return redirect('bgg_search')
-    
+def preview_bgg_game(request, bgg_id):
+    """Preview game details from BGG/BGA before importing."""
     # Check if game already exists
     existing_game = BoardGame.objects.filter(bgg_id=bgg_id).first()
     if existing_game:
@@ -101,29 +98,50 @@ def import_from_bgg(request, bgg_id):
     if pricing:
         game_data['msrp_price'] = pricing.get('price')
     
-    # Create new game
+    # Show preview form
+    context = {
+        'bgg_id': bgg_id,
+        'game_data': game_data,
+    }
+    return render(request, 'catalog/bgg_preview.html', context)
+
+
+@staff_member_required
+def import_from_bgg(request, bgg_id):
+    """Import game from preview form."""
+    if request.method != 'POST':
+        return redirect('bgg_search')
+    
+    # Check if game already exists
+    existing_game = BoardGame.objects.filter(bgg_id=bgg_id).first()
+    if existing_game:
+        messages.warning(request, f'Game already exists: {existing_game.name}')
+        return redirect('edit_game', game_id=existing_game.id)
+    
+    # Create game from form data
     game = BoardGame.objects.create(
         bgg_id=bgg_id,
-        name=game_data.get('name', 'Unknown Game'),
-        year_published=game_data.get('year_published'),
-        designer=game_data.get('designer', ''),
-        description=game_data.get('description', ''),
-        image_url=game_data.get('image_url', ''),
-        thumbnail_url=game_data.get('thumbnail_url', ''),
-        min_players=game_data.get('min_players'),
-        max_players=game_data.get('max_players'),
-        min_playtime=game_data.get('min_playtime'),
-        max_playtime=game_data.get('max_playtime'),
-        min_age=game_data.get('min_age'),
-        categories=game_data.get('categories', ''),
-        mechanics=game_data.get('mechanics', ''),
-        rating_average=game_data.get('rating_average'),
-        rating_bayes=game_data.get('rating_bayes'),
-        rank_overall=game_data.get('rank_overall'),
-        num_ratings=game_data.get('num_ratings'),
-        msrp_price=game_data.get('msrp_price'),
-        stock_quantity=1,
-        condition='new',
+        name=request.POST.get('name', 'Unknown Game'),
+        year_published=request.POST.get('year_published') or None,
+        designer=request.POST.get('designer', ''),
+        description=request.POST.get('description', ''),
+        image_url=request.POST.get('image_url', ''),
+        thumbnail_url=request.POST.get('thumbnail_url', ''),
+        min_players=request.POST.get('min_players') or None,
+        max_players=request.POST.get('max_players') or None,
+        min_playtime=request.POST.get('min_playtime') or None,
+        max_playtime=request.POST.get('max_playtime') or None,
+        min_age=request.POST.get('min_age') or None,
+        categories=request.POST.get('categories', ''),
+        mechanics=request.POST.get('mechanics', ''),
+        rating_average=request.POST.get('rating_average') or None,
+        rating_bayes=request.POST.get('rating_bayes') or None,
+        rank_overall=request.POST.get('rank_overall') or None,
+        num_ratings=request.POST.get('num_ratings') or None,
+        msrp_price=request.POST.get('msrp_price') or None,
+        price=request.POST.get('price') or None,
+        stock_quantity=request.POST.get('stock_quantity', 1),
+        condition=request.POST.get('condition', 'new'),
     )
     
     messages.success(request, f'Game "{game.name}" imported successfully!')

@@ -1,0 +1,165 @@
+{% extends 'catalog/base.html' %}
+
+{% block title %}Preview Game - Board Game Catalog{% endblock %}
+
+{% block content %}
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{% url 'admin_panel' %}">Admin Panel</a></li>
+        <li class="breadcrumb-item"><a href="{% url 'bgg_search' %}">BGG Search</a></li>
+        <li class="breadcrumb-item active">Preview Game</li>
+    </ol>
+</nav>
+
+<h1><i class="bi bi-eye"></i> Preview & Import Game</h1>
+
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-body text-center">
+                {% if game_data.thumbnail_url or game_data.image_url %}
+                <img src="{{ game_data.thumbnail_url|default:game_data.image_url }}" class="img-fluid mb-3" alt="{{ game_data.name }}">
+                {% else %}
+                <div class="bg-secondary d-flex align-items-center justify-content-center mb-3" style="height: 300px;">
+                    <i class="bi bi-image text-white" style="font-size: 4rem;"></i>
+                </div>
+                {% endif %}
+                <p class="text-muted"><strong>BGG ID:</strong> {{ bgg_id }}</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <form method="post" action="{% url 'import_from_bgg' bgg_id %}">
+            {% csrf_token %}
+            
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Basic Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Game Name *</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ game_data.name }}" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="year_published" class="form-label">Year Published</label>
+                            <input type="number" class="form-control" id="year_published" name="year_published" value="{{ game_data.year_published|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="designer" class="form-label">Designer</label>
+                            <input type="text" class="form-control" id="designer" name="designer" value="{{ game_data.designer|default:'' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="4">{{ game_data.description|default:'' }}</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Game Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="min_players" class="form-label">Min Players</label>
+                            <input type="number" class="form-control" id="min_players" name="min_players" value="{{ game_data.min_players|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="max_players" class="form-label">Max Players</label>
+                            <input type="number" class="form-control" id="max_players" name="max_players" value="{{ game_data.max_players|default:'' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="min_playtime" class="form-label">Min Playtime (min)</label>
+                            <input type="number" class="form-control" id="min_playtime" name="min_playtime" value="{{ game_data.min_playtime|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="max_playtime" class="form-label">Max Playtime (min)</label>
+                            <input type="number" class="form-control" id="max_playtime" name="max_playtime" value="{{ game_data.max_playtime|default:'' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="min_age" class="form-label">Min Age</label>
+                            <input type="number" class="form-control" id="min_age" name="min_age" value="{{ game_data.min_age|default:'' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="categories" class="form-label">Categories</label>
+                        <input type="text" class="form-control" id="categories" name="categories" value="{{ game_data.categories|default:'' }}">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="mechanics" class="form-label">Mechanics</label>
+                        <input type="text" class="form-control" id="mechanics" name="mechanics" value="{{ game_data.mechanics|default:'' }}">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Pricing & Stock</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="msrp_price" class="form-label">MSRP Price (R$)</label>
+                            <input type="number" step="0.01" class="form-control" id="msrp_price" name="msrp_price" value="{{ game_data.msrp_price|default:'' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="price" class="form-label">Your Price (R$) *</label>
+                            <input type="number" step="0.01" class="form-control" id="price" name="price" value="" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="stock_quantity" class="form-label">Stock Quantity *</label>
+                            <input type="number" class="form-control" id="stock_quantity" name="stock_quantity" value="1" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="condition" class="form-label">Condition *</label>
+                            <select class="form-select" id="condition" name="condition" required>
+                                <option value="new" selected>New</option>
+                                <option value="like_new">Like New</option>
+                                <option value="very_good">Very Good</option>
+                                <option value="good">Good</option>
+                                <option value="acceptable">Acceptable</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hidden fields for images -->
+            <input type="hidden" name="image_url" value="{{ game_data.image_url|default:'' }}">
+            <input type="hidden" name="thumbnail_url" value="{{ game_data.thumbnail_url|default:'' }}">
+            <input type="hidden" name="rating_average" value="{{ game_data.rating_average|default:'' }}">
+            <input type="hidden" name="rating_bayes" value="{{ game_data.rating_bayes|default:'' }}">
+            <input type="hidden" name="rank_overall" value="{{ game_data.rank_overall|default:'' }}">
+            <input type="hidden" name="num_ratings" value="{{ game_data.num_ratings|default:'' }}">
+            
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle"></i> Import Game
+                </button>
+                <a href="{% url 'bgg_search' %}" class="btn btn-secondary">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
