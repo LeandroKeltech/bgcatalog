@@ -315,15 +315,23 @@ def fetch_bgg_thumbnail(bgg_id: str) -> str:
 
 def _get_bgg_xml_details(bgg_id: str) -> Dict:
     """Fetch game details from BGG XML API."""
+    import warnings
+    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
+    
     try:
         params = {'id': bgg_id, 'stats': '1'}
-        response = requests.get(BGG_THING_URL, params=params, headers=HEADERS, timeout=10)
+        # Try without SSL verification which often works better
+        try:
+            response = requests.get(BGG_THING_URL, params=params, headers=HEADERS, timeout=10, verify=False)
+        except:
+            response = requests.get(BGG_THING_URL, params=params, headers=HEADERS, timeout=10)
         
-        if response.status_code != 200:
+        if response.status_code == 200:
+            logger.info(f"BGG XML API success: {response.status_code}")
+            return _parse_bgg_thing_xml(response.text)
+        else:
             logger.error(f"BGG XML details failed: {response.status_code}")
             return {}
-        
-        return _parse_bgg_thing_xml(response.text)
     except Exception as e:
         logger.error(f"BGG XML details exception: {str(e)}")
         return {}
