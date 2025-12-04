@@ -620,59 +620,72 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
                     year_val = int(year_match.group(1))
                     if 1900 <= year_val <= 2030:  # Sanity check
                         game_data['year_published'] = year_val
-                        logger.info(f"Extracted year: {year_val}")
+                        logger.info(f"Extracted year: {year_val} using pattern: {pattern}")
                         break
         
-        # Extract players - aggressive multi-pattern search
+        # Log snippet for debugging
+        logger.info(f"First 500 chars of page: {response.text[:500]}")
+        
+        # Extract players - aggressive multi-pattern search  
         text_snippet = response.text[:15000]
         player_patterns = [
-            r'player[s]?["\s]*[:]?\s*(\d+)\s*[-–—]\s*(\d+)',
-            r'(\d+)\s*[-–—]\s*(\d+)\s*player',
-            r'min.*?player.*?(\d+).*?max.*?(\d+)',
-            r'Players.*?(\d+)\s*[-–—]\s*(\d+)'
+            r'(\d+)\s*[-–—]\s*(\d+)\s*[Pp]layer',
+            r'[Pp]layer[s]?["\s]*[:]?\s*(\d+)\s*[-–—]\s*(\d+)',
+            r'Community:\s*(\d+)\s*[-–—]\s*(\d+)',
+            r'Best:\s*(\d+)\s*[-–—]?\s*(\d+)?'
         ]
         for pattern in player_patterns:
-            match = re.search(pattern, text_snippet, re.IGNORECASE)
+            match = re.search(pattern, text_snippet)
             if match:
-                min_p, max_p = int(match.group(1)), int(match.group(2))
-                if 1 <= min_p <= 20 and 1 <= max_p <= 20 and min_p <= max_p:
-                    game_data['min_players'] = min_p
-                    game_data['max_players'] = max_p
-                    logger.info(f"Extracted players: {min_p}-{max_p}")
-                    break
+                try:
+                    min_p = int(match.group(1))
+                    max_p = int(match.group(2)) if match.group(2) else min_p
+                    if 1 <= min_p <= 20 and 1 <= max_p <= 20 and min_p <= max_p:
+                        game_data['min_players'] = min_p
+                        game_data['max_players'] = max_p
+                        logger.info(f"Extracted players: {min_p}-{max_p} using pattern: {pattern}")
+                        break
+                except (ValueError, IndexError):
+                    continue
         
         # Extract playtime - aggressive search
         time_patterns = [
-            r'playtime.*?(\d+)\s*[-–—]\s*(\d+)',
-            r'(\d+)\s*[-–—]\s*(\d+)\s*min',
-            r'Playing\s*Time.*?(\d+)\s*[-–—]\s*(\d+)',
-            r'time["\s]*[:]?\s*(\d+)\s*[-–—]\s*(\d+)'
+            r'(\d+)\s*[-–—]\s*(\d+)\s*[Mm]in',
+            r'[Pp]laying\s*[Tt]ime["\s]*[:]?\s*(\d+)\s*[-–—]\s*(\d+)',
+            r'[Tt]ime["\s]*[:]?\s*(\d+)\s*[-–—]\s*(\d+)',
+            r'playtime["\s]*[:]?\s*(\d+)\s*[-–—]\s*(\d+)'
         ]
         for pattern in time_patterns:
-            match = re.search(pattern, text_snippet, re.IGNORECASE)
+            match = re.search(pattern, text_snippet)
             if match:
-                min_t, max_t = int(match.group(1)), int(match.group(2))
-                if 5 <= min_t <= 1000 and 5 <= max_t <= 1000 and min_t <= max_t:
-                    game_data['min_playtime'] = min_t
-                    game_data['max_playtime'] = max_t
-                    logger.info(f"Extracted playtime: {min_t}-{max_t}")
-                    break
+                try:
+                    min_t = int(match.group(1))
+                    max_t = int(match.group(2))
+                    if 5 <= min_t <= 1000 and 5 <= max_t <= 1000 and min_t <= max_t:
+                        game_data['min_playtime'] = min_t
+                        game_data['max_playtime'] = max_t
+                        logger.info(f"Extracted playtime: {min_t}-{max_t} using pattern: {pattern}")
+                        break
+                except (ValueError, IndexError):
+                    continue
         
-        # Extract age - aggressive search
+        # Extract age - MORE STRICT patterns to avoid false positives
         age_patterns = [
-            r'age[s]?["\s]*[:]?\s*(\d{1,2})\+',
-            r'(\d{1,2})\+\s*(?:year|age)',
-            r'minage.*?(\d{1,2})',
-            r'Minimum\s*Age.*?(\d{1,2})'
+            r'[Aa]ge[s]?["\s]*[:]?\s*(\d{1,2})\+',
+            r'[Mm]inimum\s*[Aa]ge["\s]*[:]?\s*(\d{1,2})',
+            r'[Cc]ommunity:\s*(\d{1,2})\+',
+            r'(\d{1,2})\+\s*[Yy]ears?'
         ]
         for pattern in age_patterns:
-            match = re.search(pattern, text_snippet, re.IGNORECASE)
+            match = re.search(pattern, text_snippet)
             if match:
                 age_val = int(match.group(1))
-                if 1 <= age_val <= 21:
+                if 3 <= age_val <= 21:  # More strict - board games usually 3+
                     game_data['min_age'] = age_val
-                    logger.info(f"Extracted age: {age_val}")
+                    logger.info(f"Extracted age: {age_val} using pattern: {pattern}")
                     break
+                else:
+                    logger.warning(f"Age {age_val} out of range (3-21), skipping")
         
         # Extract designer - multiple attempts
         if not game_data.get('designer'):
