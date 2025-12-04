@@ -559,8 +559,10 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
         soup = BeautifulSoup(response.text, 'html.parser')
         game_data = {}
         
-        # Save HTML snippet for debugging
+        # Log page info for debugging
         logger.info(f"Page title: {soup.find('title').get_text() if soup.find('title') else 'No title'}")
+        logger.info(f"HTML snippet (first 800 chars): {response.text[:800]}")
+        logger.info(f"HTML snippet (chars 5000-5800): {response.text[5000:5800]}")
         
         # Extract game name - try multiple selectors
         name_elem = soup.select_one('h1.game-header-title-info a, h1 a[href*="/boardgame/"], meta[property="og:title"]')
@@ -614,6 +616,9 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
         else:
             logger.warning("No JSON-LD found on page")
         
+        # Log what we have so far before trying to extract more
+        logger.info(f"After JSON-LD: {list(game_data.keys())}")
+        
         # Extract year - aggressive search
         if not game_data.get('year_published'):
             # Try in first 10k chars for performance
@@ -633,9 +638,6 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
                         game_data['year_published'] = year_val
                         logger.info(f"Extracted year: {year_val} using pattern: {pattern}")
                         break
-        
-        # Log snippet for debugging
-        logger.info(f"First 500 chars of page: {response.text[:500]}")
         
         # Extract players - aggressive multi-pattern search  
         text_snippet = response.text[:15000]
