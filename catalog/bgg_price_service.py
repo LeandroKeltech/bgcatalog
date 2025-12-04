@@ -582,56 +582,72 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
                 game_data['description'] = desc_elem.get_text(strip=True)[:1000]
                 logger.info(f"Extracted description from div ({len(game_data['description'])} chars)")
         
-        # Extract gameplay info using regex from page text
-        text = soup.get_text()
+        # Extract gameplay info from structured data or specific page areas
+        # Try to find game stats panel/section
+        stats_text = ""
+        stats_section = soup.select_one('div[class*="gameplay"], div[class*="stats"], ul[class*="gameplay"]')
+        if stats_section:
+            stats_text = stats_section.get_text()
+            logger.info(f"Found stats section with {len(stats_text)} chars")
+        else:
+            stats_text = soup.get_text()
+            logger.info("Using full page text for extraction")
         
-        # Players - try multiple patterns including just numbers
-        players_match = re.search(r'(\d+)[-–—]\s*(\d+)\s*(?:Players?|player|Community)', text, re.IGNORECASE)
+        # Extract year from multiple sources
+        if not game_data.get('year_published'):
+            # Try yearpublished span or similar
+            year_elem = soup.select_one('span[class*="year"]')
+            if year_elem:
+                year_text = year_elem.get_text()
+                year_match = re.search(r'(\d{4})', year_text)
+                if year_match:
+                    game_data['year_published'] = int(year_match.group(1))
+                    logger.info(f"Extracted year from span: {game_data['year_published']}")
+        
+        # Players - look for specific patterns in stats area
+        # BGG typically shows "3–4" format
+        players_match = re.search(r'(\d+)\s*[–—-]\s*(\d+)\s*(?:Players?|Community)', stats_text, re.IGNORECASE)
         if not players_match:
-            # Try pattern like "3-4" near "Community" or "Best"
-            players_match = re.search(r'(\d+)\s*[-–—]\s*(\d+)', text)
+            # Just look for "X–Y" pattern near beginning
+            players_match = re.search(r'(\d+)\s*[–—-]\s*(\d+)', stats_text)
         
         if players_match:
-            game_data['min_players'] = int(players_match.group(1))
-            game_data['max_players'] = int(players_match.group(2))
-            logger.info(f"Extracted players: {game_data['min_players']}-{game_data['max_players']}")
-        else:
-            # Try single player count
-            single_player_match = re.search(r'(\d+)\s+(?:Players?|player)', text, re.IGNORECASE)
-            if single_player_match:
-                game_data['min_players'] = int(single_player_match.group(1))
-                game_data['max_players'] = int(single_player_match.group(1))
-                logger.info(f"Extracted single player count: {game_data['min_players']}")
+            min_p = int(players_match.group(1))
+            max_p = int(players_match.group(2))
+            # Sanity check - players should be between 1 and 20
+            if 1 <= min_p <= 20 and 1 <= max_p <= 20 and min_p <= max_p:
+                game_data['min_players'] = min_p
+                game_data['max_players'] = max_p
+                logger.info(f"Extracted players: {min_p}-{max_p}")
         
-        # Playtime - be more flexible with patterns
-        time_match = re.search(r'(\d+)\s*[-–—]\s*(\d+)\s*(?:Min|Minutes?|m\b)', text, re.IGNORECASE)
-        if not time_match:
-            # Try pattern with just numbers followed by "Playing Time" or similar
-            time_match = re.search(r'(\d+)\s*[-–—]\s*(\d+)(?:\s+Playing Time|\s+Time)', text, re.IGNORECASE)
-        
+        # Playtime - look for time ranges
+        time_match = re.search(r'(\d+)\s*[–—-]\s*(\d+)\s*(?:Min|min)', stats_text, re.IGNORECASE)
         if time_match:
-            game_data['min_playtime'] = int(time_match.group(1))
-            game_data['max_playtime'] = int(time_match.group(2))
-            logger.info(f"Extracted playtime: {game_data['min_playtime']}-{game_data['max_playtime']}")
+            min_t = int(time_match.group(1))
+            max_t = int(time_match.group(2))
+            # Sanity check - playtime should be reasonable
+            if 1 <= min_t <= 1000 and 1 <= max_t <= 1000 and min_t <= max_t:
+                game_data['min_playtime'] = min_t
+                game_data['max_playtime'] = max_t
+                logger.info(f"Extracted playtime: {min_t}-{max_t}")
         else:
-            # Try single playtime
-            single_time_match = re.search(r'(\d+)\s+(?:Min|Minutes?|m\b)', text, re.IGNORECASE)
-            if single_time_match:
-                game_data['min_playtime'] = int(single_time_match.group(1))
-                game_data['max_playtime'] = int(single_time_match.group(1))
-                logger.info(f"Extracted single playtime: {game_data['min_playtime']}")
+            # Try single time value
+            time_match = re.search(r'(\d{2,4})\s*(?:Min|min)', stats_text, re.IGNORECASE)
+            if time_match:
+                time_val = int(time_match.group(1))
+                if 5 <= time_val <= 1000:
+                    game_data['min_playtime'] = time_val
+                    game_data['max_playtime'] = time_val
+                    logger.info(f"Extracted playtime: {time_val}")
         
-        # Age - multiple patterns
-        age_match = re.search(r'(?:Age|Ages?):\s*(\d+)\+', text, re.IGNORECASE)
-        if not age_match:
-            age_match = re.search(r'(\d+)\+\s*(?:yrs|years?|Age)', text, re.IGNORECASE)
-        if not age_match:
-            # Try pattern like "10 and up" or "Ages 10+"
-            age_match = re.search(r'(?:Ages?|Community)\s+(\d+)', text, re.IGNORECASE)
-        
+        # Age - look for age rating
+        age_match = re.search(r'(\d{1,2})\s*\+', stats_text)
         if age_match:
-            game_data['min_age'] = int(age_match.group(1))
-            logger.info(f"Extracted min age: {game_data['min_age']}")
+            age_val = int(age_match.group(1))
+            # Sanity check - age should be reasonable
+            if 1 <= age_val <= 21:
+                game_data['min_age'] = age_val
+                logger.info(f"Extracted min age: {age_val}")
         
         # Extract designer - try multiple selectors
         designer_elem = soup.select_one('a[href*="/boardgamedesigner/"]')
