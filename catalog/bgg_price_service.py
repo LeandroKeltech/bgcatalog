@@ -207,12 +207,23 @@ def _search_bgg_web_scraping(query: str) -> List[Dict]:
                     if year_match:
                         year = int(year_match.group())
                 
+                # Try to extract thumbnail from row
+                img_elem = row.select_one('img')
+                thumbnail = ''
+                if img_elem and img_elem.get('src'):
+                    thumbnail = img_elem.get('src')
+                    # Convert to https if needed
+                    if thumbnail.startswith('//'):
+                        thumbnail = 'https:' + thumbnail
+                    elif thumbnail.startswith('http://'):
+                        thumbnail = 'https://' + thumbnail[7:]
+                
                 if name:
                     games.append({
                         'bgg_id': game_id,
                         'name': name,
                         'year': year,
-                        'thumbnail': '',
+                        'thumbnail': thumbnail,
                     })
             except Exception as e:
                 logger.warning(f"Error parsing search result row: {str(e)}")
