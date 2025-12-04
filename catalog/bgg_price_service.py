@@ -226,7 +226,7 @@ def _search_bgg_web_scraping(query: str) -> List[Dict]:
 
 def get_bgg_game_details(bgg_id: str) -> Dict:
     """
-    Get detailed game information.
+    Get detailed game information using multi-source fallback.
     
     Args:
         bgg_id: BGG ID or BGA ID (prefixed with 'bga_')
@@ -252,16 +252,35 @@ def get_bgg_game_details(bgg_id: str) -> Dict:
     except Exception as e:
         logger.error(f"BGG XML API exception: {e}")
     
-    # Fallback to web scraping
+    # Try to find game on Board Game Atlas using BGG ID
     try:
-        logger.warning(f"BGG XML API failed, trying web scraping for {bgg_id}")
+        logger.info(f"BGG API failed, trying Board Game Atlas search for BGG ID {bgg_id}")
+        # First try to search by name from scraping
         game_data = scrape_bgg_game_page(bgg_id)
         if game_data and game_data.get('name'):
-            logger.info(f"Web scraping SUCCESS: {game_data.get('name')}")
+            logger.info(f"Got name from scraping: {game_data.get('name')}, searching BGA")
+            # Search BGA by name to get full details
+            bga_games = _search_bga_api(game_data['name'])
+            if bga_games:
+                # Get first result's full details
+                first_game = bga_games[0]
+                if first_game.get('bgg_id') and first_game['bgg_id'].startswith('bga_'):
+                    bga_id = first_game['bgg_id'][4:]
+                    bga_details = get_bga_game_details(bga_id)
+                    if bga_details and bga_details.get('name'):
+                        # Merge scraped image with BGA details
+                        if game_data.get('image_url') and not bga_details.get('image_url'):
+                            bga_details['image_url'] = game_data['image_url']
+                            bga_details['thumbnail_url'] = game_data['image_url']
+                        logger.info(f"Board Game Atlas SUCCESS: {bga_details.get('name')}")
+                        return bga_details
+            
+            # If BGA didn't work, return scraping data
+            logger.info(f"BGA search failed, using scraped data: {game_data.get('name')}")
             return game_data
         logger.error(f"Web scraping returned empty or no name for {bgg_id}")
     except Exception as e:
-        logger.error(f"Web scraping exception: {e}")
+        logger.error(f"BGA/Scraping exception: {e}")
     
     logger.error(f"All methods failed to fetch details for BGG ID: {bgg_id}")
     return {}
