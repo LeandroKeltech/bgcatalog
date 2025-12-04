@@ -578,7 +578,7 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
             try:
                 import json
                 ld_data = json.loads(json_ld.string)
-                logger.info(f"Found JSON-LD data: {list(ld_data.keys())}")
+                logger.info(f"Found JSON-LD data: {ld_data}")
                 
                 # Extract from structured data
                 if ld_data.get('name'):
@@ -600,21 +600,92 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
                 logger.info(f"Extracted from JSON-LD: rating={game_data.get('rating_average')}, reviews={game_data.get('num_ratings')}")
             except Exception as e:
                 logger.warning(f"Failed to parse JSON-LD: {e}")
+        else:
+            logger.warning("No JSON-LD found on page")
         
-        # Extract year from meta or text
-        year_elem = soup.select_one('meta[property="og:description"]')
-        if year_elem:
-            desc = year_elem.get('content', '')
-            year_match = re.search(r'\((\d{4})\)', desc)
-            if year_match:
-                game_data['year_published'] = int(year_match.group(1))
-                logger.info(f"Extracted year from meta: {game_data['year_published']}")
-        
+        # Extract year - aggressive search
         if not game_data.get('year_published'):
-            year_match = re.search(r'\((\d{4})\)', response.text[:5000])  # Search in first 5k chars
-            if year_match:
-                game_data['year_published'] = int(year_match.group(1))
-                logger.info(f"Extracted year from text: {game_data['year_published']}")
+            # Try in first 10k chars for performance
+            text_snippet = response.text[:10000]
+            # Pattern: (1995) or Year: 1995 or yearpublished="1995"
+            year_patterns = [
+                r'\((\d{4})\)',
+                r'Year[:\s]+(\d{4})',
+                r'yearpublished["\s=:]+(\d{4})',
+                r'published["\s=:]+(\d{4})'
+            ]
+            for pattern in year_patterns:
+                year_match = re.search(pattern, text_snippet, re.IGNORECASE)
+                if year_match:
+                    year_val = int(year_match.group(1))
+                    if 1900 <= year_val <= 2030:  # Sanity check
+                        game_data['year_published'] = year_val
+                        logger.info(f"Extracted year: {year_val}")
+                        break
+        
+        # Extract players - aggressive multi-pattern search
+        text_snippet = response.text[:15000]
+        player_patterns = [
+            r'player[s]?["\s]*[:]?\s*(\d+)\s*[-–—]\s*(\d+)',
+            r'(\d+)\s*[-–—]\s*(\d+)\s*player',
+            r'min.*?player.*?(\d+).*?max.*?(\d+)',
+            r'Players.*?(\d+)\s*[-–—]\s*(\d+)'
+        ]
+        for pattern in player_patterns:
+            match = re.search(pattern, text_snippet, re.IGNORECASE)
+            if match:
+                min_p, max_p = int(match.group(1)), int(match.group(2))
+                if 1 <= min_p <= 20 and 1 <= max_p <= 20 and min_p <= max_p:
+                    game_data['min_players'] = min_p
+                    game_data['max_players'] = max_p
+                    logger.info(f"Extracted players: {min_p}-{max_p}")
+                    break
+        
+        # Extract playtime - aggressive search
+        time_patterns = [
+            r'playtime.*?(\d+)\s*[-–—]\s*(\d+)',
+            r'(\d+)\s*[-–—]\s*(\d+)\s*min',
+            r'Playing\s*Time.*?(\d+)\s*[-–—]\s*(\d+)',
+            r'time["\s]*[:]?\s*(\d+)\s*[-–—]\s*(\d+)'
+        ]
+        for pattern in time_patterns:
+            match = re.search(pattern, text_snippet, re.IGNORECASE)
+            if match:
+                min_t, max_t = int(match.group(1)), int(match.group(2))
+                if 5 <= min_t <= 1000 and 5 <= max_t <= 1000 and min_t <= max_t:
+                    game_data['min_playtime'] = min_t
+                    game_data['max_playtime'] = max_t
+                    logger.info(f"Extracted playtime: {min_t}-{max_t}")
+                    break
+        
+        # Extract age - aggressive search
+        age_patterns = [
+            r'age[s]?["\s]*[:]?\s*(\d{1,2})\+',
+            r'(\d{1,2})\+\s*(?:year|age)',
+            r'minage.*?(\d{1,2})',
+            r'Minimum\s*Age.*?(\d{1,2})'
+        ]
+        for pattern in age_patterns:
+            match = re.search(pattern, text_snippet, re.IGNORECASE)
+            if match:
+                age_val = int(match.group(1))
+                if 1 <= age_val <= 21:
+                    game_data['min_age'] = age_val
+                    logger.info(f"Extracted age: {age_val}")
+                    break
+        
+        # Extract designer - multiple attempts
+        if not game_data.get('designer'):
+            designer_elem = soup.select_one('a[href*="/boardgamedesigner/"]')
+            if designer_elem:
+                game_data['designer'] = designer_elem.get_text(strip=True)
+                logger.info(f"Extracted designer: {game_data['designer']}")
+            else:
+                # Try regex pattern
+                designer_match = re.search(r'designer[s]?["\s]*[:]?\s*([A-Z][a-z]+\s+[A-Z][a-z]+)', text_snippet, re.IGNORECASE)
+                if designer_match:
+                    game_data['designer'] = designer_match.group(1)
+                    logger.info(f"Extracted designer via regex: {game_data['designer']}")
         
         # Extract image from meta tags if not from JSON-LD
         if not game_data.get('image_url'):
@@ -631,51 +702,18 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
                 game_data['description'] = desc_elem.get('content', '')[:1000]
                 logger.info(f"Extracted description from meta ({len(game_data['description'])} chars)")
         
-        # Try to extract game stats from data attributes or specific divs
-        # Look for ul.gameplay-stats or similar
-        stats_list = soup.select('ul.gameplay-stats li, div.gameplay-stats div, dl.summary-data dd')
-        if stats_list:
-            logger.info(f"Found {len(stats_list)} stats elements")
-            stats_text = ' '.join([s.get_text() for s in stats_list])
-            
-            # Extract players
-            players_match = re.search(r'(\d+)\s*[-–—]\s*(\d+)\s*(?:Players?|Community)', stats_text, re.IGNORECASE)
-            if players_match:
-                game_data['min_players'] = int(players_match.group(1))
-                game_data['max_players'] = int(players_match.group(2))
-                logger.info(f"Extracted players from stats: {game_data['min_players']}-{game_data['max_players']}")
-            
-            # Extract playtime
-            time_match = re.search(r'(\d+)\s*[-–—]\s*(\d+)\s*(?:Min|min)', stats_text, re.IGNORECASE)
-            if time_match:
-                game_data['min_playtime'] = int(time_match.group(1))
-                game_data['max_playtime'] = int(time_match.group(2))
-                logger.info(f"Extracted playtime from stats: {game_data['min_playtime']}-{game_data['max_playtime']}")
-            
-            # Extract age
-            age_match = re.search(r'(\d{1,2})\s*\+', stats_text)
-            if age_match:
-                game_data['min_age'] = int(age_match.group(1))
-                logger.info(f"Extracted age from stats: {game_data['min_age']}")
-        
-        # Extract designer
-        designer_elem = soup.select_one('a[href*="/boardgamedesigner/"]')
-        if designer_elem:
-            game_data['designer'] = designer_elem.get_text(strip=True)
-            logger.info(f"Extracted designer: {game_data['designer']}")
-        
         # Extract categories and mechanics
         category_elems = soup.select('a[href*="/boardgamecategory/"]')
         if category_elems:
             categories = [elem.get_text(strip=True) for elem in category_elems[:5]]
             game_data['categories'] = ', '.join(categories)
-            logger.info(f"Extracted categories: {game_data['categories']}")
+            logger.info(f"Extracted {len(categories)} categories: {game_data['categories']}")
         
         mechanic_elems = soup.select('a[href*="/boardgamemechanic/"]')
         if mechanic_elems:
             mechanics = [elem.get_text(strip=True) for elem in mechanic_elems[:5]]
             game_data['mechanics'] = ', '.join(mechanics)
-            logger.info(f"Extracted mechanics: {game_data['mechanics']}")
+            logger.info(f"Extracted {len(mechanics)} mechanics: {game_data['mechanics']}")
         
         # Extract rating
         rating_elem = soup.select_one('span.rating-value, div[class*="rating"]')
