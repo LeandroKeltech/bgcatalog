@@ -616,6 +616,114 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
         else:
             logger.warning("No JSON-LD found on page")
         
+        # Try to extract from GEEK.geekitemPreload JavaScript object
+        import json
+        geek_match = re.search(r'GEEK\.geekitemPreload\s*=\s*({.+?});', response.text, re.DOTALL)
+        if geek_match:
+            try:
+                geek_data = json.loads(geek_match.group(1))
+                logger.info(f"Found GEEK.geekitemPreload with keys: {list(geek_data.keys())}")
+                
+                # Extract from item data
+                if geek_data.get('item'):
+                    item = geek_data['item']
+                    
+                    # Extract polls data which has player counts, playtime, age
+                    if item.get('polls'):
+                        polls = item['polls']
+                        logger.info(f"Found polls data with {len(polls)} polls")
+                        
+                        # Look for player count poll
+                        for poll in polls:
+                            if poll.get('name') == 'suggested_numplayers':
+                                # Extract player range from results
+                                results = poll.get('results', [])
+                                if results:
+                                    player_counts = []
+                                    for r in results:
+                                        try:
+                                            if r.get('numplayers'):
+                                                num = r['numplayers'].replace('+', '')
+                                                if num.isdigit():
+                                                    player_counts.append(int(num))
+                                        except:
+                                            continue
+                                    if player_counts:
+                                        game_data['min_players'] = min(player_counts)
+                                        game_data['max_players'] = max(player_counts)
+                                        logger.info(f"Extracted players from poll: {game_data['min_players']}-{game_data['max_players']}")
+                    
+                    # Extract from links (categories, mechanics, designers)
+                    if item.get('links'):
+                        links = item['links']
+                        designers = []
+                        categories = []
+                        mechanics = []
+                        
+                        for link in links:
+                            link_type = link.get('type', '')
+                            link_name = link.get('name', '')
+                            
+                            if link_type == 'boardgamedesigner' and link_name:
+                                designers.append(link_name)
+                            elif link_type == 'boardgamecategory' and link_name:
+                                categories.append(link_name)
+                            elif link_type == 'boardgamemechanic' and link_name:
+                                mechanics.append(link_name)
+                        
+                        if designers:
+                            game_data['designer'] = ', '.join(designers[:3])
+                            logger.info(f"Extracted designer from links: {game_data['designer']}")
+                        if categories:
+                            game_data['categories'] = ', '.join(categories[:5])
+                            logger.info(f"Extracted categories from links: {game_data['categories']}")
+                        if mechanics:
+                            game_data['mechanics'] = ', '.join(mechanics[:5])
+                            logger.info(f"Extracted mechanics from links: {game_data['mechanics']}")
+                    
+                    # Extract stats
+                    if item.get('stats'):
+                        stats = item['stats']
+                        if stats.get('minplayers'):
+                            game_data['min_players'] = int(stats['minplayers'])
+                        if stats.get('maxplayers'):
+                            game_data['max_players'] = int(stats['maxplayers'])
+                        if stats.get('minplaytime'):
+                            game_data['min_playtime'] = int(stats['minplaytime'])
+                        if stats.get('maxplaytime'):
+                            game_data['max_playtime'] = int(stats['maxplaytime'])
+                        if stats.get('playingtime'):
+                            game_data['max_playtime'] = int(stats['playingtime'])
+                        if stats.get('age'):
+                            game_data['min_age'] = int(stats['age'])
+                        
+                        logger.info(f"Extracted from stats: players={game_data.get('min_players')}-{game_data.get('max_players')}, time={game_data.get('min_playtime')}-{game_data.get('max_playtime')}, age={game_data.get('min_age')}")
+                    
+                    # Extract year
+                    if item.get('yearpublished'):
+                        game_data['year_published'] = int(item['yearpublished'])
+                        logger.info(f"Extracted year from item: {game_data['year_published']}")
+                    
+                    # Extract ratings
+                    if item.get('stats') and item['stats'].get('rating'):
+                        rating_data = item['stats']['rating']
+                        if rating_data.get('average'):
+                            game_data['rating_average'] = float(rating_data['average'])
+                        if rating_data.get('usersrated'):
+                            game_data['num_ratings'] = int(rating_data['usersrated'])
+                        if rating_data.get('ranks'):
+                            ranks = rating_data['ranks']
+                            for rank in ranks:
+                                if rank.get('name') == 'boardgame' and rank.get('value'):
+                                    try:
+                                        game_data['rank_overall'] = int(rank['value'])
+                                    except:
+                                        pass
+                        logger.info(f"Extracted ratings: avg={game_data.get('rating_average')}, count={game_data.get('num_ratings')}, rank={game_data.get('rank_overall')}")
+                        
+            except Exception as e:
+                logger.error(f"Failed to parse GEEK.geekitemPreload: {e}")
+        
         # Log what we have so far before trying to extract more
         logger.info(f"After JSON-LD: {list(game_data.keys())}")
         
