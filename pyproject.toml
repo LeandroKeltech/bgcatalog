@@ -1,6 +1,0 @@
-# Dependencies remain in requirements.txt.
-[tool.vercel]
-entrypoint = "bgcatalog_project.wsgi:application"
-
-[tool.vercel.scripts]
-build = "python scripts/vercel_build.py"

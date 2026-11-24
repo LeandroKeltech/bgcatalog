@@ -475,7 +475,8 @@ Production database credentials belong only to the Production environment.
 
 This checkout is configured for Vercel's native Django support. Dependencies stay
 in `requirements.txt`, Python is pinned to 3.12 in `.python-version`, and
-`pyproject.toml` points to the WSGI application. Vercel collects static files and
+`vercel.json` configures the migration build command; Vercel discovers the WSGI
+application from Django settings. Vercel collects static files and
 serves them from its CDN; `start.sh` is only used by the container deployment.
 
 1. Create a **Free** PostgreSQL project in Neon and select a European region.
