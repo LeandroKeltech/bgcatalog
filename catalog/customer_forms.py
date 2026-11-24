@@ -3,11 +3,15 @@ import re
 from django import forms
 from django.contrib.auth import get_user_model, password_validation
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.password_validation import MinimumLengthValidator, CommonPasswordValidator
 from django.db import transaction
 from django.db.models import Q
 
 from .forms import StyledFormMixin
 from .models import CustomerProfile
+
+
+CUSTOMER_PASSWORD_VALIDATORS = [MinimumLengthValidator(min_length=6), CommonPasswordValidator()]
 
 
 def international_phone(value):
@@ -33,7 +37,7 @@ class ContactFields(StyledFormMixin, forms.Form):
 
 class CustomerRegistrationForm(ContactFields):
     password1 = forms.CharField(label='Password', strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
-                                 help_text=password_validation.password_validators_help_text_html())
+                                 help_text=password_validation.password_validators_help_text_html(CUSTOMER_PASSWORD_VALIDATORS))
     password2 = forms.CharField(label='Confirm password', strip=False, widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}))
 
     def clean_email(self):
@@ -50,7 +54,7 @@ class CustomerRegistrationForm(ContactFields):
         if password:
             user = get_user_model()(username=cleaned.get('email', ''), email=cleaned.get('email', ''))
             try:
-                password_validation.validate_password(password, user=user)
+                password_validation.validate_password(password, user=user, password_validators=CUSTOMER_PASSWORD_VALIDATORS)
             except forms.ValidationError as exc:
                 self.add_error('password1', exc)
         return cleaned

@@ -416,7 +416,9 @@ database, store HMAC identifiers rather than raw email/IP values, and do not rel
 on per-process memory. Only configured hosting-provider IP headers are trusted.
 IPv6 addresses share a /64 bucket. Private account, cart, checkout and admin pages
 use `no-store`. BGG refresh requires POST and CSRF, and all BGG HTTPS calls verify
-certificates. New passwords must contain at least 12 characters.
+certificates. Customer passwords require 6 characters and reject common passwords;
+the administrative password policy keeps the stricter 12-character minimum,
+personal-information similarity check and prohibition on entirely numeric passwords.
 
 HSTS initially lasts one hour on the serving hostname. `HSTS_INCLUDE_SUBDOMAINS`
 and `HSTS_PRELOAD` default to `False` until the domain's full HTTPS coverage has

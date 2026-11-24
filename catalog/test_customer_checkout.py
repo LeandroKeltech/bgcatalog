@@ -16,6 +16,25 @@ from .models import BoardGame, CustomerProfile, CustomerQuote, StockReservation
     EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
 )
 class CustomerCheckoutTests(TestCase):
+    def test_customer_password_policy_is_simpler_than_admin_policy(self):
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        from .customer_forms import CustomerRegistrationForm
+
+        for password in ('584927', 'zibu73', '58492017', 'buyer123'):
+            with self.subTest(password=password):
+                form = CustomerRegistrationForm(dict(
+                    self.signup_data, password1=password, password2=password,
+                ))
+                self.assertTrue(form.is_valid(), form.errors)
+                with self.assertRaises(ValidationError):
+                    validate_password(password)
+        form = CustomerRegistrationForm(dict(self.signup_data, password1='zib73', password2='zib73'))
+        self.assertFalse(form.is_valid())
+        self.assertIn('password1', form.errors)
+        self.assertContains(self.client.get(reverse('customer_register')), 'at least 6 characters')
+        self.assertNotContains(self.client.get(reverse('customer_register')), 'at least 12 characters')
+
     def setUp(self):
         self.game = BoardGame.objects.create(name='A game & friends', sale_price=20, stock_quantity=3)
         self.signup_data = dict(full_name='Test Buyer', email='BUYER@example.com', phone='+353 89 123 4568',
