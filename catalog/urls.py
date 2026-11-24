@@ -13,6 +13,7 @@ urlpatterns = [
     path('', views.public_catalog, name='public_catalog'),
     path('catalog/', views.public_catalog, name='catalog'),
     path('game/<int:game_id>/', views.game_detail, name='game_detail'),
+    path('wishlist/', views.wishlist, name='wishlist'),
     path('account/register/', customer_views.customer_register, name='customer_register'),
     path('account/login/', customer_views.customer_login, name='customer_login'),
     path('account/logout/', customer_views.customer_logout, name='customer_logout'),
@@ -53,6 +54,7 @@ urlpatterns = [
     # Cart and checkout
     path('cart/', cart_views.view_cart, name='view_cart'),
     path('cart/add/<int:game_id>/', cart_views.add_to_cart, name='add_to_cart'),
+    path('wishlist/toggle/<int:game_id>/', cart_views.toggle_wishlist, name='toggle_wishlist'),
     path('cart/update/<int:game_id>/', cart_views.update_cart, name='update_cart'),
     path('cart/remove/<int:game_id>/', cart_views.remove_from_cart, name='remove_from_cart'),
     path('checkout/', cart_views.checkout, name='checkout'),

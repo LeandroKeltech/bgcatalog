@@ -3,7 +3,7 @@
 {% block content %}
 {% include 'catalog/includes/staff_nav.html' %}
 <div class="action-row justify-content-between"><h1>Promotions</h1><a class="btn btn-primary" href="{% url 'promotion_new' %}">Create promotion</a></div>
-<p class="text-muted">Schedule individual discounts or cart mechanics for selected games or the whole catalog. The best total wins; discounts do not stack.</p>
+<p class="text-muted">Schedule individual discounts or cart mechanics for selected games or the whole catalog. The best total wins. Extra-percentage offers apply after individual game discounts; cart offers do not stack.</p>
 <div class="inventory-grid">
 {% for promotion in promotions %}
 <article class="card"><div class="card-body">

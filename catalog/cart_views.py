@@ -13,6 +13,7 @@ from datetime import timedelta
 from uuid import uuid4
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.http import JsonResponse
 from .cart_pricing import price_cart
 from .models import BoardGame, StockReservation, CustomerProfile, CustomerQuote
 from .notifications import create_reservation_notification
@@ -41,7 +42,8 @@ def view_cart(request):
         context = {'cart_items': []}
     
     context['customer_profile'] = CustomerProfile.objects.filter(user=request.user).first() if request.user.is_authenticated else None
-    return render(request, 'catalog/cart.html', context)
+    template = 'catalog/cart_drawer.html' if request.GET.get('drawer') == '1' else 'catalog/cart.html'
+    return render(request, template, context)
 
 
 @require_POST
@@ -50,6 +52,8 @@ def add_to_cart(request, game_id):
     game = get_object_or_404(BoardGame, id=game_id)
     
     if game.is_sold or game.available_quantity <= 0:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'message': 'This game is not available'}, status=400)
         messages.error(request, 'This game is not available')
         return redirect('game_detail', game_id=game_id)
     
@@ -62,6 +66,8 @@ def add_to_cart(request, game_id):
         if not 1 <= quantity <= 10000:
             raise ValueError
     except (TypeError, ValueError):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'message': 'Enter a whole quantity between 1 and 10000.'}, status=400)
         messages.error(request, 'Enter a whole quantity between 1 and 10000.')
         return redirect('game_detail', game_id=game_id)
     
@@ -70,15 +76,41 @@ def add_to_cart(request, game_id):
     new_total = current_cart_qty + quantity
     
     if new_total > game.available_quantity:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'message': f'Only {game.available_quantity} available in stock'}, status=400)
         messages.error(request, f'Only {game.available_quantity} available in stock')
         return redirect('game_detail', game_id=game_id)
     
     # Update cart
     cart[game_id_str] = new_total
     save_cart(request, cart)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'message': f'{game.name} added to your cart', 'cart_count': sum(cart.values())})
     
     messages.success(request, f'Added {quantity}x "{game.name}" to cart')
     return redirect('view_cart')
+
+
+@require_POST
+def toggle_wishlist(request, game_id):
+    """Add or remove a game from the visitor's session wishlist."""
+    game = get_object_or_404(BoardGame, pk=game_id)
+    wishlist = list(request.session.get('wishlist', []))
+    game_id_str = str(game.pk)
+    if game_id_str in wishlist:
+        wishlist.remove(game_id_str)
+        saved = False
+        message = f'{game.name} removed from your wishlist'
+    else:
+        wishlist.append(game_id_str)
+        saved = True
+        message = f'{game.name} saved to your wishlist'
+    request.session['wishlist'] = wishlist
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'saved': saved, 'message': message, 'wishlist_count': len(wishlist)})
+    messages.success(request, message)
+    return redirect(request.POST.get('next') or 'catalog')
 
 
 def update_cart(request, game_id):
@@ -95,6 +127,8 @@ def update_cart(request, game_id):
         if not 0 <= quantity <= 10000:
             raise ValueError
     except (TypeError, ValueError):
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'ok': False, 'message': 'Enter a whole quantity between 0 and 10000.'}, status=400)
         messages.error(request, 'Enter a whole quantity between 0 and 10000.')
         return redirect('view_cart')
     
@@ -106,6 +140,8 @@ def update_cart(request, game_id):
     else:
         # Check stock
         if quantity > game.available_quantity:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'ok': False, 'message': f'Only {game.available_quantity} available'}, status=400)
             messages.error(request, f'Only {game.available_quantity} available')
             return redirect('view_cart')
         
@@ -113,6 +149,8 @@ def update_cart(request, game_id):
         messages.success(request, f'Updated quantity for "{game.name}"')
     
     save_cart(request, cart)
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'message': 'Cart updated', 'cart_count': sum(cart.values())})
     return redirect('view_cart')
 
 
@@ -123,11 +161,13 @@ def remove_from_cart(request, game_id):
     game_id_str = str(game_id)
     
     if game_id_str in cart:
-        game = BoardGame.objects.get(id=game_id)
+        game = get_object_or_404(BoardGame, id=game_id)
         del cart[game_id_str]
         save_cart(request, cart)
         messages.success(request, f'Removed "{game.name}" from cart')
     
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'message': 'Game removed from cart', 'cart_count': sum(cart.values())})
     return redirect('view_cart')
 
 

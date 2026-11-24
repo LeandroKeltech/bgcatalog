@@ -83,6 +83,7 @@ def public_catalog(request):
     page = Paginator(games, 24).get_page(request.GET.get('page'))
     
     context = {
+        'hero_offer': active_cart_offers().filter(kind='cart_extra_percent', apply_to_all=True, minimum_quantity=3, value=10).first(),
         'games': page.object_list,
         'page_obj': page,
         'availability': availability,
@@ -96,6 +97,7 @@ def public_catalog(request):
         'max_price': max_price,
         'sort_by': sort_by,
         'condition_choices': BoardGame.CONDITION_CHOICES,
+        'wishlist_ids': set(request.session.get('wishlist', [])),
     }
     
     return render(request, 'catalog/public_catalog.html', context)
@@ -118,6 +120,13 @@ def game_detail(request, game_id):
         'videos': game.videos.filter(is_active=True),
         'cart_offers': [offer for offer in active_cart_offers()
                         if offer.apply_to_all or game.pk in {g.pk for g in offer.games.all()}],
+        'is_wishlisted': str(game.pk) in request.session.get('wishlist', []),
     }
-    
     return render(request, 'catalog/game_detail.html', context)
+
+
+def wishlist(request):
+    """Display games saved to this shopper's session wishlist."""
+    ids = request.session.get('wishlist', [])
+    games = with_selling_price(BoardGame.objects.filter(pk__in=ids)).order_by('name')
+    return render(request, 'catalog/wishlist.html', {'games': games, 'wishlist_ids': set(ids)})

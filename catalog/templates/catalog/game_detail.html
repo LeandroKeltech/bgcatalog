@@ -23,7 +23,7 @@
     </div>
     
     <div class="col-md-8">
-        <h1>{{ game.name }}</h1>
+        <div class="detail-title-row"><h1>{{ game.name }}</h1><form method="post" action="{% url 'toggle_wishlist' game.id %}" class="wishlist-toggle-form">{% csrf_token %}<button class="btn wishlist-button {% if is_wishlisted %}is-saved{% endif %}" data-wishlist-name="{{ game.name }}" type="submit" aria-label="{% if is_wishlisted %}Remove {{ game.name }} from wishlist{% else %}Add {{ game.name }} to wishlist{% endif %}" aria-pressed="{{ is_wishlisted|yesno:'true,false' }}"><i class="bi {% if is_wishlisted %}bi-heart-fill{% else %}bi-heart{% endif %}" aria-hidden="true"></i></button></form></div>
         {% if game.year_published %}
         <p class="text-muted">Year Published: {{ game.year_published }}</p>
         {% endif %}
@@ -94,7 +94,7 @@
                         {% if game.final_price == None %}
                         <p class="text-muted">Contact us to confirm the price before reserving.</p>
                         {% elif game.available_quantity > 0 and not game.is_sold %}
-                        <form method="post" action="{% url 'add_to_cart' game.id %}">
+                        <form method="post" action="{% url 'add_to_cart' game.id %}" class="catalog-add-form">
                             {% csrf_token %}
                             <div class="input-group mb-2">
                                 <input type="number" name="quantity" class="form-control" value="1" min="1" max="{{ game.available_quantity }}" inputmode="numeric" aria-label="Quantity">

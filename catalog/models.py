@@ -422,10 +422,11 @@ class FinanceAccount(models.Model):
 
 class Promotion(models.Model):
     ITEM_KINDS = ('percentage', 'amount', 'price')
-    CART_KINDS = ('cart_percentage', 'cart_amount', 'cheapest_free')
+    CART_KINDS = ('cart_percentage', 'cart_amount', 'cheapest_free', 'cart_extra_percent')
     KIND_CHOICES = [('percentage', 'Percentage off'), ('amount', 'Fixed amount off (€)'),
                     ('price', 'Promotional selling price (€)'),
                     ('cart_percentage', 'Buy N: percentage off eligible games'),
+                    ('cart_extra_percent', 'Buy N: extra percentage off final prices'),
                     ('cart_amount', 'Buy N: fixed amount off eligible games (€)'),
                     ('cheapest_free', 'Buy N: cheapest eligible game free')]
     name = models.CharField(max_length=150)
@@ -445,8 +446,8 @@ class Promotion(models.Model):
         ordering = ['-created_at', '-id']
         constraints = [
             models.CheckConstraint(condition=models.Q(value__gte=0), name='promotion_value_nonnegative'),
-            models.CheckConstraint(condition=models.Q(kind__in=['percentage', 'amount', 'price', 'cart_percentage', 'cart_amount', 'cheapest_free']), name='promotion_kind_valid'),
-            models.CheckConstraint(condition=~models.Q(kind__in=['percentage', 'cart_percentage']) | models.Q(value__lte=100), name='promotion_percentage_valid'),
+            models.CheckConstraint(condition=models.Q(kind__in=['percentage', 'amount', 'price', 'cart_percentage', 'cart_amount', 'cheapest_free', 'cart_extra_percent']), name='promotion_kind_valid'),
+            models.CheckConstraint(condition=~models.Q(kind__in=['percentage', 'cart_percentage', 'cart_extra_percent']) | models.Q(value__lte=100), name='promotion_percentage_valid'),
             models.CheckConstraint(condition=models.Q(minimum_quantity__gte=2, minimum_quantity__lte=100), name='promotion_quantity_valid'),
             models.CheckConstraint(condition=models.Q(ends_at__isnull=True) | models.Q(ends_at__gt=models.F('starts_at')), name='promotion_dates_valid'),
         ]
@@ -454,7 +455,7 @@ class Promotion(models.Model):
     def clean(self):
         if self.ends_at and self.starts_at and self.ends_at <= self.starts_at:
             raise ValidationError({'ends_at': 'The end must be after the start.'})
-        if self.kind in ('percentage', 'cart_percentage') and self.value is not None and self.value > 100:
+        if self.kind in ('percentage', 'cart_percentage', 'cart_extra_percent') and self.value is not None and self.value > 100:
             raise ValidationError({'value': 'Percentage discounts cannot exceed 100%.'})
 
     @property
@@ -466,6 +467,8 @@ class Promotion(models.Model):
         if self.kind == 'cheapest_free':
             return (f'Buy {self.minimum_quantity} eligible copies, pay for {self.minimum_quantity - 1}. '
                     + ('One free in every complete group.' if self.repeat_free_groups else 'One cheapest copy free per cart.'))
+        if self.kind == 'cart_extra_percent':
+            return f'Buy {self.minimum_quantity}+ eligible copies: an extra {self.value:g}% off final prices. Applied automatically at checkout.'
         if self.kind == 'cart_percentage':
             return f'Buy {self.minimum_quantity}+ eligible copies: {self.value:g}% off all eligible games.'
         if self.kind == 'cart_amount':

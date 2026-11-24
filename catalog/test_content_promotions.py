@@ -23,6 +23,7 @@ from .pricing import with_selling_price
 @override_settings(STORAGES={'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}})
 class PromotionTests(TestCase):
     def setUp(self):
+        Promotion.objects.all().delete()
         self.game = BoardGame.objects.create(name='Test game', stock_quantity=3, sale_price=30, msrp_price=40)
         self.other = BoardGame.objects.create(name='Other', stock_quantity=1, msrp_price=25, discount_percentage=10)
 

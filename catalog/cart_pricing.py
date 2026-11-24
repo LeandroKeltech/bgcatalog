@@ -38,7 +38,7 @@ def price_cart(cart, games):
     """Choose between existing per-item prices and each independent basket offer.
 
     Quantities count physical copies, including multiple copies of one game.
-    Conditional offers use base selling prices, never MSRP or stacked discounts.
+    Standard offers use base selling prices; extra-percentage offers use final item prices.
     """
     lines, units, base_prices, item_prices = [], [], [], []
     valid = True
@@ -71,8 +71,12 @@ def price_cart(cart, games):
         offers.append({'promotion': offer, 'missing': missing, 'qualified': not missing})
         if missing:
             continue
-        candidate = list(base_prices)
-        if offer.kind == 'cart_percentage':
+        candidate = list(item_prices if offer.kind == 'cart_extra_percent' else base_prices)
+        if offer.kind == 'cart_extra_percent':
+            subtotal = sum((candidate[index] for index in indices), ZERO)
+            discount = (subtotal * offer.value / 100).quantize(CENT, rounding=ROUND_HALF_UP)
+            allocate_discount(candidate, indices, discount)
+        elif offer.kind == 'cart_percentage':
             for index in indices:
                 candidate[index] = (candidate[index] * (1 - offer.value / 100)).quantize(CENT, rounding=ROUND_HALF_UP)
         elif offer.kind == 'cart_amount':

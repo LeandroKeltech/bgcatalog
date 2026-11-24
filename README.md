@@ -226,10 +226,18 @@ Failed requests retain existing videos and record the error in source metadata.
 Open `/admin-panel/promotions/` with a staff account to create, edit, pause or enable
 percentage discounts, fixed euro discounts, or promotional selling prices. Choose
 individual inventory entries or the whole catalog, and optionally schedule an end.
-Times use Europe/Dublin. The lowest active price wins; offers never stack or raise
-prices. Price filtering, sorting, the cart and checkout use the same rules.
+Times use Europe/Dublin. The lowest active item price wins; individual offers never stack or raise
+prices. Extra-percentage cart offers can discount that final item price further. Price filtering, sorting, the cart and checkout use the same rules.
 Reservations snapshot the quoted unit price, so confirmation honors the quote
 even if a promotion expires before the reservation is confirmed.
+
+Migration `0015` activates **Buy 3+, get an extra 10% off** in each database,
+including staging and production through the existing migration build hook.
+It counts physical copies and applies 10% once to the final item-price subtotal
+(after individual-game discounts), rounded to cents and allocated across the
+quote lines. Other cart offers compete for the lowest total. Staff can pause or
+edit this promotion; the homepage banner appears only while the matching active
+catalog-wide 3+/10% offer is available. No end date is configured.
 
 Cart mechanics are available in the same **Create promotion** screen:
 
@@ -244,11 +252,11 @@ Cart mechanics are available in the same **Create promotion** screen:
   for the customer's best saving. Leftover copies are paid for normally.
 
 Thresholds count physical copies, including multiple copies of one inventory entry,
-and only selected games count for scoped promotions. Cart offers use base selling
-prices before promotions and compete with existing individual-game offers; the
-lowest total wins. They do not change the unit prices shown in catalog filters.
+and only selected games count for scoped promotions. Standard cart offers use base selling
+prices before promotions; extra-percentage cart offers use final item prices.
+They compete for the lowest total. They do not change the unit prices shown in catalog filters.
 The cart displays eligibility progress, the applied offer, line savings and the
-final total. No offer is activated simply by adding this functionality.
+final total. The 3+/10% extra offer is activated by migration `0015`.
 
 Fixed discounts are allocated proportionally in cents. Where copies of the same
 game have different final prices, checkout creates separate paid/free or differently

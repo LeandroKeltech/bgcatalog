@@ -1,0 +1,10 @@
+{% extends 'catalog/base.html' %}
+{% block title %}Wishlist · BG Catalog{% endblock %}
+{% block content %}
+<header class="wishlist-page-heading"><span class="eyebrow">GAMES TO COME BACK TO</span><h1>Your wishlist <i class="bi bi-heart-fill" aria-hidden="true"></i></h1><p>Keep the games you love in one place.</p></header>
+{% if games %}<div class="shop-grid wishlist-grid">{% for game in games %}<article class="card game-card shop-game">
+    <a class="game-artwork" href="{% url 'game_detail' game.id %}"><span class="condition-label">{{ game.get_condition_display }}</span>{% if game.thumbnail_url %}<img src="{{ game.image_url|default:game.thumbnail_url }}" alt="{{ game.name }}" loading="lazy">{% else %}<span class="cover-placeholder"><i class="bi bi-dice-5" aria-hidden="true"></i></span>{% endif %}</a>
+    <div class="card-body"><h2 class="card-title"><a href="{% url 'game_detail' game.id %}">{{ game.name }}</a></h2><p class="game-designer">{{ game.designer|default:'A game for your next game night' }}</p><div class="game-facts"><span><i class="bi bi-people" aria-hidden="true"></i> {{ game.players_display }}</span><span><i class="bi bi-clock" aria-hidden="true"></i> {{ game.playtime_display }}</span></div>{% include 'catalog/includes/price.html' %}<div class="game-actions"><a class="btn game-cta" href="{% url 'game_detail' game.id %}">View details <i class="bi bi-arrow-right" aria-hidden="true"></i></a><form method="post" action="{% url 'toggle_wishlist' game.id %}" class="wishlist-toggle-form">{% csrf_token %}<input type="hidden" name="next" value="{% url 'wishlist' %}"><button class="btn wishlist-button is-saved" type="submit" aria-label="Remove {{ game.name }} from wishlist" aria-pressed="true"><i class="bi bi-heart-fill" aria-hidden="true"></i></button></form></div></div>
+</article>{% endfor %}</div>
+{% else %}<div class="catalog-empty"><i class="bi bi-heart" aria-hidden="true"></i><h2>Your wishlist is empty</h2><p>Tap the heart on any game to save it here.</p><a class="btn btn-primary" href="{% url 'catalog' %}">Browse the collection</a></div>{% endif %}
+{% endblock %}
