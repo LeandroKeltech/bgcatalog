@@ -464,8 +464,11 @@ by `python manage.py runserver` inside the development environment.
 After reviewing the site and passing CI, merge `staging` into `main`. Configure
 Vercel's Production environment to track **main**, with automatic Git deployments
 enabled. Each merge into main triggers a production build and applies database
-migrations through the build hook. `vercel.json` disables automatic Vercel builds
-for other branches, including staging, so development is tested before release.
+migrations through the build hook. `vercel.json` enables automatic builds only
+for `main` and `staging`. Staging creates a Preview deployment for review using
+an isolated Neon branch. Keep Vercel Authentication set to **All Deployments**
+until the owner explicitly approves public access, including production domains.
+Use the default automatic Ignored Build Step behavior in the Vercel dashboard.
 Production database credentials belong only to the Production environment.
 
 ### Vercel + Neon PostgreSQL
@@ -492,10 +495,11 @@ serves them from its CDN; `start.sh` is only used by the container deployment.
      comma-separated. Vercel's deployment, branch and project hostnames are
      automatically included when supplied by Vercel.
    - `CSRF_TRUSTED_ORIGINS`: the corresponding HTTPS URLs, comma-separated.
-4. The production build hook applies migrations and aborts on a migration
-   failure. Preview builds skip migrations. For previews, configure a **separate
-   Neon database branch** and migrate it explicitly; never assign the production
-   database URL to the Preview environment. Schema isolation alone is not enough
+4. The build hook applies migrations for production and the `staging` preview,
+   and aborts on a migration failure. Other previews skip migrations. Configure
+   Preview variables restricted to the `staging` Git branch, using a **separate
+   Neon database branch**, its own `SECRET_KEY`, and its own direct and pooled
+   connection URLs; never assign production database URLs to Preview. Schema isolation alone is not enough
    if preview code can still write to the production database.
 5. Transfer existing local data once into the new, otherwise empty database.
    Keep a SQLite backup first. The prepared backup and import fixture are under

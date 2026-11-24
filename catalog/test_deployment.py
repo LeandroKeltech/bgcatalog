@@ -87,9 +87,19 @@ print(json.dumps({
 
     @patch('scripts.vercel_build.subprocess.run')
     def test_preview_build_does_not_migrate_database(self, run):
-        with patch.dict(os.environ, {'VERCEL_ENV': 'preview'}):
+        with patch.dict(os.environ, {'VERCEL_ENV': 'preview', 'VERCEL_GIT_COMMIT_REF': 'feature'}):
             vercel_build.main()
         run.assert_not_called()
+
+    @patch('scripts.vercel_build.subprocess.run')
+    def test_staging_build_migrates_its_separate_database(self, run):
+        direct = 'postgresql://test:fake@staging.invalid/catalog'
+        with patch.dict(os.environ, {
+            'VERCEL_ENV': 'preview', 'VERCEL_GIT_COMMIT_REF': 'staging',
+            'DATABASE_URL_UNPOOLED': direct,
+        }):
+            vercel_build.main()
+        self.assertEqual(run.call_args.kwargs['env']['DATABASE_URL'], direct)
 
     @patch('scripts.vercel_build.subprocess.run')
     def test_failed_migration_aborts_production_build(self, run):
