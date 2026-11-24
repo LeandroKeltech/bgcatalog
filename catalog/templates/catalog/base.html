@@ -11,16 +11,17 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <!-- Custom CSS -->
     {% load static %}
-    <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}?v=20261124-notifications">
+    <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}?v=20261124-shop">
     
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{% url 'catalog' %}">
-                <i class="bi bi-controller"></i> BG Catalog
+                <span class="brand-mark"><i class="bi bi-dice-5-fill" aria-hidden="true"></i></span> BG<span class="brand-light">Catalog</span><span class="brand-dot">.</span>
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
@@ -102,7 +103,8 @@
     <!-- Footer -->
     <footer class="bg-light mt-5 py-4">
         <div class="container text-center text-muted">
-            <p>&copy; {% now "Y" %} Board Game Catalog. Powered by Django & BoardGameGeek.</p>
+            <p class="footer-brand">A good game brings everyone together.</p>
+            <p class="small">&copy; {% now "Y" %} BG Catalog · Game information from BoardGameGeek.</p>
             <p class="small">
                 <a href="https://github.com/LeandroKeltech/bgcatalog" target="_blank" class="text-decoration-none">
                     <i class="bi bi-github"></i> GitHub

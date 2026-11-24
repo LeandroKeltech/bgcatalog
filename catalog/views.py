@@ -56,6 +56,18 @@ def public_catalog(request):
         except InvalidOperation:
             pass
     
+    # Only expose bounded gameplay choices; unknown metadata cannot match.
+    players = request.GET.get('players', '')
+    if players in ('1', '2', '3', '4', '5', '6'):
+        games = games.filter(min_players__lte=int(players), max_players__gte=int(players))
+    else:
+        players = ''
+    duration = request.GET.get('duration', '')
+    if duration in ('30', '60', '120'):
+        games = games.filter(max_playtime__lte=int(duration), max_playtime__gt=0)
+    else:
+        duration = ''
+
     # Sort options
     sort_by = request.GET.get('sort', 'relevance')
     sort_by = {'msrp_price': 'selling_price', '-msrp_price': '-selling_price'}.get(sort_by, sort_by)
@@ -74,7 +86,10 @@ def public_catalog(request):
         'games': page.object_list,
         'page_obj': page,
         'availability': availability,
-        'has_filters': bool(condition or min_price or max_price or sort_by != 'relevance' or availability != 'all'),
+        'has_filters': bool(condition or min_price or max_price or players or duration or sort_by != 'relevance' or availability != 'all'),
+        'players': players,
+        'player_choices': ('1', '2', '3', '4', '5', '6'),
+        'duration': duration,
         'search_query': search_query,
         'condition': condition,
         'min_price': min_price,
