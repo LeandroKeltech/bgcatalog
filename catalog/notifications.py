@@ -19,13 +19,21 @@ NON_DELIVERING_BACKENDS = {
 }
 
 
+def delivery_backend_ready():
+    if settings.EMAIL_BACKEND in NON_DELIVERING_BACKENDS:
+        return False
+    if settings.EMAIL_BACKEND == 'django.core.mail.backends.smtp.EmailBackend':
+        return bool(settings.EMAIL_HOST and (not settings.EMAIL_HOST_USER or settings.EMAIL_HOST_PASSWORD))
+    return True
+
+
 def email_alerts_ready():
     try:
         validate_email(settings.RESERVATION_NOTIFICATION_EMAIL)
         validate_email(settings.DEFAULT_FROM_EMAIL)
     except ValidationError:
         return False
-    return settings.EMAIL_BACKEND not in NON_DELIVERING_BACKENDS
+    return delivery_backend_ready()
 
 
 def create_reservation_notification(quote):
@@ -47,15 +55,16 @@ def send_reservation_alert(notification_id):
     recipient = notification.email_recipient or settings.RESERVATION_NOTIFICATION_EMAIL
     try:
         validate_email(recipient)
-        configured = settings.EMAIL_BACKEND not in NON_DELIVERING_BACKENDS
+        validate_email(settings.DEFAULT_FROM_EMAIL)
+        configured = delivery_backend_ready()
     except ValidationError:
         configured = False
     if not configured:
         AdminReservationNotification.objects.filter(pk=notification_id).update(email_status='not_configured')
         return False
-    data = notification.quote.snapshot
     body = ('A customer has reserved games on BG Catalog.\n'
             'This alert is independent of whether they send the WhatsApp message.\n'
+            f'Current reservation status: {notification.quote.status}\n'
             'Reservation details at the time of checkout:\n\n' + quote_message(notification.quote) +
             '\n\nReview the quote reference in Admin Panel > Notifications. '
             'The reservation is not a confirmed sale or payment.\n')

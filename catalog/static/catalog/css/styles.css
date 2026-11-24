@@ -295,3 +295,4 @@ footer {
 .quote-line > :first-child { min-width: 0; overflow-wrap: anywhere; }
 .quote-line > :last-child { flex-shrink: 0; }
 #whatsapp-message { font-size: 1rem; }
+.notification-card { overflow-wrap: anywhere; }

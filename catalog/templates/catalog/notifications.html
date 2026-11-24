@@ -6,7 +6,7 @@
 {% if not notification_email_ready %}<div class="alert alert-warning">Email delivery needs setup. Admin notifications are still saved for every reservation. Configure the recipient and a sending service to enable email alerts.</div>{% endif %}
 <div class="card mb-4"><div class="card-body"><h2 class="h5">Browser alerts</h2><p class="small">Keep an admin page open to receive new reservation alerts. Updates are checked every 30 seconds. Alerts are saved here when the site is closed.</p><button type="button" class="btn btn-outline-primary" id="enable-reservation-alerts">Enable browser alerts</button><p class="small text-muted mt-2 mb-0" id="browser-alert-status" role="status">Browser alerts are optional and require your permission.</p></div></div>
 {% for notification in notifications %}
-<article class="card mb-3"><div class="card-body">
+<article class="card mb-3 notification-card"><div class="card-body">
     <div class="d-flex flex-wrap gap-2 justify-content-between"><h2 class="h5">New reservation{% if not notification.is_read %} <span class="badge bg-danger">Unread</span>{% endif %}</h2><time>{{ notification.created_at|date:'d M Y H:i' }}</time></div>
     <p class="quote-reference small text-muted">Quote: {{ notification.quote_id }}</p>
     <p><strong>{{ notification.quote.snapshot.contact.full_name }}</strong> · {{ notification.quote.snapshot.contact.email }} · {{ notification.quote.snapshot.contact.phone }}</p>
