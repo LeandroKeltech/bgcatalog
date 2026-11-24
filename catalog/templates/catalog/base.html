@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <!-- Custom CSS -->
     {% load static %}
-    <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}?v=20261124-checkout">
     
     {% block extra_css %}{% endblock %}
 </head>
@@ -22,7 +22,7 @@
             <a class="navbar-brand" href="{% url 'catalog' %}">
                 <i class="bi bi-controller"></i> BG Catalog
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -32,7 +32,9 @@
                             <i class="bi bi-grid"></i> Catalog
                         </a>
                     </li>
-                    {% if user.is_staff %}
+                    {% if can_access_admin %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'notification_list' %}"><i class="bi bi-bell"></i> Notifications <span id="reservation-notification-count" class="badge bg-danger" {% if not reservation_unread_count %}hidden{% endif %}>{{ reservation_unread_count }}</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'finance_dashboard' %}">Sales &amp; finances</a></li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'admin_panel' %}">
                             <i class="bi bi-gear"></i> Admin Panel
@@ -62,17 +64,17 @@
                         </a>
                     </li>
                     {% if user.is_authenticated %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'customer_account' %}">My account</a></li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'admin:logout' %}">
-                            <i class="bi bi-box-arrow-right"></i> Logout
-                        </a>
+                        <form method="post" action="{% url 'customer_logout' %}">{% csrf_token %}<button type="submit" class="nav-link btn btn-link"><i class="bi bi-box-arrow-right"></i> Logout</button></form>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'admin:index' %}">
+                        <a class="nav-link" href="{% url 'customer_login' %}">
                             <i class="bi bi-box-arrow-in-right"></i> Login
                         </a>
                     </li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'customer_register' %}">Create account</a></li>
                     {% endif %}
                 </ul>
             </div>
@@ -92,14 +94,15 @@
     {% endif %}
 
     <!-- Main Content -->
-    <main class="container my-4">
+    <main class="container my-4" id="main-content">
+        {% if can_access_admin %}<div id="reservation-live-alert" class="alert alert-info" role="status" hidden><span id="reservation-live-alert-text"></span> <a href="{% url 'notification_list' %}" class="alert-link">View notifications</a></div>{% endif %}
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
     <footer class="bg-light mt-5 py-4">
         <div class="container text-center text-muted">
-            <p>&copy; 2025 Board Game Catalog. Powered by Django & BoardGameGeek.</p>
+            <p>&copy; {% now "Y" %} Board Game Catalog. Powered by Django & BoardGameGeek.</p>
             <p class="small">
                 <a href="https://github.com/LeandroKeltech/bgcatalog" target="_blank" class="text-decoration-none">
                     <i class="bi bi-github"></i> GitHub
@@ -111,6 +114,7 @@
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
+    {% if can_access_admin %}<script src="{% static 'catalog/js/reservation-notifications.js' %}" defer data-status-url="{% url 'notification_status' %}" data-inbox-url="{% url 'notification_list' %}" data-cursor="{{ reservation_notification_cursor }}"></script>{% endif %}
     {% block extra_js %}{% endblock %}
 </body>
 </html>

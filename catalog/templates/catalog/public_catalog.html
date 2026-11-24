@@ -13,61 +13,79 @@
 <!-- Filters -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Search</label>
-                <input type="text" name="search" class="form-control" placeholder="Search by name or designer" value="{{ search_query }}">
+        <form method="get" class="catalog-filters">
+            <div class="search-controls">
+                <label class="form-label" for="catalog-search">Find a game</label>
+                <div class="input-group">
+                    <input type="search" id="catalog-search" name="search" class="form-control" placeholder="Name or designer" value="{{ search_query }}">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </div>
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Condition</label>
-                <select name="condition" class="form-select">
+            <details class="advanced-filters" {% if has_filters %}open{% endif %}>
+                <summary>Filters &amp; sorting</summary>
+                <div class="filter-controls">
+            <div>
+                <label class="form-label" for="availability">Availability</label>
+                <select id="availability" name="availability" class="form-select">
+                    <option value="all" {% if availability == 'all' %}selected{% endif %}>All games</option>
+                    <option value="available" {% if availability == 'available' %}selected{% endif %}>In stock</option>
+                    <option value="sold_out" {% if availability == 'sold_out' %}selected{% endif %}>Sold out</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label" for="condition">Condition</label>
+                <select id="condition" name="condition" class="form-select">
                     <option value="">All Conditions</option>
                     {% for value, label in condition_choices %}
                     <option value="{{ value }}" {% if condition == value %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Min Price (€)</label>
-                <input type="number" name="min_price" class="form-control" step="0.01" value="{{ min_price }}">
+            <div>
+                <label class="form-label" for="min-price">Min our price (€)</label>
+                <input type="number" id="min-price" name="min_price" class="form-control" min="0" step="0.01" inputmode="decimal" value="{{ min_price }}">
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Max Price (€)</label>
-                <input type="number" name="max_price" class="form-control" step="0.01" value="{{ max_price }}">
+            <div>
+                <label class="form-label" for="max-price">Max our price (€)</label>
+                <input type="number" id="max-price" name="max_price" class="form-control" min="0" step="0.01" inputmode="decimal" value="{{ max_price }}">
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Sort By</label>
-                <select name="sort" class="form-select">
+            <div>
+                <label class="form-label" for="sort">Sort by</label>
+                <select id="sort" name="sort" class="form-select">
+                    <option value="relevance" {% if sort_by == 'relevance' %}selected{% endif %}>Relevance</option>
                     <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest</option>
                     <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
                     <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Name (Z-A)</option>
-                    <option value="msrp_price" {% if sort_by == 'msrp_price' %}selected{% endif %}>Price (Low-High)</option>
-                    <option value="-msrp_price" {% if sort_by == '-msrp_price' %}selected{% endif %}>Price (High-Low)</option>
+                    <option value="selling_price" {% if sort_by == 'selling_price' %}selected{% endif %}>Our price (Low–High)</option>
+                    <option value="-selling_price" {% if sort_by == '-selling_price' %}selected{% endif %}>Our price (High–Low)</option>
                 </select>
             </div>
-            <div class="col-12">
+                </div>
+            <div class="filter-actions mt-3">
                 <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Apply Filters</button>
                 <a href="{% url 'catalog' %}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Clear</a>
             </div>
+            </details>
         </form>
     </div>
 </div>
 
 <!-- Games Grid -->
 {% if games %}
-<div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
+<p class="text-muted small">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} games</p>
+<div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 row-cols-xl-4 g-3 g-md-4">
     {% for game in games %}
     <div class="col">
         <div class="card h-100 game-card">
             {% if game.thumbnail_url %}
-            <img src="{{ game.thumbnail_url }}" class="card-img-top" alt="{{ game.name }}">
+            <img src="{{ game.thumbnail_url }}" class="card-img-top" alt="{{ game.name }}" loading="lazy" decoding="async" width="300" height="220">
             {% else %}
             <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
                 <i class="bi bi-image text-white" style="font-size: 3rem;"></i>
             </div>
             {% endif %}
             <div class="card-body">
-                <h5 class="card-title">{{ game.name }}</h5>
+                <h2 class="card-title h5">{{ game.name }}</h2>
                 <p class="card-text text-muted small">
                     {% if game.year_published %}{{ game.year_published }} | {% endif %}
                     {% if game.designer %}{{ game.designer|truncatewords:3 }}{% endif %}
@@ -81,17 +99,15 @@
                 </div>
                 <div class="mb-2">
                     <span class="badge bg-info">{{ game.get_condition_display }}</span>
-                    <span class="badge bg-success">{{ game.available_quantity }} in stock</span>
-                </div>
-                {% if game.final_price %}
-                <div class="h5 text-primary mb-2">
-                    €{{ game.final_price }}
-                    {% if game.discount_percentage > 0 %}
-                    <small class="text-muted text-decoration-line-through">€{{ game.msrp_price }}</small>
-                    <span class="badge bg-danger">-{{ game.discount_percentage }}%</span>
+                    {% if game.is_sold or game.stock_quantity == 0 %}
+                    <span class="badge bg-secondary">Sold out · Stock: {{ game.stock_quantity }}</span>
+                    {% elif game.available_quantity == 0 %}
+                    <span class="badge bg-warning">Temporarily reserved · Stock: {{ game.stock_quantity }}</span>
+                    {% else %}
+                    <span class="badge bg-success">{{ game.available_quantity }} available · Stock: {{ game.stock_quantity }}</span>
                     {% endif %}
                 </div>
-                {% endif %}
+                {% include 'catalog/includes/price.html' %}
             </div>
             <div class="card-footer bg-white border-0">
                 <a href="{% url 'game_detail' game.id %}" class="btn btn-primary w-100">
@@ -102,6 +118,13 @@
     </div>
     {% endfor %}
 </div>
+{% if page_obj.has_other_pages %}
+<nav class="catalog-pagination" aria-label="Catalog pages">
+    {% if page_obj.has_previous %}<a class="btn btn-outline-primary" href="{% querystring page=page_obj.previous_page_number %}">Previous</a>{% endif %}
+    <span aria-current="page">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a class="btn btn-outline-primary" href="{% querystring page=page_obj.next_page_number %}">Next</a>{% endif %}
+</nav>
+{% endif %}
 {% else %}
 <div class="alert alert-info">
     <i class="bi bi-info-circle"></i> No games found. Try adjusting your filters.

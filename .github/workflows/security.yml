@@ -1,0 +1,57 @@
+name: Security and application checks
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: catalog
+          POSTGRES_USER: catalog
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      DEBUG: 'True'
+      ENABLE_LIVERELOAD: 'False'
+      SECRET_KEY: ci-only-secret-not-for-deployment-94c6d523e98a405cac31
+      DATABASE_URL: postgresql://catalog:ci-only-password@localhost:5432/catalog
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.txt pip-audit==2.10.1
+      - run: pip check
+      - run: pip-audit -r requirements.txt
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py test catalog --noinput
+      - run: python manage.py check --deploy --fail-level ERROR
+        env:
+          DEBUG: 'False'
+          APP_ENV: production
+          ALLOWED_HOSTS: catalog.example.com
+      - name: Verify PostgreSQL backup restoration in an isolated database
+        env:
+          PGPASSWORD: ci-only-password
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-16
+          export PATH="/usr/lib/postgresql/16/bin:$PATH"
+          python manage.py migrate --noinput
+          python manage.py backup_database --output "$RUNNER_TEMP/catalog.dump"
+          createdb -h localhost -U catalog restore_verify
+          pg_restore -h localhost -U catalog --no-owner --no-acl --exit-on-error --dbname restore_verify "$RUNNER_TEMP/catalog.dump"
+          psql -h localhost -U catalog -d restore_verify -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM django_migrations;"

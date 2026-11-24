@@ -32,8 +32,11 @@ main {
 }
 
 .game-card .card-img-top {
-    height: 200px;
-    object-fit: cover;
+    width: 100%;
+    height: 220px;
+    padding: 1rem;
+    object-fit: contain;
+    background: #f8f9fa;
 }
 
 .game-details {
@@ -155,3 +158,140 @@ footer {
     color: white;
     font-size: 2rem;
 }
+
+/* Shared original / selling prices, including explicit spreadsheet prices. */
+.price-display { margin: 0.75rem 0; }
+.original-price, .selling-price {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.25rem 0.75rem;
+}
+.original-price { color: #59636e; font-size: 0.9rem; }
+.selling-price { color: #174b98; margin-top: 0.2rem; }
+.selling-price strong { font-size: 1.5rem; white-space: nowrap; }
+.selling-price .price-pending { font-size: 1rem; white-space: normal; }
+.savings-label { display: inline-block; color: #146337; font-size: 0.9rem; font-weight: 600; margin-top: 0.25rem; }
+.badge.bg-info, .badge.bg-warning { color: #14313b; }
+.game-card .card-body { display: flex; flex-direction: column; }
+.game-card .price-display { margin-top: auto; padding-top: 0.75rem; }
+.game-card .card-title { overflow-wrap: anywhere; }
+
+/* Compact filters leave the games visible on the first mobile screen. */
+.catalog-filters { display: grid; gap: 1rem; }
+.advanced-filters summary { cursor: pointer; padding: 0.65rem 0; font-weight: 600; }
+.filter-controls { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; margin-top: 0.75rem; }
+.filter-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.catalog-pagination { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 2rem; }
+.staff-nav, .action-row, .page-heading { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.staff-nav { margin-bottom: 1.5rem; }
+.page-heading { justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+.stat-grid > div { background: #f4f7fb; padding: 1rem; border-radius: 0.5rem; }
+.stat-grid span { display: block; color: #59636e; font-size: 0.9rem; }
+.stat-grid strong { display: block; font-size: 1.5rem; margin-top: 0.25rem; overflow-wrap: anywhere; }
+.inventory-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.inventory-title { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 1rem; }
+.inventory-title img { width: 60px; height: 75px; object-fit: contain; }
+.inventory-title h2 { overflow-wrap: anywhere; }
+.inventory-search { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(100px, .7fr) auto; align-items: end; gap: 0.75rem; }
+.inventory-table-wrap { max-width: 100%; overflow: auto; border: 1px solid #dee2e6; border-radius: .375rem; }
+.inventory-table { min-width: 950px; font-size: .875rem; }
+.inventory-table thead th { background: #f4f7fb; white-space: nowrap; padding: .7rem .6rem; }
+.inventory-table tbody td, .inventory-table tbody th { padding: .4rem .6rem; }
+.inventory-table-game { display: flex; align-items: center; gap: .6rem; min-width: 220px; max-width: 330px; }
+.inventory-table-game img { width: 30px; height: 36px; object-fit: contain; flex-shrink: 0; }
+.inventory-table-game a { text-decoration: none; overflow-wrap: anywhere; }
+.inventory-table-actions { display: flex; gap: .3rem; white-space: nowrap; }
+.inventory-table-actions .btn { min-height: 36px; }
+@media (pointer: coarse) { .inventory-table-actions .btn { min-height: 44px; } }
+.stock-strip { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 0; border-block: 1px solid #dee2e6; margin-bottom: 0.75rem; }
+.stock-strip span { display: flex; flex-direction: column; font-size: 0.875rem; }
+.stock-strip strong { font-size: 1.2rem; }
+.admin-form { max-width: 900px; }
+.admin-form-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.admin-form-fields > div { min-width: 0; }
+.field-wide { grid-column: 1 / -1; }
+.errorlist { color: #a61b29; padding-left: 1.25rem; }
+.reconciliation-lines { margin: 1rem 0; }
+.reconciliation-lines > div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: 0.6rem 0; border-bottom: 1px solid #dee2e6; }
+.reconciliation-lines dt { font-weight: 500; }
+.reconciliation-lines dd { margin: 0; white-space: nowrap; font-weight: 600; }
+.reconciliation-total { color: #174b98; font-size: 1.2rem; }
+.ledger-event { padding: 1rem 0; border-bottom: 1px solid #dee2e6; overflow-wrap: anywhere; }
+.ledger-event p { margin: 0.4rem 0; }
+@media (max-width: 991.98px) { .inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.game-detail-cover { display: block; width: 100%; max-height: 560px; object-fit: contain; }
+.gameplay-summary .card { height: 100%; }
+.gameplay-summary .card-body { padding: 0.75rem 0.3rem; }
+.cart-cover { width: 100%; height: 180px; padding: 0.75rem; object-fit: contain; }
+.navbar-nav .nav-link { min-height: 44px; display: flex; align-items: center; gap: 0.35rem; }
+.navbar-nav .nav-link .badge { position: static !important; transform: none !important; }
+.btn, .form-control, .form-select, .navbar-toggler { min-height: 44px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; }
+.btn-group-sm > .btn { min-width: 44px; min-height: 44px; }
+:focus-visible { outline: 3px solid #174b98; outline-offset: 3px; }
+
+@media (max-width: 767.98px) {
+    h1 { font-size: 1.75rem; overflow-wrap: anywhere; }
+    .inventory-grid, .admin-form-fields { grid-template-columns: minmax(0, 1fr); }
+    .inventory-search { grid-template-columns: minmax(0, 1fr) auto; }
+    .inventory-search > div:first-child { grid-column: 1 / -1; }
+    .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+    .stat-grid > div { padding: 0.75rem; }
+    .stat-grid strong { font-size: 1.2rem; }
+    .staff-nav { gap: 0.5rem; }
+    .staff-nav .btn { flex: 1 1 45%; font-size: 0.875rem; }
+    .container { padding-left: 1rem; padding-right: 1rem; }
+    .form-control, .form-select { font-size: 1rem; }
+    .filter-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+    .filter-controls .form-label { font-size: 0.875rem; }
+    .game-detail-cover { max-height: 300px; }
+    .purchase-controls { margin-top: 1rem; }
+    .gameplay-summary .fs-2 { font-size: 1.35rem !important; }
+    .gameplay-summary p, .gameplay-summary small { font-size: 0.875rem; }
+    .cart-item .card-body { padding: 0.75rem; }
+    .cart-item .card-title { font-size: 1rem; overflow-wrap: anywhere; }
+    .cart-item .original-price, .cart-item .selling-price { display: block; }
+    .cart-item .original-price > :last-child, .cart-item .selling-price strong { display: block; }
+    .cart-cover { height: 150px; padding: 0.5rem; }
+    .badge { white-space: normal; line-height: 1.4; }
+    .breadcrumb { overflow-wrap: anywhere; }
+
+    /* Staff inventory becomes labeled records rather than a wide table. */
+    .mobile-records thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    .mobile-records, .mobile-records tbody { display: block; width: 100%; }
+    .mobile-records tr { display: block; border: 1px solid #dee2e6; border-radius: 0.5rem; margin-bottom: 1rem; padding: 0.5rem; }
+    .mobile-records td { display: flex; justify-content: space-between; align-items: center; gap: 1rem; border: 0; padding: 0.5rem; overflow-wrap: anywhere; text-align: right; }
+    .mobile-records td::before { content: attr(data-label); font-weight: 600; text-align: left; flex: 0 0 35%; }
+    .mobile-records td[colspan] { display: block; text-align: center; }
+    .mobile-records td[colspan]::before { content: none; }
+}
+
+@media (hover: none), (prefers-reduced-motion: reduce) {
+    .game-card, .btn { transition: none; }
+    .game-card:hover, .btn:hover { transform: none; box-shadow: none; }
+}
+
+/* Readable game content and click-to-load videos. */
+.game-description { line-height: 1.75; overflow-wrap: anywhere; }
+.game-description p, .game-description ul, .game-description ol { margin-bottom: 1.1rem; }
+.game-description h3, .game-description h4 { font-size: 1.15rem; margin-top: 1.5rem; }
+.game-description .description-source { font-size: .85rem; color: #6c757d; border-top: 1px solid #dee2e6; padding-top: 1rem; margin-bottom: 0; }
+.game-videos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1.5rem; }
+.video-player { aspect-ratio: 16 / 9; display: grid; place-items: center; background: #f1f4f7; border: 1px solid #dee2e6; border-radius: .5rem; overflow: hidden; }
+.video-player iframe { width: 100%; height: 100%; border: 0; }
+.game-choices { max-height: 20rem; overflow-y: auto; padding: .5rem; border: 1px solid #ced4da; border-radius: .375rem; }
+.game-choices label { display: flex; align-items: center; gap: .6rem; min-height: 44px; cursor: pointer; }
+.game-choices input { width: 1.1rem; height: 1.1rem; flex-shrink: 0; }
+.promotion-label { display: inline-block; color: #59348b; font-weight: 600; font-size: .85rem; }
+#videos-heading { scroll-margin-top: 24px; }
+.customer-auth { max-width: 620px; margin: 0 auto; }
+.customer-auth .admin-form-fields { grid-template-columns: 1fr; }
+.customer-quote { max-width: 900px; }
+.quote-reference { overflow-wrap: anywhere; }
+.quote-line { display: flex; justify-content: space-between; gap: 1rem; }
+.quote-line > :first-child { min-width: 0; overflow-wrap: anywhere; }
+.quote-line > :last-child { flex-shrink: 0; }
+#whatsapp-message { font-size: 1rem; }

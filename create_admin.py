@@ -8,13 +8,8 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-# Create superuser if it doesn't exist
-if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser(
-        username='admin',
-        email='admin@bgcatalog.fly.dev',
-        password='admin123'
-    )
-    print("Superuser created: username='admin', password='admin123'")
-else:
-    print("Superuser already exists")
+if __name__ == '__main__':
+    # Delegate credential handling and password validation to Django.
+    from django.core.management import call_command
+
+    call_command('createsuperuser')

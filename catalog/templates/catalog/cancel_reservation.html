@@ -11,6 +11,7 @@
             <strong>Customer:</strong> {{ reservation.customer_name }}
         </div>
         <form method="post">
+            {% include 'catalog/includes/reservation_bundle.html' %}
             {% csrf_token %}
             <button type="submit" class="btn btn-danger">Cancel Reservation</button>
             <a href="{% url 'reservation_management' %}" class="btn btn-secondary">Back</a>

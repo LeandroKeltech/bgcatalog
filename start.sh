@@ -3,31 +3,26 @@ set -e
 
 echo "== Starting application startup script =="
 
-if [ -z "$DATABASE_URL" ]; then
-  echo "DATABASE_URL is not set — skipping schema reset and running migrations only"
-else
+case "$DATABASE_URL" in
+postgres://*|postgresql://*)
   echo "Waiting for database to be reachable..."
   # Try a few times to ensure DB is up
   i=0
-  until psql "$DATABASE_URL" -c '\l' >/dev/null 2>&1 || [ $i -ge 12 ]; do
+  until psql "$DATABASE_URL" -c 'SELECT 1' >/dev/null 2>&1 || [ $i -ge 12 ]; do
     i=$((i+1))
     echo "  - waiting for DB... attempt $i/12"
     sleep 5
   done
 
   if [ $i -ge 12 ]; then
-    echo "Database not reachable after retries — continuing and hoping for the best"
-  else
-    echo "Dropping and recreating public schema to ensure clean migrations"
-    psql "$DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+    echo "Database not reachable after retries — aborting startup"
+    exit 1
   fi
-fi
+  ;;
+esac
 
 echo "Running migrations..."
 python manage.py migrate --noinput
-
-echo "Creating admin user (if not exists)..."
-python manage.py shell < create_admin.py || echo "Admin creation failed or already exists"
 
 echo "Collecting static files..."
 python manage.py collectstatic --noinput

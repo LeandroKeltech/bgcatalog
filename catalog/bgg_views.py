@@ -3,9 +3,10 @@ BGG/BGA search and import views.
 """
 
 from django.shortcuts import render, redirect
-from django.contrib.admin.views.decorators import staff_member_required
+from .access import admin_group_required
 from django.contrib import messages
 from django.http import JsonResponse
+from django.views.decorators.http import require_POST
 from .models import BoardGame
 from . import bgg_price_service
 import logging
@@ -13,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-@staff_member_required
+@admin_group_required
 def bgg_search(request):
     """Search BGG/BGA for games and populate missing thumbnails."""
     search_query = request.GET.get('search', '')
@@ -48,7 +49,7 @@ def bgg_search(request):
     return render(request, 'catalog/bgg_search.html', context)
 
 
-@staff_member_required
+@admin_group_required
 def preview_bgg_game(request, bgg_id):
     """Preview game details from BGG/BGA before importing."""
     # Check if game already exists
@@ -91,7 +92,7 @@ def preview_bgg_game(request, bgg_id):
     return render(request, 'catalog/bgg_preview.html', context)
 
 
-@staff_member_required
+@admin_group_required
 def import_from_bgg(request, bgg_id):
     """Import game from preview form."""
     if request.method != 'POST':
@@ -124,7 +125,6 @@ def import_from_bgg(request, bgg_id):
         rank_overall=request.POST.get('rank_overall') or None,
         num_ratings=request.POST.get('num_ratings') or None,
         msrp_price=request.POST.get('msrp_price') or None,
-        price=request.POST.get('price') or None,
         stock_quantity=request.POST.get('stock_quantity', 1),
         condition=request.POST.get('condition', 'new'),
     )
@@ -133,7 +133,8 @@ def import_from_bgg(request, bgg_id):
     return redirect('edit_game', game_id=game.id)
 
 
-@staff_member_required
+@admin_group_required
+@require_POST
 def refresh_game_data(request, game_id):
     """Refresh game data from BGG/BGA."""
     game = BoardGame.objects.get(id=game_id)

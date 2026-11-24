@@ -1,0 +1,12 @@
+{% extends 'catalog/base.html' %}
+{% block title %}{% if game %}Edit inventory{% else %}Add a game{% endif %} - BG Catalog{% endblock %}
+{% block content %}
+{% include 'catalog/includes/staff_nav.html' %}
+<h1>{% if game %}Edit inventory{% else %}Add a game{% endif %}</h1>
+<p class="text-muted">Set current stock to zero to mark a game as sold out. Adding stock makes it available again.</p>
+<form method="post" class="card admin-form"><div class="card-body">
+    {% csrf_token %}{% include 'catalog/includes/form_fields.html' %}
+    <div class="action-row mt-4"><button class="btn btn-primary" type="submit">Save inventory</button><a class="btn btn-outline-secondary" href="{% url 'admin_panel' %}">Cancel</a></div>
+</div></form>
+{% if game %}<div class="mt-4"><a class="btn btn-outline-danger" href="{% url 'delete_game' game.id %}">Delete game</a></div>{% endif %}
+{% endblock %}

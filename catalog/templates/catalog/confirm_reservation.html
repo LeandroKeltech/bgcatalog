@@ -12,6 +12,7 @@
             <strong>Quantity:</strong> {{ reservation.quantity }}
         </div>
         <form method="post">
+            {% include 'catalog/includes/reservation_bundle.html' %}
             {% csrf_token %}
             <button type="submit" class="btn btn-success">Confirm Sale</button>
             <a href="{% url 'reservation_management' %}" class="btn btn-secondary">Cancel</a>

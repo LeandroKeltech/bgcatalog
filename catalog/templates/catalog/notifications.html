@@ -1,0 +1,21 @@
+{% extends 'catalog/base.html' %}
+{% block title %}Reservation notifications - BG Catalog{% endblock %}
+{% block content %}
+<h1>Reservation notifications</h1>
+<p>A notification is saved as soon as a customer reserves games, even if they never send the WhatsApp message.</p>
+{% if not notification_email_ready %}<div class="alert alert-warning">Email delivery needs setup. Admin notifications are still saved for every reservation. Configure the recipient and a sending service to enable email alerts.</div>{% endif %}
+<div class="card mb-4"><div class="card-body"><h2 class="h5">Browser alerts</h2><p class="small">Keep an admin page open to receive new reservation alerts. Updates are checked every 30 seconds. Alerts are saved here when the site is closed.</p><button type="button" class="btn btn-outline-primary" id="enable-reservation-alerts">Enable browser alerts</button><p class="small text-muted mt-2 mb-0" id="browser-alert-status" role="status">Browser alerts are optional and require your permission.</p></div></div>
+{% for notification in notifications %}
+<article class="card mb-3"><div class="card-body">
+    <div class="d-flex flex-wrap gap-2 justify-content-between"><h2 class="h5">New reservation{% if not notification.is_read %} <span class="badge bg-danger">Unread</span>{% endif %}</h2><time>{{ notification.created_at|date:'d M Y H:i' }}</time></div>
+    <p class="quote-reference small text-muted">Quote: {{ notification.quote_id }}</p>
+    <p><strong>{{ notification.quote.snapshot.contact.full_name }}</strong> · {{ notification.quote.snapshot.contact.email }} · {{ notification.quote.snapshot.contact.phone }}</p>
+    <ul>{% for line in notification.quote.snapshot.lines %}<li>{{ line.quantity }} × {{ line.name }} · €{{ line.line_total }}</li>{% endfor %}</ul>
+    <p><strong>Total: €{{ notification.quote.snapshot.total }}</strong> · Current reservation status: {{ notification.quote.status }}</p>
+    <p class="small text-muted">Email alert: {{ notification.get_email_status_display }}{% if notification.email_sent_at %} · {{ notification.email_sent_at|date:'d M Y H:i' }}{% endif %}</p>
+    <form method="post" action="{% url 'notification_open' notification.pk %}">{% csrf_token %}<button class="btn btn-primary" type="submit">View reservation{% if not notification.is_read %} &amp; mark as read{% endif %}</button></form>
+    {% if notification.email_status == 'failed' or notification.email_status == 'not_configured' or notification.email_status == 'pending' %}<form class="mt-2" method="post" action="{% url 'notification_retry_email' notification.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">Retry email alert</button></form>{% endif %}
+</div></article>
+{% empty %}<div class="alert alert-info">No reservation notifications yet. New customer checkouts will appear here automatically.</div>{% endfor %}
+{% if notifications.has_other_pages %}<nav aria-label="Notification pages" class="d-flex flex-wrap gap-3 align-items-center">{% if notifications.has_previous %}<a href="?page={{ notifications.previous_page_number }}">Previous</a>{% endif %}<span>Page {{ notifications.number }} of {{ notifications.paginator.num_pages }}</span>{% if notifications.has_next %}<a href="?page={{ notifications.next_page_number }}">Next</a>{% endif %}</nav>{% endif %}
+{% endblock %}

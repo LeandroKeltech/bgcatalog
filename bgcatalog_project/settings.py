@@ -11,35 +11,57 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from importlib.util import find_spec
 import dj_database_url
 from pathlib import Path
+from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+ON_VERCEL = os.environ.get('VERCEL') == '1'
+if not ON_VERCEL and os.environ.get('APP_ENV') != 'production':
+    load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-$p=%4u3x_992mc+i4&qka1*ll_b8vz-&=$raj$r9k!(yk5yprg')
+SECRET_KEY = os.environ.get('SECRET_KEY', '')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False').strip().lower() in ('true', '1')
+if ON_VERCEL or os.environ.get('APP_ENV') == 'production':
+    DEBUG = False
+if not SECRET_KEY or (not DEBUG and (
+    SECRET_KEY.startswith('django-insecure-') or len(SECRET_KEY) < 50
+    or len(set(SECRET_KEY)) < 5 or 'your-secret-key' in SECRET_KEY.lower()
+)):
+    raise ImproperlyConfigured('Set a random SECRET_KEY of at least 50 characters in the environment.')
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,bgcatalog.fly.dev').split(',')
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get(
+    'ALLOWED_HOSTS', 'localhost,127.0.0.1' if DEBUG else ''
+).split(',') if host.strip()]
+VERCEL_HOSTS = []
+if ON_VERCEL:
+    for variable in ('VERCEL_URL', 'VERCEL_PROJECT_PRODUCTION_URL', 'VERCEL_BRANCH_URL'):
+        host = os.environ.get(variable, '').strip()
+        if host and host not in VERCEL_HOSTS:
+            VERCEL_HOSTS.append(host)
+    ALLOWED_HOSTS = list(dict.fromkeys(ALLOWED_HOSTS + VERCEL_HOSTS))
 
 
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
+    'catalog.apps.GroupAdminConfig',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'catalog',
+    'catalog.apps.CatalogConfig',
 ]
 
 MIDDLEWARE = [
@@ -49,9 +71,21 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'catalog.security.SecurityMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# Optional development dependency: excluded entirely when DEBUG is off.
+LIVE_RELOAD_ENABLED = (
+    DEBUG and os.environ.get('ENABLE_LIVERELOAD', 'True') == 'True'
+    and find_spec('livereload') is not None
+)
+if LIVE_RELOAD_ENABLED:
+    INSTALLED_APPS.insert(INSTALLED_APPS.index('django.contrib.staticfiles'), 'livereload')
+    MIDDLEWARE.append('livereload.middleware.LiveReloadScript')
+    LIVERELOAD_HOST = '127.0.0.1'
+    LIVERELOAD_PORT = 35729
 
 ROOT_URLCONF = 'bgcatalog_project.urls'
 
@@ -65,6 +99,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'catalog.access.admin_access',
             ],
         },
     },
@@ -77,14 +112,26 @@ WSGI_APPLICATION = 'bgcatalog_project.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Default to SQLite for development, PostgreSQL for production
+if not DEBUG and not os.environ.get('DATABASE_URL', '').startswith(('postgres://', 'postgresql://')):
+    raise ImproperlyConfigured('Set DATABASE_URL to an external PostgreSQL database in production.')
+
 if os.environ.get('DATABASE_URL'):
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
-            conn_max_age=600,
+            conn_max_age=0 if ON_VERCEL else 600,
             conn_health_checks=True,
+            ssl_require=False,
         )
     }
+    if not DEBUG:
+        options = DATABASES['default'].setdefault('OPTIONS', {})
+        mode = options.setdefault('sslmode', 'require')
+        if mode not in ('require', 'verify-ca', 'verify-full'):
+            raise ImproperlyConfigured('Production PostgreSQL connections must require TLS.')
+    if ON_VERCEL:
+        # Neon's transaction pool does not preserve server-side cursors.
+        DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 else:
     DATABASES = {
         'default': {
@@ -103,6 +150,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 12},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -131,10 +179,6 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-STATICFILES_DIRS = [
-    BASE_DIR / 'catalog' / 'static',
-]
-
 # WhiteNoise configuration for production
 STORAGES = {
     "default": {
@@ -155,28 +199,53 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email configuration (console backend for development)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@bgcatalog.fly.dev'
-ADMIN_EMAIL = 'admin@bgcatalog.fly.dev'
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@example.com')
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
+RESERVATION_NOTIFICATION_EMAIL = os.environ.get('RESERVATION_NOTIFICATION_EMAIL', ADMIN_EMAIL).strip()
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
+EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False').lower() == 'true'
+EMAIL_TIMEOUT = 10
+WHATSAPP_SHOP_NUMBER = os.environ.get('WHATSAPP_SHOP_NUMBER', '')
 
 # Session configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 86400  # 24 hours
 SESSION_SAVE_EVERY_REQUEST = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+DATA_UPLOAD_MAX_MEMORY_SIZE = 256 * 1024
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 200
+DATA_UPLOAD_MAX_NUMBER_FILES = 0
+SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+RATE_LIMIT_IP_HEADER = 'HTTP_X_VERCEL_FORWARDED_FOR' if ON_VERCEL else ''
+MAX_ACTIVE_CUSTOMER_QUOTES = 3
 
 # Security settings for production
 if not DEBUG:
-    # Fly.io already handles SSL/TLS termination, so we don't need Django to redirect
-    # SECURE_SSL_REDIRECT = True
+    # Hosting providers terminate TLS and forward the original protocol.
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 3600
+    # Opt in only after checking every subdomain and planning long-term HTTPS.
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = os.environ.get('HSTS_INCLUDE_SUBDOMAINS', 'False') == 'True'
+    SECURE_HSTS_PRELOAD = os.environ.get('HSTS_PRELOAD', 'False') == 'True'
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    # When the app is behind Fly.io (reverse proxy) we need to honor the X-Forwarded-Proto header
+    # When the app is behind a reverse proxy, honor the X-Forwarded-Proto header
     # so Django knows the original request was HTTPS. This helps CSRF and secure cookie handling.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    # Trust the Fly.io hostname for CSRF checks. You can set CSRF_TRUSTED_ORIGINS in the
-    # environment (comma-separated) if you have multiple origins.
-    CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', 'https://bgcatalog.fly.dev').split(',')
-    SECURE_BROWSER_XSS_FILTER = True
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.environ.get(
+        'CSRF_TRUSTED_ORIGINS', ''
+    ).split(',') if origin.strip()]
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(
+        CSRF_TRUSTED_ORIGINS + [f'https://{host}' for host in VERCEL_HOSTS]
+    ))
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
 

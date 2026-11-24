@@ -13,9 +13,11 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h1><i class="bi bi-pencil"></i> Edit Game</h1>
     {% if game.bgg_id %}
-    <a href="{% url 'refresh_game_data' game.id %}" class="btn btn-info">
-        <i class="bi bi-arrow-repeat"></i> Refresh from BGG/BGA
-    </a>
+    <form method="post" action="{% url 'refresh_game_data' game.id %}">
+        {% csrf_token %}<button type="submit" class="btn btn-info">
+            <i class="bi bi-arrow-repeat"></i> Refresh from BGG/BGA
+        </button>
+    </form>
     {% endif %}
 </div>
 
@@ -145,8 +147,13 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <label class="form-label">MSRP Price (€)</label>
-                        <input type="number" name="msrp_price" class="form-control" step="0.01" value="{{ game.msrp_price }}">
+                        <label class="form-label" for="original-price">Original price / MSRP (€)</label>
+                        <input type="number" id="original-price" name="msrp_price" class="form-control" step="0.01" min="0" inputmode="decimal" value="{{ game.msrp_price|default_if_none:'' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="sale-price">Our selling price (€)</label>
+                        <input type="number" id="sale-price" name="sale_price" class="form-control" step="0.01" min="0" inputmode="decimal" value="{{ game.sale_price|default_if_none:'' }}">
+                        <div class="form-text">Overrides the discount calculation. Clear this field to calculate the price from MSRP and discount.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Discount (%)</label>

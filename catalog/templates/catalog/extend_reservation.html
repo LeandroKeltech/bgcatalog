@@ -11,6 +11,7 @@
             <strong>Current Expiry:</strong> {{ reservation.expires_at }}
         </div>
         <form method="post">
+            {% include 'catalog/includes/reservation_bundle.html' %}
             {% csrf_token %}
             <div class="mb-3">
                 <label class="form-label">Extend by (minutes)</label>
