@@ -1,5 +1,5 @@
 {% extends 'catalog/base.html' %}
-{% block title %}Create account - BG Catalog{% endblock %}
+{% block title %}Create account{% endblock %}
 {% block content %}
 <div class="customer-auth"><h1>Create your account</h1><p>Save your contact details to reserve games and send your order to the shop on WhatsApp.</p>
 <form method="post" class="card"><div class="card-body">{% csrf_token %}{% include 'catalog/includes/form_fields.html' %}<p class="small text-muted mt-3">You will review your order before opening WhatsApp. Your name, email, phone and order details will be included in the prepared message.</p><button type="submit" class="btn btn-primary mt-2">Create account &amp; return to cart</button></div></form>

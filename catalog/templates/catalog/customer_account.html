@@ -1,5 +1,5 @@
 {% extends 'catalog/base.html' %}
-{% block title %}My account - BG Catalog{% endblock %}
+{% block title %}My account{% endblock %}
 {% block content %}
 <h1>My account</h1><div class="row g-4"><div class="col-lg-6"><h2 class="h4">Contact details</h2><form method="post" class="card"><div class="card-body">{% csrf_token %}{% include 'catalog/includes/form_fields.html' %}<button class="btn btn-primary mt-4" type="submit">Save &amp; return to cart</button></div></form></div>
 <div class="col-lg-6"><h2 class="h4">Recent quotes</h2>{% for quote in quotes %}<article class="ledger-event"><a href="{% url 'customer_quote' quote.pk %}">Quote {{ quote.pk|stringformat:'s'|truncatechars:13 }}</a><p>{{ quote.created_at|date:'d M Y H:i' }} · €{{ quote.snapshot.total }} · {{ quote.status }}</p></article>{% empty %}<p>Your saved quotes will appear here after checkout.</p>{% endfor %}<a class="btn btn-outline-secondary mt-3" href="{% url 'view_cart' %}">Review cart</a></div></div>

@@ -111,7 +111,7 @@ def lock_reservation_group(reservation_id):
 
 
 @transaction.atomic
-def update_reservation(reservation_id, *, cancel=False, minutes=30):
+def update_reservation(reservation_id, *, cancel=False, minutes=1440):
     lock_ledger()
     games, reservations = lock_reservation_group(reservation_id)
     if any(r.status != 'active' for r in reservations):

@@ -1,4 +1,5 @@
 {% extends 'catalog/base.html' %}
+{% block title %}Extend Reservation{% endblock %}
 {% block content %}
 <div class="card">
     <div class="card-header">
@@ -14,8 +15,8 @@
             {% include 'catalog/includes/reservation_bundle.html' %}
             {% csrf_token %}
             <div class="mb-3">
-                <label class="form-label">Extend by (minutes)</label>
-                <input type="number" name="minutes" class="form-control" value="30" min="1">
+                <label class="form-label">Reserve from now (minutes; 1440 = 24 hours)</label>
+                <input type="number" name="minutes" class="form-control" value="1440" min="1" max="1440">
             </div>
             <button type="submit" class="btn btn-primary">Extend</button>
             <a href="{% url 'reservation_management' %}" class="btn btn-secondary">Cancel</a>

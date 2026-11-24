@@ -7,7 +7,7 @@ A Django-based web application for managing and selling a board game collection 
 - **Public Catalog** - Browse available games with filtering and search
 - **Admin Panel** - Full CRUD operations for board games
 - **BGG Integration** - Multi-tier fallback strategy (BGG XML API → Board Game Atlas → Web Scraping)
-- **Stock Reservation System** - 30-minute automatic reservations to prevent overselling
+- **Stock Reservation System** - 24-hour automatic reservations to prevent overselling
 - **Shopping Cart** - Session-based cart with real-time stock validation
 - **WhatsApp Checkout** - Customer accounts and saved quotes with a prepared WhatsApp order message
 - **Barcode Scanner** - QuaggaJS integration for UPC/EAN lookup
@@ -285,7 +285,7 @@ deducting stock again. Recorded transactions are retained as an audit trail.
 
 1. Customer adds items to cart
 2. Customer registers or signs in with an email and password, and supplies a name and international phone number
-3. On checkout, stock is reserved for 30 minutes and a quote is saved to the account
+3. On checkout, stock is reserved for 24 hours and a quote is saved to the account
 4. Customer opens the prepared WhatsApp message and presses Send to contact the shop
 5. Admin can confirm sale (reduces stock), cancel, or extend the reservation
 6. Expired reservations stop reducing available stock
@@ -308,7 +308,7 @@ Every successful customer checkout creates one durable alert at
 The customer does not have to open or send the WhatsApp message. Admins see an
 unread badge and can open the quote's reservations from the inbox. Reading an alert
 does not confirm or cancel the reservation; each admin has their own read status.
-Alerts remain available after expiry. This does not change the 30-minute stock hold.
+Alerts remain available after expiry. This does not change the 24-hour stock hold.
 
 Admin pages check for new alerts every 30 seconds. Browser notifications are
 optional: click **Enable browser alerts** and grant browser permission. They require

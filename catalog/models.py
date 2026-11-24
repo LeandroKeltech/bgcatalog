@@ -291,7 +291,7 @@ class AdminReservationNotification(models.Model):
 class StockReservation(models.Model):
     """
     Model for managing temporary stock reservations during checkout.
-    Prevents overselling by holding stock for 30 minutes.
+    Prevents overselling by holding stock for 24 hours.
     """
     
     STATUS_CHOICES = [
@@ -362,7 +362,7 @@ class StockReservation(models.Model):
     def save(self, *args, **kwargs):
         """Set expiry time on creation."""
         if not self.pk and not self.expires_at:
-            self.expires_at = timezone.now() + timedelta(minutes=30)
+            self.expires_at = timezone.now() + timedelta(hours=24)
         super().save(*args, **kwargs)
     
     @property
@@ -397,7 +397,7 @@ class StockReservation(models.Model):
         update_reservation(self.pk, cancel=True)
         self.refresh_from_db()
     
-    def extend(self, minutes=30):
+    def extend(self, minutes=1440):
         """Extend reservation expiry time."""
         from .finance import update_reservation
         update_reservation(self.pk, minutes=minutes)

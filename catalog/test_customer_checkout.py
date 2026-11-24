@@ -1,5 +1,6 @@
 from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -205,3 +206,32 @@ class CustomerCheckoutTests(TestCase):
         csrf_client = Client(enforce_csrf_checks=True)
         for route in ('customer_register', 'customer_login', 'customer_logout'):
             self.assertEqual(csrf_client.post(reverse(route), self.signup_data).status_code, 403)
+
+    def test_checkout_holds_stock_and_quote_for_24_hours(self):
+        self.register()
+        started = timezone.now()
+        quote = self.checkout()
+        finished = timezone.now()
+        reservation = quote.reservations.get()
+        self.assertGreaterEqual(quote.expires_at, started + timedelta(hours=24))
+        self.assertLessEqual(quote.expires_at, finished + timedelta(hours=24))
+        self.assertEqual(reservation.expires_at, quote.expires_at)
+        with patch('django.utils.timezone.now', return_value=started + timedelta(hours=23)):
+            self.assertFalse(reservation.is_expired)
+            self.assertEqual(self.game.available_quantity, 1)
+        with patch('django.utils.timezone.now', return_value=finished + timedelta(hours=24, seconds=1)):
+            self.assertTrue(reservation.is_expired)
+            self.assertEqual(self.game.available_quantity, 3)
+
+    def test_direct_reservation_and_default_extension_last_24_hours(self):
+        started = timezone.now()
+        reservation = StockReservation.objects.create(
+            game=self.game, quantity=1, customer_name='Buyer',
+            customer_email='buyer@example.com', session_key='test',
+        )
+        self.assertGreaterEqual(reservation.expires_at, started + timedelta(hours=24))
+        self.assertLessEqual(reservation.expires_at, timezone.now() + timedelta(hours=24))
+        later = timezone.now() + timedelta(hours=1)
+        with patch('django.utils.timezone.now', return_value=later):
+            reservation.extend()
+        self.assertEqual(reservation.expires_at, later + timedelta(hours=24))

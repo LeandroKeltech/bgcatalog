@@ -1,5 +1,5 @@
 {% extends 'catalog/base.html' %}
-{% block title %}{% if game %}Edit inventory{% else %}Add a game{% endif %} - BG Catalog{% endblock %}
+{% block title %}{% if game %}Edit inventory{% else %}Add a game{% endif %}{% endblock %}
 {% block content %}
 {% include 'catalog/includes/staff_nav.html' %}
 <h1>{% if game %}Edit inventory{% else %}Add a game{% endif %}</h1>

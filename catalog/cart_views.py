@@ -221,7 +221,7 @@ def checkout(request):
             snapshot = ({'id': promotion.pk, 'name': promotion.name, 'kind': promotion.kind,
                          'rule': promotion.mechanic_description, 'subtotal': str(quote['subtotal']),
                          'discount': str(quote['discount']), 'total': str(quote['total'])} if promotion else {})
-            expires_at = timezone.now() + timedelta(minutes=30)
+            expires_at = timezone.now() + timedelta(hours=24)
             saved_quote = CustomerQuote.objects.create(user=request.user, expires_at=expires_at, snapshot={
                 'contact': {'full_name': profile.full_name, 'email': request.user.email, 'phone': profile.phone},
                 'lines': [{'name': line['game'].name, 'condition': line['game'].get_condition_display(),
@@ -264,7 +264,7 @@ def checkout(request):
             request.session['last_quote_id'] = str(saved_quote.pk)
             request.session.modified = True
             
-            messages.success(request, 'Games reserved for 30 minutes. Open WhatsApp and press Send to contact the shop.')
+            messages.success(request, 'Games reserved for 24 hours. Open WhatsApp and press Send to contact the shop.')
             return redirect('checkout_success')
     
     except ValueError as e:

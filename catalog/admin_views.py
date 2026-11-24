@@ -175,7 +175,7 @@ def extend_reservation(request, reservation_id):
     
     if request.method == 'POST':
         try:
-            minutes = int(request.POST.get('minutes', 30))
+            minutes = int(request.POST.get('minutes', 1440))
             reservation.extend(minutes=minutes)
             messages.success(request, f'Reservation extended by {minutes} minutes!')
         except ValueError as e:

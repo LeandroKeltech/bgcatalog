@@ -1,5 +1,5 @@
 {% extends 'catalog/base.html' %}
-{% block title %}Sign in - BG Catalog{% endblock %}
+{% block title %}Sign in{% endblock %}
 {% block content %}
 <div class="customer-auth"><h1>Sign in</h1><p>Sign in with your email to continue checkout. Your cart stays with you.</p>
 <form method="post" class="card"><div class="card-body">{% csrf_token %}{% include 'catalog/includes/form_fields.html' %}<button type="submit" class="btn btn-primary mt-4">Sign in &amp; return to cart</button></div></form>

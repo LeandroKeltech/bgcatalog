@@ -1,5 +1,5 @@
 {% extends 'catalog/base.html' %}
-{% block title %}Sales & Finances - BG Catalog{% endblock %}
+{% block title %}Sales & Finances{% endblock %}
 {% block content %}
 {% include 'catalog/includes/staff_nav.html' %}
 <div class="page-heading"><div><h1>Sales &amp; finances</h1><p class="text-muted">All-time totals in EUR. Sales become receipts only when a payment is recorded.</p></div><div class="action-row"><a class="btn btn-primary" href="{% url 'new_sale' %}">Record a sale</a><a class="btn btn-outline-primary" href="{% url 'finance_export' %}">Export reconciliation CSV</a></div></div>
