@@ -293,6 +293,37 @@ receive the `user` role, without administration access. Passwords use Django's
 hashing and validation; contact phone numbers and email ownership are not verified.
 Existing accounts can complete their contact details before checkout.
 
+### Reservation notifications
+
+Every successful customer checkout creates one durable alert at
+`/admin-panel/notifications/`, in the same transaction as the stock holds.
+The customer does not have to open or send the WhatsApp message. Admins see an
+unread badge and can open the quote's reservations from the inbox. Reading an alert
+does not confirm or cancel the reservation; each admin has their own read status.
+Alerts remain available after expiry. This does not change the 30-minute stock hold.
+
+Admin pages check for new alerts every 30 seconds. Browser notifications are
+optional: click **Enable browser alerts** and grant browser permission. They require
+an admin page to stay open, a supported browser, and HTTPS (localhost also works).
+An inbox notification is saved even while the site is closed.
+
+Email alerts are attempted after the reservation transaction commits. Set
+`RESERVATION_NOTIFICATION_EMAIL` and configure `EMAIL_BACKEND`, `DEFAULT_FROM_EMAIL`,
+`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`,
+`EMAIL_USE_TLS`, and `EMAIL_USE_SSL` in the local `.env` or deployment environment.
+For Gmail SMTP use `smtp.gmail.com`, port `587`, TLS enabled, SSL disabled, the full
+Gmail address as user and sender, and a Google app password stored only in the
+environment. [Google app passwords](https://support.google.com/accounts/answer/185833)
+require 2-Step Verification. Keep credentials out of Git and chat.
+
+Missing credentials or console-only email settings show **Email setup required**.
+Email failures preserve the reservation and inbox alert. Use **Retry email alert**
+or `python manage.py send_reservation_alerts` after fixing delivery. Emails already
+accepted by the sending service are skipped. Acceptance does not guarantee inbox
+delivery; a process interruption after SMTP acceptance but before saving the status
+can require manual reconciliation to avoid a duplicate retry. No scheduler is
+installed by this feature. The 10-second email timeout bounds checkout's SMTP wait.
+
 ### Admin Management
 
 - View all reservations at `/admin-panel/reservations/`
