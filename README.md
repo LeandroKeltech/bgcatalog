@@ -322,7 +322,8 @@ or `python manage.py send_reservation_alerts` after fixing delivery. Emails alre
 accepted by the sending service are skipped. Acceptance does not guarantee inbox
 delivery; a process interruption after SMTP acceptance but before saving the status
 can require manual reconciliation to avoid a duplicate retry. No scheduler is
-installed by this feature. The 10-second email timeout bounds checkout's SMTP wait.
+installed by this feature. SMTP uses a 10-second socket timeout; slow responses
+from the sending service can delay the checkout response.
 
 ### Admin Management
 

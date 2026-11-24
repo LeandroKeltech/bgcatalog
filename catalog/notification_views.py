@@ -1,5 +1,6 @@
 from urllib.parse import urlencode
 
+from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Exists, OuterRef
 from django.http import JsonResponse
@@ -10,7 +11,6 @@ from django.views.decorators.http import require_GET, require_POST
 from .access import admin_group_required
 from .models import AdminReservationNotification
 from .notifications import email_alerts_ready, send_reservation_alert
-from django.contrib import messages
 
 
 @admin_group_required
