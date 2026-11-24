@@ -1,0 +1,14 @@
+<div class="price-display">
+    <div class="original-price">
+        <span>Original price</span>
+        {% if game.msrp_price != None %}
+            {% if game.savings %}<s>€{{ game.msrp_price|floatformat:2 }}</s>{% else %}<span>€{{ game.msrp_price|floatformat:2 }}</span>{% endif %}
+        {% else %}<span>Not available</span>{% endif %}
+    </div>
+    <div class="selling-price">
+        <span>Our price</span>
+        {% if game.final_price != None %}<strong>€{{ game.final_price|floatformat:2 }}</strong>{% else %}<strong class="price-pending">To be confirmed</strong>{% endif %}
+    </div>
+    {% if game.savings %}<span class="savings-label">Save €{{ game.savings|floatformat:2 }}{% if game.effective_discount_percentage != None %} · {{ game.effective_discount_percentage|floatformat:'-1' }}% off{% endif %}</span>{% endif %}
+    {% if game.price_info.promotion %}<span class="promotion-label">{{ game.price_info.promotion.name }}</span>{% endif %}
+</div>

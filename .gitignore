@@ -83,6 +83,7 @@ ipython_config.py
 
 # pyenv
 .python-version
+!.python-version
 
 # pipenv
 #   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
@@ -103,6 +104,9 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
+!.env.example
+.vercel/
 .venv
 env/
 venv/
@@ -113,6 +117,13 @@ venv.bak/
 # Google Credentials
 google_credentials.json
 *.json
+!vercel.json
+!catalog/data/source_catalog.json
+!catalog/data/bgg_mappings.json
+!.vscode/tasks.json
+
+# Cached external catalog responses and import reports
+.catalog-import/
 
 # Static files (collected)
 staticfiles/
@@ -152,3 +163,11 @@ images/
 
 # Logs
 *.log
+
+# Secrets and database recovery files
+.env.*
+!.env.example
+.vercel/
+backups/
+*.dump
+*.backup

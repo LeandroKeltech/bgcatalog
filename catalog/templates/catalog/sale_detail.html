@@ -1,0 +1,15 @@
+{% extends 'catalog/base.html' %}
+{% block title %}Sale #{{ sale.id }}{% endblock %}
+{% block content %}
+{% include 'catalog/includes/staff_nav.html' %}
+<h1>Sale #{{ sale.id }} · {{ sale.game_name }}</h1>
+<p class="text-muted">{{ sale.sale_date }} · {{ sale.quantity }} copies at €{{ sale.unit_price|floatformat:2 }}{% if sale.customer_name %} · {{ sale.customer_name }}{% endif %}{% if sale.reference %} · {{ sale.reference }}{% endif %}</p>
+<div class="stat-grid mb-4"><div><span>Sale total</span><strong>€{{ sale.total|floatformat:2 }}</strong></div><div><span>Net received</span><strong>€{{ sale.received|floatformat:2 }}</strong></div><div><span>Still to collect</span><strong>€{{ sale.outstanding|floatformat:2 }}</strong></div></div>
+{% if bundle_sales %}<section class="alert alert-info"><h2 class="h5">Promotion bundle · {{ sale.reservation.promotion_snapshot.name }}</h2><p>{{ sale.reservation.promotion_snapshot.rule }} · Bundle total: €{{ sale.reservation.promotion_snapshot.total }}</p><p>Payments are recorded per sale below. Free copies have no payment due.</p><ul class="mb-0">{% for related in bundle_sales %}<li><a href="{% url 'sale_detail' related.pk %}">Sale #{{ related.pk }} · {{ related.game_name }}</a> · {{ related.quantity }} × €{{ related.unit_price|floatformat:2 }} · Still to collect: €{{ related.outstanding|floatformat:2 }}</li>{% endfor %}</ul></section>{% endif %}
+<div class="row g-4"><div class="col-lg-6"><section class="card"><div class="card-body">
+    <h2 class="h4">Record payment / refund</h2><p class="text-muted">Choose who received or refunded the money. Refunds adjust finances; update stock separately if a game is returned.</p>
+    <form method="post">{% csrf_token %}{% include 'catalog/includes/form_fields.html' %}<button class="btn btn-primary mt-4" type="submit">Record cash entry</button></form>
+</div></section></div><div class="col-lg-6"><h2 class="h4">Payment history</h2>
+{% for entry in sale.entries.all %}<article class="ledger-event"><strong>{{ entry.get_kind_display }} · €{{ entry.amount|floatformat:2 }}</strong><p>{{ entry.date }} · {{ entry.get_holder_display }} · {{ entry.get_method_display }}</p>{% if entry.reference %}<p>{{ entry.reference }}</p>{% endif %}{% if entry.notes %}<p>{{ entry.notes }}</p>{% endif %}<small class="text-muted">Recorded by {{ entry.recorded_by|default:'Unknown' }} · {{ entry.created_at }}</small></article>{% empty %}<p>No payments recorded. This sale is awaiting payment.</p>{% endfor %}
+</div></div>
+{% endblock %}

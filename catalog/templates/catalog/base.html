@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Board Game Catalog{% endblock %}</title>
+    <title>bgcatalog - {% block title %}Catalog{% endblock %}</title>
     
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -11,18 +11,19 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <!-- Custom CSS -->
     {% load static %}
-    <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'catalog/css/styles.css' %}?v=20261124-shop-cart-wishlist">
     
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container">
             <a class="navbar-brand" href="{% url 'catalog' %}">
-                <i class="bi bi-controller"></i> BG Catalog
+                <span class="brand-mark"><i class="bi bi-dice-5-fill" aria-hidden="true"></i></span> BG<span class="brand-light">Catalog</span><span class="brand-dot">.</span>
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -32,7 +33,9 @@
                             <i class="bi bi-grid"></i> Catalog
                         </a>
                     </li>
-                    {% if user.is_staff %}
+                    {% if can_access_admin %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'notification_list' %}"><i class="bi bi-bell"></i> Notifications <span id="reservation-notification-count" class="badge bg-danger" {% if not reservation_unread_count %}hidden{% endif %}>{{ reservation_unread_count }}</span></a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'finance_dashboard' %}">Sales &amp; finances</a></li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'admin_panel' %}">
                             <i class="bi bi-gear"></i> Admin Panel
@@ -52,27 +55,26 @@
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link position-relative" href="{% url 'view_cart' %}">
+                        <a class="nav-link" href="{% url 'wishlist' %}"><i class="bi bi-heart" aria-hidden="true"></i> Wishlist{% if request.session.wishlist %} <span class="badge rounded-pill bg-danger wishlist-count">{{ request.session.wishlist|length }}</span>{% endif %}</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link position-relative" href="{% url 'view_cart' %}" data-cart-open>
                             <i class="bi bi-cart3"></i> Cart
-                            {% if request.session.cart %}
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                {{ request.session.cart|length }}
-                            </span>
-                            {% endif %}
+                            <span class="badge rounded-pill bg-danger" data-cart-count {% if not request.session.cart %}hidden{% endif %}>{{ request.session.cart|length|default:0 }}</span>
                         </a>
                     </li>
                     {% if user.is_authenticated %}
+                    <li class="nav-item"><a class="nav-link" href="{% url 'customer_account' %}">My account</a></li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'admin:logout' %}">
-                            <i class="bi bi-box-arrow-right"></i> Logout
-                        </a>
+                        <form method="post" action="{% url 'customer_logout' %}">{% csrf_token %}<button type="submit" class="nav-link btn btn-link"><i class="bi bi-box-arrow-right"></i> Logout</button></form>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'admin:index' %}">
+                        <a class="nav-link" href="{% url 'customer_login' %}">
                             <i class="bi bi-box-arrow-in-right"></i> Login
                         </a>
                     </li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'customer_register' %}">Create account</a></li>
                     {% endif %}
                 </ul>
             </div>
@@ -92,14 +94,16 @@
     {% endif %}
 
     <!-- Main Content -->
-    <main class="container my-4">
+    <main class="container my-4" id="main-content">
+        {% if can_access_admin %}<div id="reservation-live-alert" class="alert alert-info" role="status" hidden><span id="reservation-live-alert-text"></span> <a href="{% url 'notification_list' %}" class="alert-link">View notifications</a></div>{% endif %}
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
     <footer class="bg-light mt-5 py-4">
         <div class="container text-center text-muted">
-            <p>&copy; 2025 Board Game Catalog. Powered by Django & BoardGameGeek.</p>
+            <p class="footer-brand">A good game brings everyone together.</p>
+            <p class="small">&copy; {% now "Y" %} BG Catalog · Game information from BoardGameGeek.</p>
             <p class="small">
                 <a href="https://github.com/LeandroKeltech/bgcatalog" target="_blank" class="text-decoration-none">
                     <i class="bi bi-github"></i> GitHub
@@ -108,9 +112,16 @@
         </div>
     </footer>
 
+    <div class="offcanvas offcanvas-end cart-drawer" tabindex="-1" id="cartDrawer" aria-labelledby="cartDrawerTitle" data-cart-url="{% url 'view_cart' %}">
+        <div class="offcanvas-header"><h2 class="offcanvas-title h5" id="cartDrawerTitle"><i class="bi bi-bag" aria-hidden="true"></i> Your cart</h2><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close cart"></button></div>
+        <div class="cart-drawer-content"><div class="p-4 text-muted">Loading your cart…</div></div>
+    </div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'catalog/js/cart-drawer.js' %}?v=20261124-cart-drawer-2" defer></script>
     
+    {% if can_access_admin %}<script src="{% static 'catalog/js/reservation-notifications.js' %}" defer data-status-url="{% url 'notification_status' %}" data-inbox-url="{% url 'notification_list' %}" data-cursor="{{ reservation_notification_cursor }}"></script>{% endif %}
     {% block extra_js %}{% endblock %}
 </body>
 </html>

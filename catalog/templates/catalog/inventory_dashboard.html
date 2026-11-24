@@ -1,0 +1,42 @@
+{% extends 'catalog/base.html' %}
+{% block title %}Inventory{% endblock %}
+{% block content %}
+{% include 'catalog/includes/staff_nav.html' %}
+<div class="page-heading">
+    <div><h1>Inventory</h1><p class="text-muted">Update stock, set prices, and record sales in one place.</p></div>
+    <div class="action-row"><a href="{% url 'new_game' %}" class="btn btn-primary">Add a game</a><a href="{% url 'bgg_search' %}" class="btn btn-outline-secondary">Import from BGG</a></div>
+</div>
+<div class="stat-grid mb-4">
+    <div><span>Catalog entries</span><strong>{{ total_games }}</strong></div>
+    <div><span>Stock units</span><strong>{{ stock_units }}</strong></div>
+    <div><span>Sold-out entries</span><strong>{{ sold_out_count }}</strong></div>
+</div>
+<form method="get" class="inventory-search mb-4">
+    <div><label for="inventory-search" class="form-label">Find a game</label><input type="search" class="form-control" name="search" id="inventory-search" value="{{ search_query }}" placeholder="Game name"></div>
+    <div><label for="inventory-availability" class="form-label">Availability</label><select class="form-select" name="availability" id="inventory-availability"><option value="all">All games</option><option value="available" {% if availability == 'available' %}selected{% endif %}>In stock</option><option value="sold_out" {% if availability == 'sold_out' %}selected{% endif %}>Sold out</option></select></div>
+    <div><label for="inventory-condition" class="form-label">Condition</label><select class="form-select" name="condition" id="inventory-condition"><option value="all">All conditions</option><option value="not_new" {% if condition == 'not_new' %}selected{% endif %}>Not new</option>{% for value, label in condition_choices %}<option value="{{ value }}" {% if condition == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <div><label for="inventory-per-page" class="form-label">Items per page</label><select class="form-select" name="per_page" id="inventory-per-page"><option value="25" {% if per_page == '25' %}selected{% endif %}>25</option><option value="50" {% if per_page == '50' %}selected{% endif %}>50</option><option value="100" {% if per_page == '100' %}selected{% endif %}>100</option></select></div>
+    <button class="btn btn-primary" type="submit">Search</button>
+</form>
+<p class="small text-muted">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }} entries. <span class="d-md-none">Swipe the table to see all columns.</span></p>
+<div class="inventory-table-wrap" role="region" aria-label="Inventory table" tabindex="0">
+<table class="table table-sm table-hover align-middle inventory-table mb-0">
+<caption class="visually-hidden">Inventory with stock quantities, prices and management actions.</caption>
+<thead><tr><th scope="col">Game / condition</th><th scope="col" class="text-end">Stock</th><th scope="col" class="text-end">Reserved</th><th scope="col" class="text-end">Available</th><th scope="col" class="text-end">Original price</th><th scope="col" class="text-end">Selling price</th><th scope="col" class="text-end">Discount</th><th scope="col" class="text-end">Clicks</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead>
+<tbody>
+{% for game in games %}
+    <tr>
+        <th scope="row"><div class="inventory-table-game">{% if game.thumbnail_url %}<img src="{{ game.thumbnail_url }}" alt="" loading="lazy">{% endif %}<div><a href="{% url 'game_detail' game.id %}">{{ game.name }}</a><small class="d-block text-muted fw-normal">{{ game.get_condition_display }} · #{{ game.id }}</small></div></div></th>
+        <td class="text-end">{{ game.stock_quantity }}</td><td class="text-end">{{ game.reserved_quantity }}</td><td class="text-end fw-semibold">{% if game.is_sold %}0{% else %}{{ game.available_quantity }}{% endif %}</td>
+        <td class="text-end text-nowrap">{% if game.msrp_price != None %}€{{ game.msrp_price|floatformat:2 }}{% else %}<span class="text-muted">Unknown</span>{% endif %}</td>
+        <td class="text-end text-nowrap fw-semibold">{% if game.final_price != None %}€{{ game.final_price|floatformat:2 }}{% else %}<span class="text-muted">Unknown</span>{% endif %}</td>
+        <td class="text-end text-nowrap">{% if game.effective_discount_percentage != None %}<span class="{% if game.savings %}text-success fw-semibold{% else %}text-muted{% endif %}">{{ game.effective_discount_percentage|floatformat:'-1' }}%</span>{% else %}<span class="text-muted" title="A valid original price and selling price are needed to calculate a discount.">—</span>{% endif %}</td>
+        <td class="text-end">{{ game.click_count }}</td>
+        <td>{% if game.is_sold or game.stock_quantity == 0 %}<span class="badge bg-secondary">Sold out</span>{% elif game.available_quantity == 0 %}<span class="badge bg-warning text-dark">Reserved</span>{% else %}<span class="badge bg-success">In stock</span>{% endif %}</td>
+        <td><div class="inventory-table-actions"><a class="btn btn-sm btn-outline-primary" href="{% url 'edit_game' game.id %}" aria-label="Edit stock and prices for {{ game.name }}" title="Edit stock and prices"><i class="bi bi-pencil" aria-hidden="true"></i><span>Edit</span></a><a class="btn btn-sm btn-outline-secondary" href="{% url 'new_sale' %}?game={{ game.id }}" aria-label="Record sale for {{ game.name }}" title="Record sale"><i class="bi bi-cash-coin" aria-hidden="true"></i><span>Sale</span></a></div></td>
+    </tr>
+{% empty %}<tr><td colspan="10" class="text-center text-muted py-4">No games match your search.</td></tr>{% endfor %}
+</tbody></table>
+</div>
+{% if page_obj.has_other_pages %}<nav class="catalog-pagination" aria-label="Inventory pages">{% if page_obj.has_previous %}<a class="btn btn-outline-primary" href="{% querystring page=page_obj.previous_page_number %}">Previous</a>{% endif %}<span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a class="btn btn-outline-primary" href="{% querystring page=page_obj.next_page_number %}">Next</a>{% endif %}</nav>{% endif %}
+{% endblock %}

@@ -167,14 +167,11 @@ def _search_bga_api(query: str) -> List[Dict]:
 
 def _search_bgg_web_scraping(query: str) -> List[Dict]:
     """Scrape BGG website for search results."""
-    import warnings
-    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
-    
     try:
         search_url = f"{BGG_WEB_BASE}/geeksearch.php"
         params = {'action': 'search', 'objecttype': 'boardgame', 'q': query}
         
-        response = requests.get(search_url, params=params, headers=HEADERS, timeout=15, verify=False)
+        response = requests.get(search_url, params=params, headers=HEADERS, timeout=15)
         
         if response.status_code != 200:
             logger.error(f"BGG web scraping failed: {response.status_code}")
@@ -272,13 +269,10 @@ def fetch_bgg_thumbnail(bgg_id: str) -> str:
 
     Returns an empty string if not available or on error. Forces HTTPS for security.
     """
-    import warnings
-    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
-    
     try:
         url = f"https://boardgamegeek.com/boardgame/{bgg_id}"
         logger.info(f"Fetching thumbnail for BGG {bgg_id} from {url}")
-        response = requests.get(url, headers=HEADERS, timeout=8, verify=False)
+        response = requests.get(url, headers=HEADERS, timeout=8)
         logger.info(f"BGG page response: {response.status_code}")
         if response.status_code != 200:
             return ''
@@ -505,14 +499,11 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
     Returns:
         Dictionary with extracted game data
     """
-    import warnings
-    warnings.filterwarnings('ignore', message='Unverified HTTPS request')
-    
     try:
         url = f"{BGG_WEB_BASE}/boardgame/{bgg_id}"
         logger.info(f"Scraping BGG page: {url}")
         
-        response = requests.get(url, headers=HEADERS, timeout=15, verify=False)
+        response = requests.get(url, headers=HEADERS, timeout=15)
         
         if response.status_code != 200:
             logger.error(f"BGG page scraping failed: {response.status_code}")

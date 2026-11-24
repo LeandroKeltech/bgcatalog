@@ -1,111 +1,97 @@
 {% extends 'catalog/base.html' %}
-
-{% block title %}Catalog - Board Game Catalog{% endblock %}
-
+{% load static %}
+{% block title %}Find your next game{% endblock %}
 {% block content %}
-<div class="row mb-4">
-    <div class="col-md-12">
-        <h1><i class="bi bi-grid"></i> Board Game Catalog</h1>
-        <p class="text-muted">Browse our collection of board games</p>
+<section class="catalog-hero" aria-labelledby="catalog-heading">
+    <div>
+        {% if hero_offer %}
+        <span class="eyebrow"><span></span> MORE GAMES. MORE SAVINGS.</span>
+        <h1 id="catalog-heading">Buy 3 or more.<br>Get an extra 10% off<span>.</span></h1>
+        <p>Save an extra 10% on final game prices, including existing game discounts.<br class="d-none d-md-block"> Add 3 or more games to your cart. Your discount applies automatically.</p>
+        <a href="#catalog-search" class="hero-link">Shop games &amp; save <i class="bi bi-arrow-down-right" aria-hidden="true"></i></a>
+        {% else %}
+        <span class="eyebrow"><span></span> GOOD GAMES. GREAT COMPANY.</span>
+        <h1 id="catalog-heading">Your next great<br>game night starts here<span>.</span></h1>
+        <p>Discover board games worth gathering around.<br class="d-none d-md-block"> Find your favourite, or try something new.</p>
+        <a href="#catalog-search" class="hero-link">Explore the collection <i class="bi bi-arrow-down-right" aria-hidden="true"></i></a>
+        {% endif %}
     </div>
-</div>
-
-<!-- Filters -->
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="get" class="row g-3">
-            <div class="col-md-4">
-                <label class="form-label">Search</label>
-                <input type="text" name="search" class="form-control" placeholder="Search by name or designer" value="{{ search_query }}">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Condition</label>
-                <select name="condition" class="form-select">
-                    <option value="">All Conditions</option>
-                    {% for value, label in condition_choices %}
-                    <option value="{{ value }}" {% if condition == value %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Min Price (€)</label>
-                <input type="number" name="min_price" class="form-control" step="0.01" value="{{ min_price }}">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Max Price (€)</label>
-                <input type="number" name="max_price" class="form-control" step="0.01" value="{{ max_price }}">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Sort By</label>
-                <select name="sort" class="form-select">
-                    <option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest</option>
-                    <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A-Z)</option>
-                    <option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Name (Z-A)</option>
-                    <option value="msrp_price" {% if sort_by == 'msrp_price' %}selected{% endif %}>Price (Low-High)</option>
-                    <option value="-msrp_price" {% if sort_by == '-msrp_price' %}selected{% endif %}>Price (High-Low)</option>
-                </select>
-            </div>
-            <div class="col-12">
-                <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> Apply Filters</button>
-                <a href="{% url 'catalog' %}" class="btn btn-outline-secondary"><i class="bi bi-x-circle"></i> Clear</a>
-            </div>
-        </form>
+    <div class="hero-art" aria-hidden="true">
+        <div class="art-orbit"></div><div class="art-card art-card-back"><i class="bi bi-suit-spade-fill"></i></div>
+        <div class="art-card art-card-front"><i class="bi bi-suit-diamond-fill"></i><span>let’s<br>play.</span><i class="bi bi-suit-diamond-fill"></i></div>
+        <div class="art-die">⚄</div><div class="art-token"></div><span class="art-spark">✳</span>
     </div>
-</div>
-
-<!-- Games Grid -->
-{% if games %}
-<div class="row row-cols-1 row-cols-md-3 row-cols-lg-4 g-4">
-    {% for game in games %}
-    <div class="col">
-        <div class="card h-100 game-card">
-            {% if game.thumbnail_url %}
-            <img src="{{ game.thumbnail_url }}" class="card-img-top" alt="{{ game.name }}">
-            {% else %}
-            <div class="card-img-top bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
-                <i class="bi bi-image text-white" style="font-size: 3rem;"></i>
-            </div>
-            {% endif %}
-            <div class="card-body">
-                <h5 class="card-title">{{ game.name }}</h5>
-                <p class="card-text text-muted small">
-                    {% if game.year_published %}{{ game.year_published }} | {% endif %}
-                    {% if game.designer %}{{ game.designer|truncatewords:3 }}{% endif %}
-                </p>
-                <div class="game-details small mb-2">
-                    <div><i class="bi bi-people"></i> {{ game.players_display }} players</div>
-                    <div><i class="bi bi-clock"></i> {{ game.playtime_display }}</div>
-                    {% if game.rating_average %}
-                    <div><i class="bi bi-star-fill text-warning"></i> {{ game.rating_average|floatformat:1 }}/10</div>
-                    {% endif %}
-                </div>
-                <div class="mb-2">
-                    <span class="badge bg-info">{{ game.get_condition_display }}</span>
-                    <span class="badge bg-success">{{ game.available_quantity }} in stock</span>
-                </div>
-                {% if game.final_price %}
-                <div class="h5 text-primary mb-2">
-                    €{{ game.final_price }}
-                    {% if game.discount_percentage > 0 %}
-                    <small class="text-muted text-decoration-line-through">€{{ game.msrp_price }}</small>
-                    <span class="badge bg-danger">-{{ game.discount_percentage }}%</span>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-            <div class="card-footer bg-white border-0">
-                <a href="{% url 'game_detail' game.id %}" class="btn btn-primary w-100">
-                    <i class="bi bi-eye"></i> View Details
-                </a>
-            </div>
-        </div>
+</section>
+<div class="catalog-benefits"><span><i class="bi bi-box-seam" aria-hidden="true"></i> New &amp; pre-loved games</span><span><i class="bi bi-tag" aria-hidden="true"></i> Clear prices. Real savings.</span><span><i class="bi bi-chat-dots" aria-hidden="true"></i> Order via WhatsApp</span></div>
+<form method="get" class="shop-form" role="search" aria-label="Search and filter games">
+    <div class="catalog-searchbar">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <label class="visually-hidden" for="catalog-search">Find a game</label>
+        <input type="search" id="catalog-search" name="search" placeholder="Search games, designers, or keywords…" value="{{ search_query }}">
+        <button type="submit" class="btn btn-primary">Find a game <i class="bi bi-arrow-right d-none d-sm-inline" aria-hidden="true"></i></button>
     </div>
-    {% endfor %}
-</div>
-{% else %}
-<div class="alert alert-info">
-    <i class="bi bi-info-circle"></i> No games found. Try adjusting your filters.
-</div>
-{% endif %}
-
+    <div class="catalog-shortcuts" aria-label="Quick filters">
+        <span>Start exploring</span>
+        <a href="{% querystring availability='available' page=None %}" {% if availability == 'available' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-check2-circle" aria-hidden="true"></i> In stock</a>
+        <a href="{% querystring max_price='20' page=None %}" {% if max_price == '20' %}class="is-active" aria-current="true"{% endif %}>€20 &amp; under</a>
+        <a href="{% querystring players='2' page=None %}" {% if players == '2' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-people" aria-hidden="true"></i> For two</a>
+        <a href="{% querystring duration='30' page=None %}" {% if duration == '30' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-clock" aria-hidden="true"></i> Quick games</a>
+    </div>
+</form>
+    <div class="catalog-layout" id="collection">
+        <aside class="catalog-sidebar">
+            <form method="get" class="shop-filter-form">
+                <input type="hidden" name="search" value="{{ search_query }}"><input type="hidden" name="sort" value="{{ sort_by }}">
+            <details class="shop-filters" open data-active="{{ has_filters|yesno:'true,false' }}">
+                <summary><span><i class="bi bi-sliders" aria-hidden="true"></i> Filter collection</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
+                <div class="shop-filter-fields">
+                    <div class="filter-heading"><h2>Make it your game</h2><a href="{% url 'catalog' %}">Reset all</a></div>
+                    <div><label for="availability">Availability</label><select id="availability" name="availability" class="form-select"><option value="all" {% if availability == 'all' %}selected{% endif %}>All games</option><option value="available" {% if availability == 'available' %}selected{% endif %}>In stock</option><option value="sold_out" {% if availability == 'sold_out' %}selected{% endif %}>Sold out</option></select></div>
+                    <div><label for="condition">Condition</label><select id="condition" name="condition" class="form-select"><option value="">Any condition</option>{% for value, label in condition_choices %}<option value="{{ value }}" {% if condition == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+                    <div><label for="players">Number of players</label><select id="players" name="players" class="form-select"><option value="">Any group size</option>{% for value in player_choices %}<option value="{{ value }}" {% if players == value %}selected{% endif %}>{{ value }} player{{ value|pluralize }}</option>{% endfor %}</select></div>
+                    <div><label for="duration">Time to play</label><select id="duration" name="duration" class="form-select"><option value="">Any duration</option><option value="30" {% if duration == '30' %}selected{% endif %}>Up to 30 minutes</option><option value="60" {% if duration == '60' %}selected{% endif %}>Up to 1 hour</option><option value="120" {% if duration == '120' %}selected{% endif %}>Up to 2 hours</option></select></div>
+                    <fieldset><legend>Our price (€)</legend><div class="price-range"><div><label class="visually-hidden" for="min-price">Minimum price</label><input type="number" id="min-price" name="min_price" class="form-control" min="0" step="0.01" placeholder="Min" value="{{ min_price }}"></div><span>–</span><div><label class="visually-hidden" for="max-price">Maximum price</label><input type="number" id="max-price" name="max_price" class="form-control" min="0" step="0.01" placeholder="Max" value="{{ max_price }}"></div></div></fieldset>
+                    <button class="btn btn-primary w-100" type="submit">Apply filters <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
+                    <p class="filter-note"><i class="bi bi-info-circle" aria-hidden="true"></i> Gameplay filters show games with matching, known details.</p>
+                </div>
+            </details>
+            </form>
+        </aside>
+        <section class="catalog-results" aria-labelledby="results-heading">
+            <div class="results-toolbar"><div><span class="eyebrow">FIND YOUR NEXT FAVOURITE</span><h2 id="results-heading">{% if search_query %}Results for “{{ search_query }}”{% else %}The collection{% endif %}</h2><p>{{ page_obj.paginator.count }} game{{ page_obj.paginator.count|pluralize }}{% if games %} · Showing {{ page_obj.start_index }}–{{ page_obj.end_index }}{% endif %}</p></div><form method="get" class="catalog-sort"><input type="hidden" name="search" value="{{ search_query }}"><input type="hidden" name="availability" value="{{ availability }}"><input type="hidden" name="condition" value="{{ condition }}"><input type="hidden" name="players" value="{{ players }}"><input type="hidden" name="duration" value="{{ duration }}"><input type="hidden" name="min_price" value="{{ min_price }}"><input type="hidden" name="max_price" value="{{ max_price }}"><label for="sort">Sort by</label><select id="sort" name="sort" class="form-select"><option value="relevance" {% if sort_by == 'relevance' %}selected{% endif %}>Relevance</option><option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest</option><option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A–Z)</option><option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Name (Z–A)</option><option value="selling_price" {% if sort_by == 'selling_price' %}selected{% endif %}>Price: low to high</option><option value="-selling_price" {% if sort_by == '-selling_price' %}selected{% endif %}>Price: high to low</option></select><button type="submit" class="btn btn-outline-primary">Go</button></form></div>
+            {% if search_query or has_filters %}<div class="active-filters" aria-label="Active filters">
+                {% if search_query %}<a href="{% querystring search=None page=None %}">“{{ search_query }}” <span aria-label="Remove search">×</span></a>{% endif %}
+                {% if availability != 'all' %}<a href="{% querystring availability=None page=None %}">{% if availability == 'available' %}In stock{% else %}Sold out{% endif %} ×</a>{% endif %}
+                {% if condition %}<a href="{% querystring condition=None page=None %}">{% for value, label in condition_choices %}{% if value == condition %}{{ label }}{% endif %}{% endfor %} ×</a>{% endif %}
+                {% if players %}<a href="{% querystring players=None page=None %}">{{ players }} players ×</a>{% endif %}
+                {% if duration %}<a href="{% querystring duration=None page=None %}">Up to {{ duration }} min ×</a>{% endif %}
+                {% if min_price %}<a href="{% querystring min_price=None page=None %}">From €{{ min_price }} ×</a>{% endif %}
+                {% if max_price %}<a href="{% querystring max_price=None page=None %}">Up to €{{ max_price }} ×</a>{% endif %}
+                <a class="clear-filters" href="{% url 'catalog' %}">Clear all</a>
+            </div>{% endif %}
+            {% if games %}<div class="shop-grid">
+                {% for game in games %}<article class="card game-card shop-game">
+                    <a class="game-artwork" href="{% url 'game_detail' game.id %}" aria-label="View {{ game.name }}">
+                        <span class="condition-label">{{ game.get_condition_display }}</span>
+                        {% if game.thumbnail_url %}<img src="{{ game.image_url|default:game.thumbnail_url }}" alt="{{ game.name }}" loading="lazy" decoding="async" width="300" height="240">{% else %}<span class="cover-placeholder"><i class="bi bi-dice-5" aria-hidden="true"></i><span>Let the game begin</span></span>{% endif %}
+                        <span class="artwork-arrow"><i class="bi bi-arrow-up-right" aria-hidden="true"></i></span>
+                    </a>
+                    <div class="card-body">
+                        <div class="game-stock {% if game.is_sold or game.stock_quantity == 0 %}stock-unavailable{% elif game.available_quantity == 0 %}stock-reserved{% endif %}"><span></span>{% if game.is_sold or game.stock_quantity == 0 %}Sold out{% elif game.available_quantity == 0 %}Temporarily reserved{% else %}{{ game.available_quantity }} available{% endif %}</div>
+                        <h3 class="card-title"><a href="{% url 'game_detail' game.id %}">{{ game.name }}</a></h3>
+                        <p class="game-designer">{% if game.designer %}{{ game.designer|truncatewords:4 }}{% elif game.year_published %}Published {{ game.year_published }}{% else %}Find your next game-night favourite{% endif %}</p>
+                        <div class="game-facts"><span><i class="bi bi-people" aria-hidden="true"></i> {{ game.players_display }}</span><span><i class="bi bi-clock" aria-hidden="true"></i> {{ game.playtime_display }}</span>{% if game.rating_average %}<span class="game-rating"><i class="bi bi-star-fill" aria-hidden="true"></i> {{ game.rating_average|floatformat:1 }}<span class="visually-hidden"> out of 10</span></span>{% endif %}</div>
+                        {% include 'catalog/includes/price.html' %}
+                        <div class="game-actions">
+                            {% if not game.is_sold and game.available_quantity > 0 and game.final_price != None %}<form method="post" action="{% url 'add_to_cart' game.id %}" class="catalog-add-form">{% csrf_token %}<input type="hidden" name="quantity" value="1"><button class="btn btn-primary" type="submit"><i class="bi bi-cart-plus" aria-hidden="true"></i> Add to cart</button></form>{% else %}<button class="btn btn-primary" disabled>{% if game.final_price == None %}Price pending{% else %}Sold out{% endif %}</button>{% endif %}
+                            <form method="post" action="{% url 'toggle_wishlist' game.id %}" class="wishlist-toggle-form">{% csrf_token %}<button class="btn wishlist-button {% if game.id|stringformat:'s' in wishlist_ids %}is-saved{% endif %}" data-wishlist-name="{{ game.name }}" type="submit" aria-label="{% if game.id|stringformat:'s' in wishlist_ids %}Remove {{ game.name }} from wishlist{% else %}Add {{ game.name }} to wishlist{% endif %}" aria-pressed="{% if game.id|stringformat:'s' in wishlist_ids %}true{% else %}false{% endif %}"><i class="bi {% if game.id|stringformat:'s' in wishlist_ids %}bi-heart-fill{% else %}bi-heart{% endif %}" aria-hidden="true"></i></button></form>
+                        </div>
+                    </div>
+                </article>{% endfor %}
+            </div>
+            {% if page_obj.has_other_pages %}<nav class="catalog-pagination" aria-label="Catalog pages">{% if page_obj.has_previous %}<a class="btn btn-outline-primary" href="{% querystring page=page_obj.previous_page_number %}">← Previous</a>{% endif %}<span aria-current="page">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a class="btn btn-outline-primary" href="{% querystring page=page_obj.next_page_number %}">Next →</a>{% endif %}</nav>{% endif %}
+            {% else %}<div class="catalog-empty"><i class="bi bi-search" aria-hidden="true"></i><h3>No games found this time</h3><p>Try a different title, a wider price range, or fewer filters.</p><a href="{% url 'catalog' %}" class="btn btn-primary">Explore all games</a></div>{% endif %}
+        </section>
+    </div>
 {% endblock %}
+{% block extra_js %}<script src="{% static 'catalog/js/catalog.js' %}" defer></script>{% endblock %}

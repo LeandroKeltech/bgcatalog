@@ -1,0 +1,43 @@
+{% extends 'catalog/base.html' %}
+{% block title %}Sales & Finances{% endblock %}
+{% block content %}
+{% include 'catalog/includes/staff_nav.html' %}
+<div class="page-heading"><div><h1>Sales &amp; finances</h1><p class="text-muted">All-time totals in EUR. Sales become receipts only when a payment is recorded.</p></div><div class="action-row"><a class="btn btn-primary" href="{% url 'new_sale' %}">Record a sale</a><a class="btn btn-outline-primary" href="{% url 'finance_export' %}">Export reconciliation CSV</a></div></div>
+<div class="stat-grid mb-4">
+    <div><span>Payments received</span><strong>€{{ summary.receipts|floatformat:2 }}</strong></div>
+    <div><span>Customer refunds</span><strong>€{{ summary.refunds|floatformat:2 }}</strong></div>
+    <div><span>Net received</span><strong>€{{ summary.net_received|floatformat:2 }}</strong></div>
+    <div><span>Still to collect</span><strong>€{{ outstanding|floatformat:2 }}</strong></div>
+</div>
+<section class="card mb-4" id="partner"><div class="card-body">
+    <h2 class="h4">Partner reconciliation · 50 / 50</h2>
+    <p>Net receipts are split equally. Money your partner receives directly and recorded transfers count toward their share.</p>
+    <dl class="reconciliation-lines">
+        <div><dt>Partner's 50% share</dt><dd>€{{ summary.partner_share|floatformat:2 }}</dd></div>
+        <div><dt>Your share</dt><dd>€{{ summary.business_share|floatformat:2 }}</dd></div>
+        <div><dt>Net customer payments handled by partner</dt><dd>€{{ summary.partner_held|floatformat:2 }}</dd></div>
+        <div><dt>Net transfers paid to partner</dt><dd>€{{ summary.partner_transferred|floatformat:2 }}</dd></div>
+        <div class="reconciliation-total"><dt>Still owed to partner</dt><dd>€{{ summary.owed_to_partner|floatformat:2 }}</dd></div>
+        {% if summary.owed_by_partner %}<div><dt>Partner owes you</dt><dd>€{{ summary.owed_by_partner|floatformat:2 }}</dd></div>{% endif %}
+    </dl>
+    <a class="btn btn-primary" href="{% url 'partner_transfer' %}">Record a completed partner transfer</a>
+    <p class="small text-muted mt-3 mb-0">Refunds reduce net receipts. Partner shares are rounded to cents on the all-time total. Recording a transfer does not move money.</p>
+</div></section>
+<h2 class="h4">Sales &amp; amounts to collect</h2>
+<div class="inventory-grid mb-4">
+{% for sale in sales %}<article class="card"><div class="card-body">
+    <h3 class="h5">{{ sale.game_name }}</h3><p class="text-muted">Sale #{{ sale.id }} · {{ sale.sale_date }} · {{ sale.quantity }} copies{% if sale.customer_name %} · {{ sale.customer_name }}{% endif %}</p>
+    <dl class="reconciliation-lines"><div><dt>Sale total</dt><dd>€{{ sale.total|floatformat:2 }}</dd></div><div><dt>Net received</dt><dd>€{{ sale.received|floatformat:2 }}</dd></div><div><dt>To collect</dt><dd>€{{ sale.outstanding|floatformat:2 }}</dd></div></dl>
+    <a class="btn btn-outline-primary" href="{% url 'sale_detail' sale.id %}">View sale / record payment</a>
+</div></article>{% empty %}<p>No sales recorded yet. Use “Record a sale” for new sales or historical sales whose stock was already adjusted. Spreadsheet sales are not assumed to be paid.</p>{% endfor %}
+</div>
+{% if page_obj.has_other_pages %}<nav class="catalog-pagination mb-4" aria-label="Sales pages">{% if page_obj.has_previous %}<a class="btn btn-outline-primary" href="{% querystring page=page_obj.previous_page_number %}">Previous</a>{% endif %}<span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a class="btn btn-outline-primary" href="{% querystring page=page_obj.next_page_number %}">Next</a>{% endif %}</nav>{% endif %}
+<h2 class="h4">Recent payments &amp; refunds</h2>
+<div class="table-responsive"><table class="table mobile-records"><thead><tr><th>Date</th><th>Sale</th><th>Entry</th><th>Amount</th><th>Handled by</th><th>Reference</th></tr></thead><tbody>
+{% for entry in recent_entries %}<tr><td data-label="Date">{{ entry.date }}</td><td data-label="Sale"><a href="{% url 'sale_detail' entry.sale_id %}">{{ entry.sale.game_name }}</a></td><td data-label="Entry">{{ entry.get_kind_display }}</td><td data-label="Amount">€{{ entry.amount|floatformat:2 }}</td><td data-label="Handled by">{{ entry.get_holder_display }}</td><td data-label="Reference">{{ entry.reference|default:'—' }}</td></tr>{% empty %}<tr><td colspan="6">No payments or refunds recorded.</td></tr>{% endfor %}
+</tbody></table></div>
+<h2 class="h4">Recent partner transfers</h2>
+<div class="table-responsive"><table class="table mobile-records"><thead><tr><th>Date</th><th>Direction</th><th>Amount</th><th>Reference</th></tr></thead><tbody>
+{% for entry in transfers %}<tr><td data-label="Date">{{ entry.date }}</td><td data-label="Direction">{{ entry.get_direction_display }}</td><td data-label="Amount">€{{ entry.amount|floatformat:2 }}</td><td data-label="Reference">{{ entry.reference }}</td></tr>{% empty %}<tr><td colspan="4">No partner transfers recorded.</td></tr>{% endfor %}
+</tbody></table></div>
+{% endblock %}

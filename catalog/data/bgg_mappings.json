@@ -1,0 +1,25 @@
+{
+  "spreadsheet_id": "1S0iPisv9H1OGwALmS3PG_d8Kw0iOtrdto3gOMUsNOlQ",
+  "mappings": {
+    "45": {"bgg_id": "144728", "expected_name": "Adventure Time Card Wars: Finn vs. Jake", "reason": "The source wiki URL specifically identifies the Finn vs. Jake Collector's Pack; BGG links this entry to the publisher's Collectors Pack."},
+    "3": {"bgg_id": "63268", "expected_name": "Spot it!", "version_id": "715460", "version_name": "Dobble Kids (English edition)", "reason": "Corrected the unrelated Spot it! 1,2,3 link. BGG catalogs Dobble Kids as version 715460 of Spot it!; artwork comes from that Kids edition."},
+    "63268": {"bgg_id": "63268", "expected_name": "Spot it!", "version_id": "715460", "version_name": "Dobble Kids (English edition)", "reason": "Dobble Kids is explicitly cataloged as BGG version 715460 of Spot it!; uses the Kids edition artwork."},
+    "8": {"bgg_id": "202982", "expected_name": "Scrawl", "reason": "BGG's Scrawl entry is the adult game (age 17+), matching the source's Adult Edition."},
+    "128704": {"bgg_id": "268625", "expected_name": "Trivial Pursuit: AMC – The Walking Dead", "reason": "The source description explicitly identifies the TV-series edition; corrected unrelated RPG book link to AMC television trivia, not the separate comic-book edition."},
+    "14": {"bgg_id": "146157", "expected_name": "30 Seconds Junior", "reason": "Irish edition uses the Junior game entry. BGG artwork represents the game; the physical Irish box artwork is not confirmed."},
+    "68": {"bgg_id": "359609", "expected_name": "Arkham Horror: The Card Game (Revised Core Set)", "reason": "Spreadsheet URL explicitly identifies the revised card game core set; the abbreviated inventory name is preserved."},
+    "63": {"bgg_id": "10547", "expected_name": "Betrayal at House on the Hill", "reason": "Second edition is cataloged under the original game's BGG entry; physical edition artwork is not confirmed."},
+    "71": {"bgg_id": "155362", "expected_name": "Ca$h 'n Guns: Second Edition", "reason": "Corrected first-edition link to the separate second-edition game requested by the source title."},
+    "245422": {"bgg_id": "245197", "expected_name": "Deadwood 1876", "reason": "Corrected source link: 245422 is Werewords Deluxe Edition."},
+    "33": {"bgg_id": "162996", "expected_name": "Dungeon Master's Guide (D&D 5e)", "reason": "RPGGeek's 2014 D&D fifth-edition book entry in the same Geek network."},
+    "36": {"bgg_id": "281382", "expected_name": "D&D Essentials Kit", "reason": "RPGGeek's 2019 fifth-edition Essentials Kit entry in the same Geek network."},
+    "31": {"bgg_id": "162995", "expected_name": "Monster Manual (D&D 5e)", "reason": "RPGGeek's 2014 fifth-edition Monster Manual entry in the same Geek network."},
+    "32": {"bgg_id": "162994", "expected_name": "Player's Handbook (D&D 5e)", "reason": "RPGGeek's 2014 fifth-edition Player's Handbook entry in the same Geek network."},
+    "12": {"bgg_id": "355073", "expected_name": "Incohearent: Fresh Phrases Expansion Pack", "reason": "Same explicitly linked expansion; the inventory title adds pack number 1."},
+    "442": {"bgg_id": "4862", "expected_name": "Outburst!", "reason": "Corrected source link: 442 is Um Reifenbreite."},
+    "203675": {"bgg_id": "250448", "expected_name": "Relative Insanity", "reason": "Corrected source link: 203675 is an unrelated wrestling game."},
+    "19": {"bgg_id": "171", "expected_name": "Chess", "reason": "Schach is the German title for Chess, also explicitly identified in the source title."},
+    "51": {"bgg_id": "242992", "expected_name": "Vertellis", "reason": "The source URL explicitly identifies Vertellis; the inventory title is corrupted as Vertell?s."},
+    "74": {"bgg_id": "350028", "expected_name": "Elector Counts", "reason": "Corrected source link from the unrelated Warhammer miniatures rules to the Elector Counts card game."}
+  }
+}

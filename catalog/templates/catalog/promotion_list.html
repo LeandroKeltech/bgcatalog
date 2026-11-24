@@ -1,0 +1,21 @@
+{% extends 'catalog/base.html' %}
+{% block title %}Promotions{% endblock %}
+{% block content %}
+{% include 'catalog/includes/staff_nav.html' %}
+<div class="action-row justify-content-between"><h1>Promotions</h1><a class="btn btn-primary" href="{% url 'promotion_new' %}">Create promotion</a></div>
+<p class="text-muted">Schedule individual discounts or cart mechanics for selected games or the whole catalog. The best total wins. Extra-percentage offers apply after individual game discounts; cart offers do not stack.</p>
+<div class="inventory-grid">
+{% for promotion in promotions %}
+<article class="card"><div class="card-body">
+    <span class="badge {% if promotion.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">{{ promotion.status }}</span>
+    <h2 class="h4 mt-2">{{ promotion.name }}</h2>
+    <p>{{ promotion.mechanic_description }}</p>
+    <p>{% if promotion.apply_to_all %}Whole catalog{% else %}{{ promotion.games.count }} selected games{% endif %}</p>
+    <p class="small text-muted">From {{ promotion.starts_at|date:'d M Y H:i' }}{% if promotion.ends_at %}<br>Until {{ promotion.ends_at|date:'d M Y H:i' }}{% else %}<br>No end date{% endif %} (Dublin)</p>
+    {% if promotion.description %}<p>{{ promotion.description|linebreaksbr }}</p>{% endif %}
+    <div class="action-row"><a class="btn btn-outline-primary" href="{% url 'promotion_edit' promotion.id %}">Edit</a><form method="post" action="{% url 'promotion_toggle' promotion.id %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">{% if promotion.is_active %}Pause{% else %}Enable{% endif %}</button></form></div>
+</div></article>
+{% empty %}<p>No promotions yet. Create an offer to get started.</p>{% endfor %}
+</div>
+{% if page_obj.has_other_pages %}<nav class="action-row mt-3" aria-label="Promotion pages">{% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}<span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>{% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Next</a>{% endif %}</nav>{% endif %}
+{% endblock %}

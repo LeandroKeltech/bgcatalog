@@ -1,0 +1,15 @@
+{% if cart_items %}
+<div class="cart-drawer-items">
+    {% for item in cart_items %}
+    <article class="cart-drawer-item">
+        {% if item.game.thumbnail_url %}<img src="{{ item.game.thumbnail_url }}" alt="" loading="lazy">{% else %}<span class="cart-drawer-placeholder"><i class="bi bi-dice-5" aria-hidden="true"></i></span>{% endif %}
+        <div class="cart-drawer-info"><a class="cart-drawer-name" href="{% url 'game_detail' item.game.id %}">{{ item.game.name }}</a><span>{{ item.game.get_condition_display }} · €{% if item.price_known %}{{ item.game.base_price|floatformat:2 }}{% else %}—{% endif %}</span>
+            <form class="cart-drawer-quantity" method="post" action="{% url 'update_cart' item.game.id %}">{% csrf_token %}<label class="visually-hidden" for="drawer-quantity-{{ item.game.id }}">Quantity for {{ item.game.name }}</label><input id="drawer-quantity-{{ item.game.id }}" name="quantity" type="number" min="0" max="{{ item.game.available_quantity }}" value="{{ item.quantity }}"><button class="btn btn-sm btn-outline-primary" type="submit">Update</button><button class="btn btn-sm btn-link text-danger" formaction="{% url 'remove_from_cart' item.game.id %}" formnovalidate type="submit">Remove</button></form>
+        </div><strong class="cart-drawer-total">€{{ item.item_total|floatformat:2 }}</strong>
+    </article>
+    {% endfor %}
+</div>
+<div class="cart-drawer-summary"><div><span>Subtotal</span><strong>€{{ subtotal|floatformat:2 }}</strong></div>{% if discount %}<div class="text-success"><span>Savings</span><strong>−€{{ discount|floatformat:2 }}</strong></div>{% endif %}<div class="cart-drawer-grand"><span>Total</span><strong>€{{ total|floatformat:2 }}</strong></div><a class="btn btn-primary w-100" href="{% url 'view_cart' %}">Review cart &amp; checkout <i class="bi bi-arrow-right" aria-hidden="true"></i></a><a class="cart-continue" href="{% url 'catalog' %}" data-cart-close>Continue shopping</a></div>
+{% else %}
+<div class="cart-drawer-empty"><i class="bi bi-bag" aria-hidden="true"></i><h3>Your cart is ready for game night</h3><p>Add a game from the catalog to get started.</p><a class="btn btn-primary" href="{% url 'catalog' %}" data-cart-close>Explore games</a></div>
+{% endif %}

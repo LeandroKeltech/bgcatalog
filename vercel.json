@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": ["fra1"],
+  "buildCommand": "python scripts/vercel_build.py",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "staging": true,
+      "*": false
+    }
+  },
+  "functions": {
+    "bgcatalog_project/wsgi.py": {
+      "maxDuration": 60
+    }
+  }
+}

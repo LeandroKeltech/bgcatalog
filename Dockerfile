@@ -1,5 +1,5 @@
-# Use Python 3.10 slim image
-FROM python:3.10-slim
+# Keep the container runtime on the supported Python line used by Vercel.
+FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -27,6 +27,9 @@ COPY . .
 # Copy a robust startup script and make it executable (start.sh handles DB waits, migrations and gunicorn)
 COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
+
+RUN useradd --create-home app && chown -R app:app /app
+USER app
 
 # Run startup script
 CMD ["/app/start.sh"]

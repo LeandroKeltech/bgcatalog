@@ -1,0 +1,9 @@
+{% if reservation.quote_group %}
+<div class="alert alert-warning">
+    <strong>Promotion bundle: {{ reservation.promotion_snapshot.name }}</strong>
+    <p>{{ reservation.promotion_snapshot.rule }}</p>
+    <p>Confirming, cancelling or extending this reservation affects <strong>every item in this bundle</strong>.</p>
+    <ul>{% for line in reservation.bundle_reservations %}<li>{{ line.quantity }} × {{ line.game.name }} — €{{ line.quoted_unit_price|floatformat:2 }} per copy</li>{% endfor %}</ul>
+    <p class="mb-0">Bundle total: €{{ reservation.promotion_snapshot.total }} · Saving: €{{ reservation.promotion_snapshot.discount }}</p>
+</div>
+{% endif %}
