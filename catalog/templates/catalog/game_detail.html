@@ -33,21 +33,6 @@
         </div>
         {% endif %}
         
-        <!-- Ratings -->
-        {% if game.rating_average %}
-        <div class="detail-rating">
-            <span class="detail-rating-score">
-                <i class="bi bi-star-fill" aria-hidden="true"></i> <strong>{{ game.rating_average|floatformat:2 }}</strong><span>/10</span>
-            </span>
-            {% if game.num_ratings %}
-            <span class="text-muted">({{ game.num_ratings }} ratings)</span>
-            {% endif %}
-            {% if game.rank_overall %}
-            <span class="detail-rank">Rank #{{ game.rank_overall }}</span>
-            {% endif %}
-        </div>
-        {% endif %}
-        
         <!-- Gameplay Info -->
         <dl class="gameplay-summary">
             <div>

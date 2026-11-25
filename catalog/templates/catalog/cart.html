@@ -89,8 +89,15 @@
                 
                 {% if not can_checkout %}<p class="text-danger small">Resolve unavailable stock or unconfirmed prices before requesting a quote.</p>{% endif %}
                 {% if not user.is_authenticated %}
-                <a class="btn btn-primary w-100 mb-2" href="{% url 'customer_register' %}">Create account to check out <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
-                <p class="small cart-signin-note">Already registered? <a href="{% url 'customer_login' %}">Sign in</a>. Your cart will be kept.</p>
+                <form method="post" action="{% url 'checkout' %}" class="mb-3">
+                    {% csrf_token %}
+                    <label class="form-label" for="{{ guest_form.email.id_for_label }}">Email</label>
+                    {{ guest_form.email }}
+                    {% if guest_form.email.errors %}<div class="text-danger small" role="alert">{{ guest_form.email.errors }}</div>{% endif %}
+                    <p class="small text-muted mt-2">No account needed. We'll email your reservation details. Your games will be held for 24 hours.</p>
+                    <button type="submit" class="btn btn-primary w-100" {% if not can_checkout %}disabled{% endif %}>Reserve &amp; continue to WhatsApp</button>
+                </form>
+                <p class="small cart-signin-note">Already registered? <a href="{% url 'customer_login' %}">Sign in</a> to use your saved details.</p>
                 {% elif not customer_profile %}
                 <a class="btn btn-primary w-100 mb-2" href="{% url 'customer_account' %}">Complete contact details <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                 {% else %}
