@@ -4,111 +4,93 @@
 {% block title %}{{ game.name }}{% endblock %}
 
 {% block content %}
-<nav aria-label="breadcrumb">
+<nav aria-label="Breadcrumb" class="detail-breadcrumb">
     <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{% url 'catalog' %}">Catalog</a></li>
-        <li class="breadcrumb-item active">{{ game.name }}</li>
+        <li class="breadcrumb-item"><a href="{% url 'catalog' %}"><i class="bi bi-grid" aria-hidden="true"></i> Catalog</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ game.name }}</li>
     </ol>
 </nav>
 
-<div class="row g-4 game-detail">
-    <div class="col-md-4">
+<article class="game-detail">
+<div class="game-detail-overview">
+    <div class="game-detail-artwork">
         {% if game.image_url %}
-        <img src="{{ game.image_url }}" class="img-fluid rounded game-detail-cover" alt="{{ game.name }}" decoding="async">
+        <img src="{{ game.image_url }}" class="game-detail-cover" alt="{{ game.name }}" decoding="async">
         {% else %}
-        <div class="bg-secondary rounded shadow d-flex align-items-center justify-content-center" style="height: 400px;">
-            <i class="bi bi-image text-white" style="font-size: 5rem;"></i>
+        <div class="game-detail-placeholder" role="img" aria-label="No cover available for {{ game.name }}">
+            <i class="bi bi-image" aria-hidden="true"></i>
+            <span>Cover coming soon</span>
         </div>
         {% endif %}
     </div>
     
-    <div class="col-md-8">
+    <div class="game-detail-summary">
         <div class="detail-title-row"><h1>{{ game.name }}</h1><form method="post" action="{% url 'toggle_wishlist' game.id %}" class="wishlist-toggle-form">{% csrf_token %}<button class="btn wishlist-button {% if is_wishlisted %}is-saved{% endif %}" data-wishlist-name="{{ game.name }}" type="submit" aria-label="{% if is_wishlisted %}Remove {{ game.name }} from wishlist{% else %}Add {{ game.name }} to wishlist{% endif %}" aria-pressed="{{ is_wishlisted|yesno:'true,false' }}"><i class="bi {% if is_wishlisted %}bi-heart-fill{% else %}bi-heart{% endif %}" aria-hidden="true"></i></button></form></div>
-        {% if game.year_published %}
-        <p class="text-muted">Year Published: {{ game.year_published }}</p>
-        {% endif %}
-        {% if game.designer %}
-        <p><strong>Designer:</strong> {{ game.designer }}</p>
+        {% if game.year_published or game.designer %}
+        <div class="detail-metadata">
+            {% if game.year_published %}<span>Published {{ game.year_published }}</span>{% endif %}
+            {% if game.designer %}<span><strong>Designer:</strong> {{ game.designer }}</span>{% endif %}
+        </div>
         {% endif %}
         
         <!-- Ratings -->
         {% if game.rating_average %}
-        <div class="mb-3">
-            <span class="h4">
-                <i class="bi bi-star-fill text-warning"></i> {{ game.rating_average|floatformat:2 }}/10
+        <div class="detail-rating">
+            <span class="detail-rating-score">
+                <i class="bi bi-star-fill" aria-hidden="true"></i> <strong>{{ game.rating_average|floatformat:2 }}</strong><span>/10</span>
             </span>
             {% if game.num_ratings %}
             <span class="text-muted">({{ game.num_ratings }} ratings)</span>
             {% endif %}
             {% if game.rank_overall %}
-            <span class="badge bg-primary">Rank #{{ game.rank_overall }}</span>
+            <span class="detail-rank">Rank #{{ game.rank_overall }}</span>
             {% endif %}
         </div>
         {% endif %}
         
         <!-- Gameplay Info -->
-        <div class="row g-2 mb-3 gameplay-summary">
-            <div class="col-6 col-lg-3">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <i class="bi bi-people fs-2"></i>
-                        <p class="mb-0">{{ game.players_display }}</p>
-                        <small class="text-muted">Players</small>
-                    </div>
-                </div>
+        <dl class="gameplay-summary">
+            <div>
+                <dt><i class="bi bi-people" aria-hidden="true"></i> Players</dt>
+                <dd>{{ game.players_display }}</dd>
             </div>
-            <div class="col-6 col-lg-3">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <i class="bi bi-clock fs-2"></i>
-                        <p class="mb-0">{{ game.playtime_display }}</p>
-                        <small class="text-muted">Playtime</small>
-                    </div>
-                </div>
+            <div>
+                <dt><i class="bi bi-clock" aria-hidden="true"></i> Playtime</dt>
+                <dd>{{ game.playtime_display }}</dd>
             </div>
-            <div class="col-6 col-lg-3">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <i class="bi bi-person-badge fs-2"></i>
-                        <p class="mb-0">{% if game.min_age %}{{ game.min_age }}+{% else %}N/A{% endif %}</p>
-                        <small class="text-muted">Age</small>
-                    </div>
-                </div>
+            <div>
+                <dt><i class="bi bi-person-badge" aria-hidden="true"></i> Age</dt>
+                <dd>{% if game.min_age %}{{ game.min_age }}+{% else %}N/A{% endif %}</dd>
             </div>
-            <div class="col-6 col-lg-3">
-                <div class="card">
-                    <div class="card-body text-center">
-                        <i class="bi bi-puzzle fs-2"></i>
-                        <p class="mb-0">{% if game.average_weight %}{{ game.average_weight|floatformat:1 }}/5{% else %}N/A{% endif %}</p>
-                        <small class="text-muted">Difficulty</small>
-                    </div>
-                </div>
+            <div>
+                <dt><i class="bi bi-puzzle" aria-hidden="true"></i> Difficulty</dt>
+                <dd>{% if game.average_weight %}{{ game.average_weight|floatformat:1 }}/5{% else %}N/A{% endif %}</dd>
             </div>
-        </div>
+        </dl>
         
         <!-- Price and Stock -->
-        <div class="card bg-light mb-3">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-md-6">
+        <section class="detail-purchase" aria-label="Price and availability">
+                    <div class="detail-pricing">
                         {% include 'catalog/includes/price.html' %}
-                        <p class="mb-0 mt-2">
-                            <span class="badge bg-info">{{ game.get_condition_display }}</span>
-                            <span class="badge {% if game.available_quantity > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                        <p class="detail-stock">
+                            <span class="detail-condition">{{ game.get_condition_display }}</span>
+                            <span class="{% if game.available_quantity > 0 %}detail-in-stock{% else %}detail-out-of-stock{% endif %}">
                                 {{ game.available_quantity }} in stock
                             </span>
                         </p>
                     </div>
-                    <div class="col-md-6 purchase-controls">
+                    <div class="purchase-controls">
                         {% if game.final_price == None %}
-                        <p class="text-muted">Contact us to confirm the price before reserving.</p>
+                        <p class="text-muted mb-0">Contact us to confirm the price before reserving.</p>
                         {% elif game.available_quantity > 0 and not game.is_sold %}
                         <form method="post" action="{% url 'add_to_cart' game.id %}" class="catalog-add-form">
                             {% csrf_token %}
-                            <div class="input-group mb-2">
-                                <input type="number" name="quantity" class="form-control" value="1" min="1" max="{{ game.available_quantity }}" inputmode="numeric" aria-label="Quantity">
+                            <div class="detail-buy-row">
+                                <label class="detail-quantity">Qty
+                                    <input type="number" name="quantity" class="form-control" value="1" min="1" max="{{ game.available_quantity }}" inputmode="numeric" aria-label="Quantity">
+                                </label>
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-cart-plus"></i> Add to Cart
+                                    <i class="bi bi-cart-plus" aria-hidden="true"></i> Add to Cart
                                 </button>
                             </div>
                         </form>
@@ -116,47 +98,69 @@
                         <button class="btn btn-secondary w-100" disabled>Out of Stock</button>
                         {% endif %}
                     </div>
-                </div>
-            </div>
-        </div>
+        </section>
 
         {% if game.price_info.promotion.description %}<p class="promotion-terms">{{ game.price_info.promotion.description|linebreaksbr }}</p>{% endif %}
-        {% if cart_offers %}<section class="alert alert-info" aria-label="Cart promotion mechanics"><h2 class="h6">Cart offers for this game</h2>{% for offer in cart_offers %}<p class="small mb-1"><strong>{{ offer.name }}</strong> · {{ offer.mechanic_description }}</p>{% endfor %}<p class="small mb-0">Calculated in your cart. The best total wins; offers do not stack.</p></section>{% endif %}
+        {% if cart_offers %}<section class="detail-offers" aria-label="Cart promotion mechanics"><h2><i class="bi bi-tag" aria-hidden="true"></i> Cart offers for this game</h2>{% for offer in cart_offers %}<p><strong>{{ offer.name }}</strong> · {{ offer.mechanic_description }}</p>{% endfor %}<p class="detail-offer-note">Calculated in your cart. The best total wins; offers do not stack.</p></section>{% endif %}
+    </div>
+</div>
+
+<div class="game-detail-content{% if game.categories or game.mechanics %}{% if game.description or game.description_html or videos %} has-game-taxonomy{% endif %}{% endif %}">
+    {% if game.description or game.description_html or videos %}
+    <div class="game-detail-reading">
         
         <!-- Description -->
         {% if game.description or game.description_html %}
-        <div class="card mb-3">
+        <section class="card detail-content-card" aria-labelledby="description-heading">
             <div class="card-header">
-                <h2 class="h5 mb-0"><i class="bi bi-card-text" aria-hidden="true"></i> Description</h2>
+                <h2 class="h5 mb-0" id="description-heading"><i class="bi bi-card-text" aria-hidden="true"></i> Description</h2>
             </div>
             <div class="card-body game-description">
                 {{ game.formatted_description }}
                 {% if game.bgg_id and game.source_metadata.bgg_status == 'verified' %}<p class="description-source">Description from {{ game.source_metadata.description_source|default:'BoardGameGeek' }}. <a href="https://boardgamegeek.com/thing/{{ game.bgg_id }}" target="_blank" rel="noopener noreferrer">View source</a></p>{% endif %}
             </div>
-        </div>
+        </section>
         {% endif %}
 
         {% if videos %}
-        <section class="card mb-3" aria-labelledby="videos-heading">
-            <div class="card-header"><h2 class="h5 mb-0" id="videos-heading">Watch &amp; learn</h2></div>
-            <div class="card-body"><p class="small text-muted">English videos listed on BoardGameGeek. Press play to connect to YouTube.</p>
+        <section class="card detail-content-card detail-videos" aria-labelledby="videos-heading">
+            <div class="card-header video-section-heading">
+                <h2 class="h5 mb-0" id="videos-heading"><i class="bi bi-play-btn" aria-hidden="true"></i> Watch &amp; learn</h2>
+                <span class="video-count">{{ videos|length }} video{{ videos|length|pluralize }}</span>
+            </div>
+            <div class="card-body">
+                <p class="video-section-intro">Get to know the game with videos from the BoardGameGeek community.</p>
                 <div class="game-videos">{% for video in videos %}
-                    <article class="game-video">
-                        <h3 class="h6">{{ video.title }}</h3>
-                        <div class="video-player" data-video-id="{{ video.youtube_id }}" data-video-title="{{ video.title }}"><button type="button" class="btn btn-outline-primary video-play"><i class="bi bi-play-circle" aria-hidden="true"></i> Play video</button></div>
-                        <p class="small mt-2 mb-0"><a href="{{ video.watch_url }}" target="_blank" rel="noopener noreferrer">Watch on YouTube</a> · <a href="{{ video.source_url }}" target="_blank" rel="noopener noreferrer">BGG listing</a></p>
+                    <article class="game-video" aria-labelledby="video-title-{{ video.id }}">
+                        <div class="video-player" data-video-id="{{ video.youtube_id }}" data-video-title="{{ video.title }}">
+                            <button type="button" class="video-play" aria-label="Play video: {{ video.title }}">
+                                <img class="video-poster" src="https://i.ytimg.com/vi/{{ video.youtube_id }}/hqdefault.jpg" alt="" width="480" height="360" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+                                <span class="video-play-overlay" aria-hidden="true"></span>
+                                <span class="video-play-prompt" aria-hidden="true"><span class="video-play-icon"><i class="bi bi-play-fill"></i></span><span>Play video</span></span>
+                                <span class="video-provider" aria-hidden="true"><i class="bi bi-youtube"></i> YouTube</span>
+                            </button>
+                        </div>
+                        <div class="video-details">
+                            <p class="video-meta">{% if video.category %}<span>{{ video.category|capfirst }}</span>{% endif %}<span>{{ video.language }}</span></p>
+                            <h3 id="video-title-{{ video.id }}">{{ video.title }}</h3>
+                            <div class="video-links">
+                                <a href="{{ video.watch_url }}" target="_blank" rel="noopener noreferrer" aria-label="Watch {{ video.title }} on YouTube (opens in a new tab)">Watch on YouTube <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
+                                <a href="{{ video.source_url }}" target="_blank" rel="noopener noreferrer" aria-label="View {{ video.title }} on BoardGameGeek (opens in a new tab)">BGG listing <i class="bi bi-arrow-up-right" aria-hidden="true"></i></a>
+                            </div>
+                        </div>
                     </article>
                 {% endfor %}</div>
-                <p class="small text-muted mt-3 mb-0">If a video cannot play here, use the YouTube link.</p>
             </div>
         </section>
         {% endif %}
         
+    </div>
+    {% endif %}
         <!-- Categories and Mechanics -->
         {% if game.categories or game.mechanics %}
-        <div class="card">
+        <section class="card detail-content-card detail-taxonomy" aria-labelledby="taxonomy-heading">
             <div class="card-header">
-                <h2 class="h5 mb-0"><i class="bi bi-tags" aria-hidden="true"></i> Categories &amp; Mechanics</h2>
+                <h2 class="h5 mb-0" id="taxonomy-heading"><i class="bi bi-tags" aria-hidden="true"></i> Categories &amp; Mechanics</h2>
             </div>
             <div class="card-body">
                 {% if game.categories %}
@@ -166,15 +170,15 @@
                 <p class="mb-0"><strong>Mechanics:</strong> {{ game.mechanics }}</p>
                 {% endif %}
             </div>
-        </div>
+        </section>
         {% endif %}
-    </div>
 </div>
+</article>
 
-<div class="mt-4">
-    <a href="{% url 'catalog' %}" class="btn btn-outline-secondary">
+<div class="detail-back">
+    <a href="{% url 'catalog' %}">
         <i class="bi bi-arrow-left"></i> Back to Catalog
     </a>
 </div>
 {% endblock %}
-{% block extra_js %}<script src="{% static 'catalog/js/game-videos.js' %}" defer></script>{% endblock %}
+{% block extra_js %}<script src="{% static 'catalog/js/game-videos.js' %}?v=20261125-video-posters" defer></script>{% endblock %}
