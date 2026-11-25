@@ -14,6 +14,15 @@ from .phone_fields import InternationalPhoneField
 CUSTOMER_PASSWORD_VALIDATORS = [MinimumLengthValidator(min_length=6), CommonPasswordValidator()]
 
 
+class GuestCheckoutForm(StyledFormMixin, forms.Form):
+    email = forms.EmailField(max_length=150, widget=forms.EmailInput(attrs={
+        'autocomplete': 'email', 'placeholder': 'you@example.com',
+    }))
+
+    def clean_email(self):
+        return self.cleaned_data['email'].strip().casefold()
+
+
 class ContactFields(StyledFormMixin, forms.Form):
     full_name = forms.CharField(max_length=255, label='Full name', widget=forms.TextInput(attrs={'autocomplete': 'name'}))
     email = forms.EmailField(max_length=150, widget=forms.EmailInput(attrs={'autocomplete': 'email'}))

@@ -233,35 +233,41 @@ class CartPromotionTests(TestCase):
 
     def test_extra_percentage_uses_discounted_prices_and_threshold(self):
         self.offer(kind='percentage', value=20)
-        extra = self.offer(kind='cart_extra_percent', value=10, minimum_quantity=3)
+        extra = self.offer(kind='cart_extra_percent', value=20, minimum_quantity=3)
         self.assertEqual(self.quote({str(self.games[0].pk): 2})['total'], Decimal('80'))
         quote = self.quote({str(self.games[0].pk): 3})
-        self.assertEqual(quote['total'], Decimal('108'))
+        self.assertEqual(quote['total'], Decimal('96'))
         self.assertEqual(quote['applied_promotion'], extra)
-        self.assertEqual(self.quote({str(self.games[0].pk): 4})['total'], Decimal('144'))
+        self.assertEqual(self.quote({str(self.games[0].pk): 4})['total'], Decimal('128'))
 
     def test_extra_percentage_rounds_subtotal_and_respects_scope(self):
         self.games[0].sale_price = Decimal('0.05')
         self.games[0].save()
-        extra = self.offer(kind='cart_extra_percent', value=10, minimum_quantity=3, apply_to_all=False)
+        extra = self.offer(kind='cart_extra_percent', value=20, minimum_quantity=3, apply_to_all=False)
         extra.games.add(self.games[0])
         quote = self.quote({str(self.games[0].pk): 3, str(self.games[1].pk): 1})
-        self.assertEqual(quote['total'], Decimal('40.13'))
+        self.assertEqual(quote['total'], Decimal('40.12'))
         self.assertEqual(sum((line['item_total'] for line in quote['cart_items']), Decimal('0')), quote['total'])
 
     def test_extra_percentage_checkout_freezes_final_prices(self):
         self.offer(kind='percentage', value=20)
-        extra = self.offer(kind='cart_extra_percent', value=10, minimum_quantity=3)
+        extra = self.offer(kind='cart_extra_percent', value=20, minimum_quantity=3)
         self.assertRedirects(self.checkout({str(self.games[0].pk): 3}), reverse('checkout_success'))
         reservation = StockReservation.objects.get()
-        self.assertEqual(reservation.quoted_unit_price, Decimal('36'))
+        self.assertEqual(reservation.quoted_unit_price, Decimal('32'))
         extra.delete()
         sale = confirm_reserved_sale(reservation.pk)
-        self.assertEqual(sale.total, Decimal('108'))
+        self.assertEqual(sale.total, Decimal('96'))
 
     def test_banner_follows_active_extra_offer(self):
-        extra = self.offer(kind='cart_extra_percent', value=10, minimum_quantity=3)
-        self.assertContains(self.client.get(reverse('catalog')), 'Get an extra 10% off')
+        extra = self.offer(kind='cart_extra_percent', value=20, minimum_quantity=3)
+        response = self.client.get(reverse('catalog'))
+        self.assertContains(response, 'Get an extra 20% off')
+        self.assertContains(response, 'Save an extra 20% on final game prices')
+        self.assertNotContains(response, 'Get an extra 10% off')
+        extra.value = 15
+        extra.save()
+        self.assertContains(self.client.get(reverse('catalog')), 'Get an extra 15% off')
         extra.is_active = False
         extra.save()
-        self.assertNotContains(self.client.get(reverse('catalog')), 'Get an extra 10% off')
+        self.assertNotContains(self.client.get(reverse('catalog')), 'Get an extra 15% off')

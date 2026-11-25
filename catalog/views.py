@@ -83,7 +83,9 @@ def public_catalog(request):
     page = Paginator(games, 24).get_page(request.GET.get('page'))
     
     context = {
-        'hero_offer': active_cart_offers().filter(kind='cart_extra_percent', apply_to_all=True, minimum_quantity=3, value=10).first(),
+        'hero_offer': active_cart_offers().filter(
+            kind='cart_extra_percent', apply_to_all=True, minimum_quantity=3, value__gt=0,
+        ).order_by('-value', 'id').first(),
         'games': page.object_list,
         'page_obj': page,
         'availability': availability,

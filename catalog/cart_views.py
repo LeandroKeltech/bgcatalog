@@ -4,7 +4,6 @@ Shopping cart and checkout views.
 
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.utils import timezone
@@ -18,6 +17,8 @@ from .cart_pricing import price_cart
 from .models import BoardGame, StockReservation, CustomerProfile, CustomerQuote
 from .notifications import create_reservation_notification
 from .whatsapp import shop_whatsapp_number
+from .customer_forms import GuestCheckoutForm
+from .guest_quotes import guest_recovery_url, send_guest_confirmation
 
 
 def get_cart(request):
@@ -42,6 +43,7 @@ def view_cart(request):
         context = {'cart_items': []}
     
     context['customer_profile'] = CustomerProfile.objects.filter(user=request.user).first() if request.user.is_authenticated else None
+    context['guest_form'] = GuestCheckoutForm()
     template = 'catalog/cart_drawer.html' if request.GET.get('drawer') == '1' else 'catalog/cart.html'
     return render(request, template, context)
 
@@ -171,7 +173,6 @@ def remove_from_cart(request, game_id):
     return redirect('view_cart')
 
 
-@login_required(login_url='customer_login')
 def checkout(request):
     """Checkout and create reservations."""
     if request.method != 'POST':
@@ -183,10 +184,20 @@ def checkout(request):
         messages.error(request, 'Your cart is empty')
         return redirect('view_cart')
     
-    profile = CustomerProfile.objects.filter(user=request.user).first()
-    if not profile or not request.user.email or not profile.phone:
-        messages.info(request, 'Complete your contact details before checkout.')
-        return redirect('customer_account')
+    user = request.user if request.user.is_authenticated else None
+    if user:
+        profile = CustomerProfile.objects.filter(user=user).first()
+        if not profile or not user.email or not profile.phone:
+            messages.info(request, 'Complete your contact details before checkout.')
+            return redirect('customer_account')
+        contact = {'full_name': profile.full_name, 'email': user.email, 'phone': profile.phone}
+    else:
+        form = GuestCheckoutForm(request.POST)
+        if not form.is_valid():
+            context = price_cart(cart, BoardGame.objects.in_bulk(cart.keys()))
+            context['guest_form'] = form
+            return render(request, 'catalog/cart.html', context, status=400)
+        contact = {'full_name': '', 'email': form.cleaned_data['email'], 'phone': ''}
     try:
         shop_whatsapp_number()
     except ImproperlyConfigured:
@@ -203,16 +214,18 @@ def checkout(request):
     try:
         with transaction.atomic():
             reservations = []
-            # Serialize checkouts before counting active holds for this account.
-            get_user_model().objects.select_for_update().get(pk=request.user.pk)
+            # Account and stock locks preserve the existing checkout guarantees.
+            if user:
+                get_user_model().objects.select_for_update().get(pk=user.pk)
+            games = {game.pk: game for game in BoardGame.objects.select_for_update().filter(pk__in=cart.keys()).order_by('pk')}
+            owner_filter = {'user': user} if user else {'snapshot__contact__email__iexact': contact['email']}
             active_quotes = CustomerQuote.objects.filter(
-                user=request.user, reservations__status='active',
+                **owner_filter, reservations__status='active',
                 reservations__expires_at__gt=timezone.now(),
             ).distinct().count()
             if active_quotes >= settings.MAX_ACTIVE_CUSTOMER_QUOTES:
                 raise ValueError('You already have active reservations. Please complete them before reserving more games.')
             # Lock all games in stable order, then evaluate one consistent quote.
-            games = {game.pk: game for game in BoardGame.objects.select_for_update().filter(pk__in=cart.keys()).order_by('pk')}
             quote = price_cart(cart, games)
             if not quote['can_checkout']:
                 raise ValueError('Resolve unavailable stock or unconfirmed prices before checkout.')
@@ -222,8 +235,8 @@ def checkout(request):
                          'rule': promotion.mechanic_description, 'subtotal': str(quote['subtotal']),
                          'discount': str(quote['discount']), 'total': str(quote['total'])} if promotion else {})
             expires_at = timezone.now() + timedelta(hours=24)
-            saved_quote = CustomerQuote.objects.create(user=request.user, expires_at=expires_at, snapshot={
-                'contact': {'full_name': profile.full_name, 'email': request.user.email, 'phone': profile.phone},
+            saved_quote = CustomerQuote.objects.create(user=user, expires_at=expires_at, snapshot={
+                'contact': contact,
                 'lines': [{'name': line['game'].name, 'condition': line['game'].get_condition_display(),
                            'quantity': line['quantity'], 'line_total': f"{line['item_total']:.2f}",
                            'price_groups': [{'unit_price': f'{price:.2f}', 'quantity': count}
@@ -251,13 +264,18 @@ def checkout(request):
                         game=game, quantity=count, quoted_unit_price=unit_price,
                         customer_quote=saved_quote,
                         quote_group=group_id, promotion_snapshot=snapshot,
-                        customer_name=profile.full_name, customer_email=request.user.email,
-                        customer_phone=profile.phone, session_key=session_key, expires_at=expires_at,
+                        customer_name=contact['full_name'], customer_email=contact['email'],
+                        customer_phone=contact['phone'], session_key=session_key, expires_at=expires_at,
                     )
                     reservations.append(reservation)
             
             # The alert commits with the stock holds, even if WhatsApp is never opened.
             create_reservation_notification(saved_quote)
+            if not user:
+                recovery_url = guest_recovery_url(request, saved_quote)
+                transaction.on_commit(lambda: send_guest_confirmation(saved_quote.pk, recovery_url), robust=True)
+                guest_ids = request.session.get('guest_quote_ids', [])
+                request.session['guest_quote_ids'] = (guest_ids + [str(saved_quote.pk)])[-50:]
 
             # Clear cart
             request.session['cart'] = {}
@@ -277,9 +295,8 @@ def checkout(request):
         return redirect('view_cart')
 
 
-@login_required(login_url='customer_login')
 def checkout_success(request):
-    """Return to the authenticated customer's most recent saved quote."""
+    """Return to the customer's most recent saved quote."""
     quote_id = request.session.get('last_quote_id')
     if not quote_id:
         return redirect('view_cart')

@@ -21,9 +21,13 @@ def whatsapp_url(message):
 def quote_message(quote):
     data = quote.snapshot
     contact = data['contact']
-    lines = [f'Hello! I would like to order these games.', f'Quote: {quote.pk}',
-             f'Name: {contact["full_name"]}', f'Email: {contact["email"]}',
-             f'Phone: {contact["phone"]}', '']
+    lines = ['Hello! I would like to order these games.', f'Quote: {quote.pk}']
+    if contact.get('full_name'):
+        lines.append(f'Name: {contact["full_name"]}')
+    lines.append(f'Email: {contact["email"]}')
+    if contact.get('phone'):
+        lines.append(f'Phone: {contact["phone"]}')
+    lines.append('')
     for line in data['lines']:
         lines.append(f'{line["quantity"]} × {line["name"]} ({line["condition"]}) — €{line["line_total"]}')
         for group in line['price_groups']:

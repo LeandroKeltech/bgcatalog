@@ -51,8 +51,13 @@ class SecurityMiddleware(MiddlewareMixin):
             rules = [('login-ip', ip, 30, 900), ('login-account', username, 10, 900)]
         elif name == 'customer_register':
             rules = [('register-ip', ip, 5, 3600)]
-        elif name == 'checkout' and request.user.is_authenticated:
-            rules = [('checkout-ip', ip, 20, 1800), ('checkout-account', str(request.user.pk), 5, 1800)]
+        elif name == 'checkout':
+            rules = [('checkout-ip', ip, 20, 1800)]
+            if request.user.is_authenticated:
+                rules.append(('checkout-account', str(request.user.pk), 5, 1800))
+            else:
+                email = request.POST.get('email', '').strip().casefold()[:150]
+                rules.append(('checkout-email', email, 5, 1800))
         try:
             for rule in rules:
                 allowed, retry = consume_limit(*rule)

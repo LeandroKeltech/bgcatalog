@@ -79,11 +79,12 @@ class CustomerCheckoutTests(TestCase):
         response = self.client.post(reverse('customer_register'), self.signup_data)
         self.assertIn('email', response.context['form'].errors)
 
-    def test_anonymous_checkout_requires_login_and_does_not_reserve_stock(self):
+    def test_anonymous_checkout_requires_email_and_does_not_reserve_stock(self):
         response = self.client.post(reverse('checkout'))
-        self.assertRedirects(response, reverse('customer_login') + '?next=' + reverse('checkout'))
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('email', response.context['guest_form'].errors)
         self.assertFalse(StockReservation.objects.exists())
-        self.assertContains(self.client.get(reverse('view_cart')), 'Create account to check out')
+        self.assertContains(self.client.get(reverse('view_cart')), 'No account needed')
 
     def test_missing_profile_redirects_to_contact_form(self):
         user = get_user_model().objects.create_user(username='legacy', email='legacy@example.com')
