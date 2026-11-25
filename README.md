@@ -578,9 +578,10 @@ Populate or refresh the BGG rating tie-break after importing verified identities
 ```
 
 The command reads public Geek website statistics and validates rating ranges. It
-updates only ratings and their source metadata, preserving stock, conditions,
-prices and click counters. Unverified game identities are skipped and games with
-no ratings remain unrated. Failed refreshes preserve existing stored ratings.
+updates ratings, complexity (weight), and their source metadata, preserving stock,
+conditions, prices and click counters. Unverified game identities are skipped;
+games without BGG ratings or complexity remain blank. Failed refreshes preserve
+existing stored values.
 
 For automatic browser refresh while editing in Cursor, install the optional
 development dependencies inside the project environment:

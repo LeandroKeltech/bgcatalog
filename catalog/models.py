@@ -46,6 +46,11 @@ class BoardGame(models.Model):
     min_playtime = models.IntegerField(null=True, blank=True, help_text="Minimum playtime (minutes)")
     max_playtime = models.IntegerField(null=True, blank=True, help_text="Maximum playtime (minutes)")
     min_age = models.IntegerField(null=True, blank=True, help_text="Minimum recommended age")
+    average_weight = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="BoardGameGeek community complexity rating (1 to 5)",
+    )
     
     # Categories and Mechanics
     categories = models.CharField(max_length=500, blank=True, help_text="Comma-separated categories")

@@ -366,17 +366,22 @@ def _parse_bgg_thing_xml(xml_text: str) -> Dict:
         ratings = item.find('.//statistics/ratings')
         rating_avg = None
         rating_bayes = None
+        average_weight = None
         rank = None
         num_ratings = None
         
         if ratings is not None:
             avg_elem = ratings.find('average')
+            weight_elem = ratings.find('averageweight')
             bayes_elem = ratings.find('bayesaverage')
             num_elem = ratings.find('usersrated')
             rank_elem = ratings.find('.//rank[@type="subtype"]')
             
             if avg_elem is not None:
                 rating_avg = float(avg_elem.get('value', 0))
+            if weight_elem is not None:
+                weight_value = float(weight_elem.get('value', 0))
+                average_weight = weight_value if 0 < weight_value <= 5 else None
             if bayes_elem is not None:
                 rating_bayes = float(bayes_elem.get('value', 0))
             if num_elem is not None:
@@ -401,6 +406,7 @@ def _parse_bgg_thing_xml(xml_text: str) -> Dict:
             'categories': ', '.join(categories[:5]),  # Limit to first 5
             'mechanics': ', '.join(mechanics[:5]),
             'rating_average': rating_avg,
+            'average_weight': average_weight,
             'rating_bayes': rating_bayes,
             'rank_overall': rank,
             'num_ratings': num_ratings,
@@ -534,6 +540,12 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
                     game_data['max_playtime'] = item.get('maxplaytime')
                     game_data['min_age'] = item.get('minage')
                     game_data['rating_average'] = item.get('stats', {}).get('average')
+                    weight_value = item.get('stats', {}).get('averageweight')
+                    try:
+                        weight_value = float(weight_value) if weight_value else None
+                    except (TypeError, ValueError):
+                        weight_value = None
+                    game_data['average_weight'] = weight_value if weight_value and 0 < weight_value <= 5 else None
                     game_data['rating_bayes'] = item.get('stats', {}).get('bayesaverage')
                     game_data['num_ratings'] = item.get('stats', {}).get('usersrated')
                     game_data['rank_overall'] = item.get('stats', {}).get('rank')
@@ -684,6 +696,12 @@ def scrape_bgg_game_page(bgg_id: str) -> Dict:
             rating_match = re.search(r'(\d+\.\d+)', rating_text)
             if rating_match:
                 game_data['rating_average'] = float(rating_match.group(1))
+
+        weight_match = re.search(r'(?:Weight|Complexity):?\s*(\d+(?:\.\d+)?)\s*(?:/\s*5)?', text, re.IGNORECASE)
+        if weight_match:
+            weight_value = float(weight_match.group(1))
+            if 0 < weight_value <= 5:
+                game_data['average_weight'] = weight_value
         
         # Extract rank
         rank_elem = soup.select_one('span[class*="rank"], div[class*="rank"]')
