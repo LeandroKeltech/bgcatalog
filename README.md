@@ -2,6 +2,9 @@
 
 A Django-based web application for managing and selling a board game collection with integrated pricing from BoardGameGeek (BGG) and BoardGamePrices APIs.
 
+Continuing from another computer? See the [development handoff](docs/CONTINUE.md)
+for the latest work, local setup on port 8001, and the pending Gmail SMTP setup.
+
 ## 🎯 Features
 
 - **Public Catalog** - Browse available games with filtering and search
