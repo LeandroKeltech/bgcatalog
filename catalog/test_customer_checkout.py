@@ -121,6 +121,31 @@ class CustomerCheckoutTests(TestCase):
         self.assertIn('no-store', response.headers['Cache-Control'])
         self.assertNotContains(response, 'Forged name')
 
+    def test_account_saves_split_phone_and_preserves_it_in_checkout(self):
+        user = self.register()
+        response = self.client.post(reverse('customer_account'), {
+            'full_name': 'Test Buyer', 'phone_0': 'IE', 'phone_1': '089 123 4569',
+        })
+        self.assertRedirects(response, reverse('view_cart'))
+        self.assertEqual(CustomerProfile.objects.get(user=user).phone, '+353891234569')
+        quote = self.checkout()
+        self.assertEqual(quote.snapshot['contact']['phone'], '+353891234569')
+
+    def test_account_keeps_saved_country_and_posted_country_after_errors(self):
+        user = self.register()
+        CustomerProfile.objects.filter(user=user).update(phone='+5511912345678')
+        response = self.client.get(reverse('customer_account'))
+        self.assertContains(response, 'value="BR" selected')
+        self.assertContains(response, 'value="11912345678"')
+        self.assertContains(response, 'phone-country.js')
+        response = self.client.post(reverse('customer_account'), {
+            'full_name': '', 'phone_0': 'GB', 'phone_1': '020 8366 1177',
+        })
+        self.assertIn('full_name', response.context['form'].errors)
+        self.assertContains(response, 'value="GB" selected')
+        self.assertContains(response, 'value="020 8366 1177"')
+        self.assertEqual(CustomerProfile.objects.get(user=user).phone, '+5511912345678')
+
     def test_checkout_success_refresh_and_repeated_submit_do_not_duplicate_reservations(self):
         self.register()
         quote = self.checkout()
@@ -197,10 +222,24 @@ class CustomerCheckoutTests(TestCase):
         self.client.post(reverse('add_to_cart', args=[self.game.pk]), {'quantity': 1})
         response = self.client.post(reverse('customer_login'), {'username': 'BUYER@EXAMPLE.COM', 'password': 'wrong'})
         self.assertTrue(response.context['form'].errors)
+        self.assertContains(response, 'The email or password is incorrect. Please try again.')
+        self.assertContains(response, 'id="signin-error"')
+        self.assertNotContains(response, 'correct username and password')
         response = self.client.post(reverse('customer_login'), {
             'username': 'BUYER@EXAMPLE.COM', 'password': self.signup_data['password1']})
         self.assertRedirects(response, reverse('view_cart'))
         self.assertEqual(self.client.session['cart'], {str(self.game.pk): 1})
+
+    def test_login_shows_field_errors_without_echoing_password(self):
+        response = self.client.post(reverse('customer_login'), {'username': 'not-an-email', 'password': ''})
+        self.assertContains(response, 'Enter a valid email address.')
+        self.assertContains(response, 'Enter your password.')
+        self.assertContains(response, 'aria-invalid="true"')
+        response = self.client.post(reverse('customer_login'), {
+            'username': 'unknown@example.com', 'password': 'unshared-password-6842',
+        })
+        self.assertContains(response, 'The email or password is incorrect. Please try again.')
+        self.assertNotContains(response, 'unshared-password-6842')
 
     def test_public_forms_enforce_csrf(self):
         csrf_client = Client(enforce_csrf_checks=True)

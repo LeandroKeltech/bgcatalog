@@ -1,67 +1,74 @@
 {% extends 'catalog/base.html' %}
+{% load static %}
 
 {% block title %}Shopping Cart{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'catalog/css/customer-cart.css' %}?v=20261125">{% endblock %}
 
 {% block content %}
-<h1><i class="bi bi-cart3"></i> Shopping Cart</h1>
+<div class="cart-page">
+<nav class="cart-breadcrumb" aria-label="Breadcrumb"><a href="{% url 'catalog' %}">Catalog</a><i class="bi bi-chevron-right" aria-hidden="true"></i><span aria-current="page">Shopping cart</span></nav>
+<header class="cart-page-heading">
+    <div><h1><span class="cart-title-icon"><i class="bi bi-bag" aria-hidden="true"></i></span> Shopping cart{% if cart_items %}<span class="cart-item-count">{{ cart_items|length }} game{{ cart_items|length|pluralize }}</span>{% endif %}</h1><p>{% if cart_items %}Review your games, quantities and offers before checking out.{% else %}Find a new favourite for your next game night.{% endif %}</p></div>
+    {% if cart_items %}<a class="cart-shopping-link" href="{% url 'catalog' %}"><i class="bi bi-arrow-left" aria-hidden="true"></i> Continue shopping</a>{% endif %}
+</header>
 
 {% if cart_items %}
-<div class="row g-4">
-    <div class="col-md-8">
+<div class="row g-4 cart-page-layout">
+    <div class="col-lg-8 cart-page-items">
         {% for item in cart_items %}
-        <div class="card mb-3">
+        <article class="card mb-3 cart-line">
             <div class="row g-0 cart-item">
                 <div class="col-4 col-md-3">
                     {% if item.game.thumbnail_url %}
                     <img src="{{ item.game.thumbnail_url }}" class="img-fluid rounded-start cart-cover" alt="{{ item.game.name }}" loading="lazy">
                     {% else %}
-                    <div class="bg-secondary h-100 d-flex align-items-center justify-content-center">
-                        <i class="bi bi-image text-white fs-1"></i>
+                    <div class="cart-line-placeholder" role="img" aria-label="No cover available for {{ item.game.name }}">
+                        <i class="bi bi-dice-5" aria-hidden="true"></i>
                     </div>
                     {% endif %}
                 </div>
                 <div class="col-8 col-md-9">
                     <div class="card-body">
-                        <h5 class="card-title">{{ item.game.name }}</h5>
-                        <p class="text-muted mb-2">
+                        <h2 class="card-title"><a href="{% url 'game_detail' item.game.id %}">{{ item.game.name }}</a></h2>
+                        <p class="text-muted mb-2 cart-line-meta">
                             {% if item.game.year_published %}{{ item.game.year_published }} | {% endif %}
                             {{ item.game.get_condition_display }}
                         </p>
-                        <p class="mb-2">Unit price before offers: {% if item.price_known %}<strong>€{{ item.game.base_price|floatformat:2 }}</strong>{% else %}<strong>To be confirmed</strong>{% endif %}</p>
-                        <p class="text-muted small">Available: {{ item.game.available_quantity }} in stock</p>
+                        <p class="mb-1 cart-unit-price">Unit price before offers: {% if item.price_known %}<strong>€{{ item.game.base_price|floatformat:2 }}</strong>{% else %}<strong>To be confirmed</strong>{% endif %}</p>
+                        <p class="cart-line-stock">{{ item.game.available_quantity }} in stock</p>
                         
-                        <form method="post" action="{% url 'update_cart' item.game.id %}" class="row g-2 align-items-center">
+                        <form method="post" action="{% url 'update_cart' item.game.id %}" class="cart-quantity-form">
                             {% csrf_token %}
                             <div class="col-auto">
-                                <label class="col-form-label">Quantity:</label>
+                                <label class="col-form-label" for="cart-quantity-{{ item.game.id }}">Qty</label>
                             </div>
                             <div class="col-auto">
-                                <input type="number" name="quantity" class="form-control" value="{{ item.quantity }}" min="1" max="{{ item.game.available_quantity }}" style="width: 80px;" inputmode="numeric" aria-label="Quantity for {{ item.game.name }}">
+                                <input id="cart-quantity-{{ item.game.id }}" type="number" name="quantity" class="form-control" value="{{ item.quantity }}" min="1" max="{{ item.game.available_quantity }}" inputmode="numeric" aria-label="Quantity for {{ item.game.name }}">
                             </div>
                             <div class="col-auto">
-                                <button type="submit" class="btn btn-sm btn-primary">
-                                    <i class="bi bi-arrow-repeat"></i> Update
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-arrow-repeat" aria-hidden="true"></i> Update
                                 </button>
                             </div>
                             <div class="col-auto">
-                                <button type="submit" formaction="{% url 'remove_from_cart' item.game.id %}" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i> Remove</button>
+                                <button type="submit" formaction="{% url 'remove_from_cart' item.game.id %}" formnovalidate class="btn btn-sm cart-remove" aria-label="Remove {{ item.game.name }} from cart"><i class="bi bi-trash" aria-hidden="true"></i> Remove</button>
                             </div>
                         </form>
                         
-                        <p class="mt-2 mb-0">
+                        <p class="cart-line-total">
                             {% if item.price_known %}{% if item.discount %}<span class="text-success d-block">Offer saving: €{{ item.discount|floatformat:2 }}</span>{% endif %}<strong>Line total: €{{ item.item_total|floatformat:2 }}</strong>{% else %}<span class="text-muted">Price must be confirmed before checkout.</span>{% endif %}
                         </p>
                     </div>
                 </div>
             </div>
-        </div>
+        </article>
         {% endfor %}
     </div>
     
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Order Summary</h5>
+    <div class="col-lg-4 cart-page-sidebar">
+        <section class="card cart-order-summary" aria-labelledby="order-summary-heading">
+            <div class="card-header">
+                <h2 class="mb-0" id="order-summary-heading">Order summary</h2>
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between mb-2">
@@ -72,35 +79,35 @@
                 {% if applied_promotion %}<p class="small">{{ applied_promotion.mechanic_description }}</p>{% endif %}
                 <div class="d-flex justify-content-between mb-2">
                     <span>Shipping:</span>
-                    <span class="text-muted">TBD</span>
+                    <span class="text-muted">To be agreed</span>
                 </div>
                 <hr>
-                <div class="d-flex justify-content-between mb-3">
+                <div class="d-flex justify-content-between mb-3 cart-summary-total">
                     <strong>Total:</strong>
-                    <strong class="text-primary h5">€{{ total|floatformat:2 }}</strong>
+                    <strong>€{{ total|floatformat:2 }}</strong>
                 </div>
                 
                 {% if not can_checkout %}<p class="text-danger small">Resolve unavailable stock or unconfirmed prices before requesting a quote.</p>{% endif %}
                 {% if not user.is_authenticated %}
-                <a class="btn btn-success w-100 mb-2" href="{% url 'customer_register' %}">Create account to check out</a>
-                <p class="small">Already registered? <a href="{% url 'customer_login' %}">Sign in</a>. Your cart will be kept.</p>
+                <a class="btn btn-primary w-100 mb-2" href="{% url 'customer_register' %}">Create account to check out <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+                <p class="small cart-signin-note">Already registered? <a href="{% url 'customer_login' %}">Sign in</a>. Your cart will be kept.</p>
                 {% elif not customer_profile %}
-                <a class="btn btn-success w-100 mb-2" href="{% url 'customer_account' %}">Complete contact details</a>
+                <a class="btn btn-primary w-100 mb-2" href="{% url 'customer_account' %}">Complete contact details <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
                 {% else %}
-                <button type="button" class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#checkoutModal" {% if not can_checkout %}disabled{% endif %}><i class="bi bi-whatsapp"></i> Continue to WhatsApp checkout</button>
+                <button type="button" class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#checkoutModal" {% if not can_checkout %}disabled{% endif %}><i class="bi bi-whatsapp" aria-hidden="true"></i> Continue to WhatsApp checkout</button>
                 {% endif %}
-                <a href="{% url 'catalog' %}" class="btn btn-outline-secondary w-100">
-                    <i class="bi bi-arrow-left"></i> Continue Shopping
+                <a href="{% url 'catalog' %}" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i> Continue shopping
                 </a>
             </div>
-        </div>
+        </section>
         {% if cart_offers %}<section class="card mt-3" aria-labelledby="cart-offers-heading"><div class="card-body"><h2 class="h5" id="cart-offers-heading">Available offers</h2>{% for offer in cart_offers %}<article class="mb-3"><h3 class="h6">{{ offer.promotion.name }}</h3><p class="small mb-1">{{ offer.promotion.mechanic_description }}</p><p class="small mb-0">{% if offer.missing %}Add {{ offer.missing }} more eligible cop{{ offer.missing|pluralize:'y,ies' }} to qualify.{% else %}Quantity requirement met. The best total is applied automatically.{% endif %}</p>{% if not offer.promotion.apply_to_all %}<details class="small"><summary>Eligible games</summary><ul>{% for game in offer.promotion.games.all %}<li><a href="{% url 'game_detail' game.pk %}">{{ game.name }}</a></li>{% endfor %}</ul></details>{% endif %}</article>{% endfor %}<p class="small text-muted mb-0">Offers use selling prices before promotions. Discounts do not stack.</p></div></section>{% endif %}
     </div>
 </div>
 
 <!-- Checkout Modal -->
 {% if user.is_authenticated and customer_profile %}
-<div class="modal fade" id="checkoutModal" tabindex="-1">
+<div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="quote-title" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="post" action="{% url 'checkout' %}">
@@ -131,9 +138,30 @@
 {% endif %}
 
 {% else %}
-<div class="alert alert-info">
-    <i class="bi bi-cart-x"></i> Your cart is empty. 
-    <a href="{% url 'catalog' %}" class="alert-link">Browse our catalog</a> to add games.
-</div>
+<section class="cart-empty-panel" aria-labelledby="empty-cart-heading">
+    <div class="cart-empty-art" aria-hidden="true">
+        <div class="cart-empty-scene">
+            <span class="cart-empty-orbit"></span>
+            <span class="cart-empty-box box-forest"><i class="bi bi-dice-5"></i></span>
+            <span class="cart-empty-box box-clay"><i class="bi bi-puzzle"></i></span>
+            <i class="bi bi-cart3 cart-empty-basket"></i>
+            <i class="bi bi-dice-3-fill cart-empty-die"></i>
+            <span class="cart-empty-spark">✦</span>
+        </div>
+    </div>
+    <div class="cart-empty-copy">
+        <span class="cart-empty-eyebrow">MAKE ROOM AT THE TABLE</span>
+        <h2 id="empty-cart-heading">Your cart is empty</h2>
+        <p>The best game nights start with a good find. Explore the collection and pick something everyone will want to play.</p>
+        <a href="{% url 'catalog' %}" class="btn btn-primary cart-empty-browse">Browse our catalog <i class="bi bi-arrow-right" aria-hidden="true"></i></a>
+        <a href="{% url 'wishlist' %}" class="cart-empty-wishlist"><i class="bi bi-heart" aria-hidden="true"></i> Revisit your wishlist</a>
+    </div>
+</section>
+<ol class="cart-next-steps" aria-label="How to order">
+    <li><span class="cart-step-number" aria-hidden="true">1</span><div><h3>Find your next favourite</h3><p>Explore games for your group, time and budget.</p></div></li>
+    <li><span class="cart-step-number" aria-hidden="true">2</span><div><h3>Make it a game night</h3><p>Review your selection and available offers.</p></div></li>
+    <li><span class="cart-step-number" aria-hidden="true">3</span><div><h3>Reserve &amp; chat</h3><p>Reserve for 24 hours and arrange details on WhatsApp.</p></div></li>
+</ol>
 {% endif %}
+</div>
 {% endblock %}
