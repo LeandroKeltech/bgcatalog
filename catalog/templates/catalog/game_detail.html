@@ -48,7 +48,7 @@
         
         <!-- Gameplay Info -->
         <div class="row g-2 mb-3 gameplay-summary">
-            <div class="col-4">
+            <div class="col-6 col-lg-3">
                 <div class="card">
                     <div class="card-body text-center">
                         <i class="bi bi-people fs-2"></i>
@@ -57,7 +57,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-4">
+            <div class="col-6 col-lg-3">
                 <div class="card">
                     <div class="card-body text-center">
                         <i class="bi bi-clock fs-2"></i>
@@ -66,12 +66,21 @@
                     </div>
                 </div>
             </div>
-            <div class="col-4">
+            <div class="col-6 col-lg-3">
                 <div class="card">
                     <div class="card-body text-center">
                         <i class="bi bi-person-badge fs-2"></i>
                         <p class="mb-0">{% if game.min_age %}{{ game.min_age }}+{% else %}N/A{% endif %}</p>
                         <small class="text-muted">Age</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <i class="bi bi-puzzle fs-2"></i>
+                        <p class="mb-0">{% if game.average_weight %}{{ game.average_weight|floatformat:1 }}/5{% else %}N/A{% endif %}</p>
+                        <small class="text-muted">Difficulty</small>
                     </div>
                 </div>
             </div>

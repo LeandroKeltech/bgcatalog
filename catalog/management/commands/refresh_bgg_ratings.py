@@ -20,7 +20,13 @@ def parse_ratings(item):
     count = int(stats.get('usersrated', 0))
     if count < 0:
         raise ValueError('Invalid BGG rating count')
-    result = {'rating_average': None, 'rating_bayes': None, 'num_ratings': count, 'rank_overall': None}
+    result = {
+        'rating_average': None,
+        'rating_bayes': None,
+        'average_weight': None,
+        'num_ratings': count,
+        'rank_overall': None,
+    }
     if count:
         for target, key in [('rating_average', 'average'), ('rating_bayes', 'baverage')]:
             value = stats.get(key)
@@ -30,6 +36,12 @@ def parse_ratings(item):
             if not math.isfinite(value) or not 0 <= value <= 10:
                 raise ValueError('BGG rating is outside 0–10')
             result[target] = value
+        weight = stats.get('averageweight')
+        if weight not in (None, '', 'N/A'):
+            weight = float(weight)
+            if not math.isfinite(weight) or not 0 <= weight <= 5:
+                raise ValueError('BGG complexity rating is outside 0–5')
+            result['average_weight'] = weight or None
         rank = next((row.get('rank') for row in item.get('rankinfo', [])
                      if row.get('browsesubtype') == 'boardgame'), None)
         if str(rank).isdigit() and int(rank) > 0:

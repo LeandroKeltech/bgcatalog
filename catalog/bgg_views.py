@@ -118,6 +118,7 @@ def import_from_bgg(request, bgg_id):
         min_playtime=request.POST.get('min_playtime') or None,
         max_playtime=request.POST.get('max_playtime') or None,
         min_age=request.POST.get('min_age') or None,
+        average_weight=request.POST.get('average_weight') or None,
         categories=request.POST.get('categories', ''),
         mechanics=request.POST.get('mechanics', ''),
         rating_average=request.POST.get('rating_average') or None,
@@ -162,6 +163,8 @@ def refresh_game_data(request, game_id):
     game.min_playtime = game_data.get('min_playtime') or game.min_playtime
     game.max_playtime = game_data.get('max_playtime') or game.max_playtime
     game.min_age = game_data.get('min_age') or game.min_age
+    if game_data.get('average_weight') is not None:
+        game.average_weight = game_data['average_weight']
     game.categories = game_data.get('categories', game.categories)
     game.mechanics = game_data.get('mechanics', game.mechanics)
     game.rating_average = game_data.get('rating_average') or game.rating_average

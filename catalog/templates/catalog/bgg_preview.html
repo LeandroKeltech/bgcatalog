@@ -93,6 +93,10 @@
                             <label for="min_age" class="form-label">Min Age</label>
                             <input type="number" class="form-control" id="min_age" name="min_age" value="{{ game_data.min_age|default:'' }}">
                         </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="average_weight" class="form-label">Difficulty / complexity (BGG 1–5)</label>
+                            <input type="number" class="form-control" id="average_weight" name="average_weight" min="0" max="5" step="0.01" value="{{ game_data.average_weight|default:'' }}">
+                        </div>
                     </div>
                     
                     <div class="mb-3">

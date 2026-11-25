@@ -151,6 +151,12 @@ class Command(BaseCommand):
                     ):
                         value = item.get(field)
                         setattr(game, target, int(value) if value not in (None, '') else None)
+                    weight = item.get('stats', {}).get('averageweight')
+                    try:
+                        weight = float(weight) if weight not in (None, '', 'N/A') else None
+                    except (TypeError, ValueError):
+                        weight = None
+                    game.average_weight = weight if weight is not None and 0 < weight <= 5 else None
                     for target, field in (('designer', 'boardgamedesigner'),
                                           ('categories', 'boardgamecategory'), ('mechanics', 'boardgamemechanic')):
                         limit = BoardGame._meta.get_field(target).max_length

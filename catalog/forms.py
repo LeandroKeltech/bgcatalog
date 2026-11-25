@@ -29,9 +29,9 @@ class StyledFormMixin:
 class InventoryForm(StyledFormMixin, forms.ModelForm):
     class Meta:
         model = BoardGame
-        fields = ['name', 'stock_quantity', 'condition', 'msrp_price', 'sale_price', 'notes']
+        fields = ['name', 'stock_quantity', 'condition', 'average_weight', 'msrp_price', 'sale_price', 'notes']
         labels = {'msrp_price': 'Original price / MSRP (€)', 'sale_price': 'Our selling price (€)',
-                  'stock_quantity': 'Current stock'}
+                  'stock_quantity': 'Current stock', 'average_weight': 'Difficulty / complexity (BGG 1–5)'}
 
     def clean_stock_quantity(self):
         quantity = self.cleaned_data['stock_quantity']
