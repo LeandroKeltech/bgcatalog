@@ -36,7 +36,9 @@ def parse_ratings(item):
             if not math.isfinite(value) or not 0 <= value <= 10:
                 raise ValueError('BGG rating is outside 0–10')
             result[target] = value
-        weight = stats.get('averageweight')
+        # The Geekdo dynamicinfo endpoint names this field ``avgweight``;
+        # XML API2 uses ``averageweight``.
+        weight = stats.get('averageweight', stats.get('avgweight'))
         if weight not in (None, '', 'N/A'):
             weight = float(weight)
             if not math.isfinite(weight) or not 0 <= weight <= 5:
