@@ -301,6 +301,16 @@ processed quotes remain readable without an active checkout link. Customer accou
 receive the `user` role, without administration access. Passwords use Django's
 hashing and validation; contact phone numbers and email ownership are not verified.
 Existing accounts can complete their contact details before checkout.
+Customer sign-in matches the saved email case-insensitively, including accounts
+whose internal username differs from their email. Passwords are checked through
+Django authentication. Missing or duplicated emails are rejected with the same
+generic login error; staff sign-in continues to accept its existing usernames.
+Account and registration forms keep the country code separate from the local phone
+number. Ireland (+353) is the default for a blank number; existing international
+numbers retain their country. The searchable country picker uses locally hosted
+SVG flags and falls back to a native select without JavaScript. Numbers are parsed
+with phonenumberslite and remain stored as a single E.164 string, including in quote
+snapshots and WhatsApp messages. National trunk prefixes are handled per country.
 
 ### Reservation notifications
 

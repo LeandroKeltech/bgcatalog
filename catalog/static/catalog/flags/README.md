@@ -1,0 +1,1 @@
+SVG flags from [flag-icons 7.4.0](https://github.com/lipis/flag-icons/tree/v7.4.0), licensed under the included MIT license. Only flags for supported phone regions are included. Ascension Island and Tristan da Cunha use a neutral globe drawn for this project because the collection does not include their flags.

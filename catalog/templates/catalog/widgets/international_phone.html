@@ -1,0 +1,13 @@
+{% load static %}
+<div class="phone-input" data-phone-input data-flags-base="{% static 'catalog/flags/' %}">
+    <div class="phone-country">
+        <label class="phone-part-label" id="{{ widget.subwidgets.0.attrs.id }}_label" for="{{ widget.subwidgets.0.attrs.id }}">Country code</label>
+        <div class="phone-country-picker" data-country-picker>
+            {% include widget.subwidgets.0.template_name with widget=widget.subwidgets.0 %}
+        </div>
+    </div>
+    <div class="phone-national">
+        <label class="phone-part-label" for="{{ widget.subwidgets.1.attrs.id }}">Phone number</label>
+        {% include widget.subwidgets.1.template_name with widget=widget.subwidgets.1 %}
+    </div>
+</div>
