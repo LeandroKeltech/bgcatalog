@@ -214,8 +214,9 @@ instructional videos and reviews. Duplicate inventory copies can share videos.
 As of 23 November 2026, 79 descriptions are formatted and 128 video links are stored
 across 66 inventory entries. Four unresolved game identities are skipped.
 
-Videos appear under **Watch & learn** on the product page. YouTube connects only
-after Play is pressed; the player uses `youtube-nocookie.com`. Direct YouTube and
+Videos appear under **Watch & learn** on the product page, with lazy-loaded YouTube
+poster thumbnails. The video player loads only after Play is pressed and uses
+`youtube-nocookie.com`. Direct YouTube and
 BGG links remain available if embedding is unavailable. Video files are not copied
 or hosted locally. A successful metadata import does not guarantee that every
 video remains playable; unavailable videos can be removed on a later refresh.

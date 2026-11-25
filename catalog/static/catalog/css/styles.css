@@ -222,9 +222,6 @@ footer {
 .ledger-event { padding: 1rem 0; border-bottom: 1px solid #dee2e6; overflow-wrap: anywhere; }
 .ledger-event p { margin: 0.4rem 0; }
 @media (max-width: 991.98px) { .inventory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.game-detail-cover { display: block; width: 100%; max-height: 560px; object-fit: contain; }
-.gameplay-summary .card { height: 100%; }
-.gameplay-summary .card-body { padding: 0.75rem 0.3rem; }
 .cart-cover { width: 100%; height: 180px; padding: 0.75rem; object-fit: contain; }
 .navbar-nav .nav-link { min-height: 44px; display: flex; align-items: center; gap: 0.35rem; }
 .navbar-nav .nav-link .badge { position: static !important; transform: none !important; }
@@ -247,10 +244,6 @@ footer {
     .form-control, .form-select { font-size: 1rem; }
     .filter-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
     .filter-controls .form-label { font-size: 0.875rem; }
-    .game-detail-cover { max-height: 300px; }
-    .purchase-controls { margin-top: 1rem; }
-    .gameplay-summary .fs-2 { font-size: 1.35rem !important; }
-    .gameplay-summary p, .gameplay-summary small { font-size: 0.875rem; }
     .cart-item .card-body { padding: 0.75rem; }
     .cart-item .card-title { font-size: 1rem; overflow-wrap: anywhere; }
     .cart-item .original-price, .cart-item .selling-price { display: block; }
@@ -279,9 +272,33 @@ footer {
 .game-description p, .game-description ul, .game-description ol { margin-bottom: 1.1rem; }
 .game-description h3, .game-description h4 { font-size: 1.15rem; margin-top: 1.5rem; }
 .game-description .description-source { font-size: .85rem; color: #6c757d; border-top: 1px solid #dee2e6; padding-top: 1rem; margin-bottom: 0; }
-.game-videos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1.5rem; }
-.video-player { aspect-ratio: 16 / 9; display: grid; place-items: center; background: #f1f4f7; border: 1px solid #dee2e6; border-radius: .5rem; overflow: hidden; }
-.video-player iframe { width: 100%; height: 100%; border: 0; }
+.game-videos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 1rem; }
+.game-video { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--shop-line); border-radius: 9px; overflow: hidden; background: #fff; }
+.video-player { position: relative; aspect-ratio: 16 / 9; background: #234e41; overflow: hidden; }
+.video-player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video-play { position: absolute; inset: 0; display: grid; place-items: center; width: 100%; height: 100%; padding: 0; border: 0; color: #fff; background: linear-gradient(135deg, #325d49, #142f28); cursor: pointer; }
+.video-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.video-play-overlay { position: absolute; inset: 0; background: linear-gradient(0deg, #0b231b8c, #0b231b0d 70%); transition: background-color .18s; }
+.video-play-prompt { position: relative; display: grid; justify-items: center; gap: .45rem; font-size: .7rem; font-weight: 600; text-shadow: 0 1px 3px #0008; }
+.video-play-icon { display: grid; place-items: center; width: 52px; height: 52px; padding-left: 3px; border: 1px solid #ffffffb3; border-radius: 50%; color: var(--shop-green); background: #fffffff2; font-size: 1.65rem; box-shadow: 0 3px 16px #0003; text-shadow: none; transition: background-color .18s, color .18s; }
+.video-play:hover .video-play-overlay, .video-play:focus-visible .video-play-overlay { background-color: #0b231b26; }
+.video-play:hover .video-play-icon, .video-play:focus-visible .video-play-icon { color: #fff; background: var(--shop-green); }
+.video-play:focus-visible { outline: 3px solid #be541f; outline-offset: -4px; z-index: 1; }
+.video-provider { position: absolute; bottom: .65rem; right: .75rem; display: flex; align-items: center; gap: .3rem; font-size: .65rem; text-shadow: 0 1px 3px #000a; }
+.video-details { display: flex; flex: 1; flex-direction: column; padding: .85rem; }
+.video-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; margin: 0 0 .45rem; color: var(--shop-muted); font-size: .65rem; }
+.video-meta > span + span { padding-left: .6rem; border-left: 1px solid #d4ddcf; }
+.video-meta > span:first-child:not(:only-child) { color: var(--shop-green); font-weight: 600; }
+.game-video h3 { margin: 0 0 .75rem; color: var(--shop-ink); font-size: .9rem; font-weight: 650; line-height: 1.45; overflow-wrap: anywhere; }
+.video-links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem; margin-top: auto; padding-top: .5rem; border-top: 1px solid var(--shop-line); }
+.video-links a { display: inline-flex; align-items: center; gap: .35rem; min-height: 32px; color: var(--shop-green); text-decoration: none; font-size: .7rem; font-weight: 600; }
+.video-links a:last-child { color: var(--shop-muted); font-weight: 400; }
+.video-links a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.video-links i { font-size: .6rem; }
+.detail-content-card .video-section-heading { display: flex; justify-content: space-between; align-items: center; gap: .75rem; }
+.video-count { flex-shrink: 0; color: var(--shop-muted); font-size: .7rem; font-weight: 400; }
+.video-section-intro { margin: 0 0 .9rem; color: var(--shop-muted); font-size: .8rem; line-height: 1.5; }
+@media (pointer: coarse) { .video-links a { min-height: 44px; } }
 .game-choices { max-height: 20rem; overflow-y: auto; padding: .5rem; border: 1px solid #ced4da; border-radius: .375rem; }
 .game-choices label { display: flex; align-items: center; gap: .6rem; min-height: 44px; cursor: pointer; }
 .game-choices input { width: 1.1rem; height: 1.1rem; flex-shrink: 0; }
@@ -375,4 +392,115 @@ footer.bg-light { background: #eff1e9 !important; border-color: #e1e5d9; }.foote
 .game-actions { display: grid; grid-template-columns: minmax(0,1fr) 44px; gap: .5rem; align-items: center; margin-top: .85rem; }.catalog-add-form .btn, .game-actions > .btn { width: 100%; min-height: 44px; justify-content: center; font-size: .78rem; padding: .45rem .65rem; }.wishlist-toggle-form { margin: 0; }.wishlist-button { width: 44px; height: 44px; min-height: 44px; color: #617161; background: #f4f5ef; border: 1px solid #e2e6dc; padding: .3rem; }.wishlist-button:hover, .wishlist-button.is-saved { color: #b4464d; background: #fff0ef; border-color: #edcfcc; }.shop-game .game-actions { margin-top: auto; }.shop-game .price-display { margin-top: .6rem; }
 .wishlist-page-heading { margin-bottom: 1.5rem; }.wishlist-page-heading h1 { margin: .35rem 0; font-size: 2rem; color: #243b34; }.wishlist-page-heading h1 i { color: #b4464d; font-size: 1.2rem; }.wishlist-page-heading p { color: #697568; font-size: .85rem; }
 @media (max-width: 575.98px) { .game-actions { grid-template-columns: minmax(0,1fr) 40px; gap: .35rem; }.wishlist-button { width: 40px; height: 42px; min-height: 42px; }.catalog-add-form .btn { min-height: 42px; font-size: .7rem; }.cart-drawer-item { grid-template-columns: 56px minmax(0,1fr); }.cart-drawer-item > img, .cart-drawer-placeholder { width: 56px; height: 68px; }.cart-drawer-total { grid-column: 2; }.cart-drawer-quantity .btn { font-size: .62rem; } }
-.detail-title-row { display: flex; align-items: start; justify-content: space-between; gap: 1rem; }.detail-title-row h1 { overflow-wrap: anywhere; }
+/* Product detail: a compact overview followed by content across the page. */
+.detail-breadcrumb { margin-bottom: 1rem; }
+.detail-breadcrumb .breadcrumb {
+    --bs-breadcrumb-divider: '\203A';
+    --bs-breadcrumb-divider-color: #8a958b;
+    --bs-breadcrumb-item-active-color: var(--shop-ink);
+    align-items: baseline;
+    margin: 0;
+    font-size: .8rem;
+}
+.detail-breadcrumb a, .detail-back a {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    min-height: 32px;
+    color: var(--shop-muted);
+    text-decoration: none;
+}
+.detail-breadcrumb a:hover, .detail-back a:hover { color: var(--shop-green); text-decoration: underline; text-underline-offset: 3px; }
+.detail-breadcrumb .active { overflow-wrap: anywhere; }
+.game-detail-overview { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 1.5rem; align-items: start; }
+.game-detail-artwork {
+    display: grid;
+    place-items: center;
+    min-width: 0;
+    padding: 1rem;
+    background: #eeefe7;
+    border: 1px solid var(--shop-line);
+    border-radius: 12px;
+    aspect-ratio: 4 / 3;
+}
+.game-detail-cover { display: block; width: 100%; height: 100%; max-height: 340px; min-height: 0; object-fit: contain; border-radius: 5px; }
+.game-detail-placeholder { display: grid; justify-items: center; gap: .5rem; color: #76816f; font-size: .85rem; }
+.game-detail-placeholder i { font-size: 3rem; }
+.game-detail-summary { min-width: 0; }
+.detail-title-row { display: flex; align-items: start; justify-content: space-between; gap: .75rem; }
+.detail-title-row h1 { margin: .1rem 0 .45rem; font-size: clamp(1.6rem, 2.5vw, 2.2rem); font-weight: 720; letter-spacing: -.8px; line-height: 1.15; overflow-wrap: anywhere; }
+.detail-title-row .wishlist-toggle-form { flex-shrink: 0; }
+.detail-metadata { display: flex; flex-wrap: wrap; gap: .25rem 1rem; color: var(--shop-muted); font-size: .8rem; line-height: 1.5; margin-bottom: .65rem; }
+.detail-metadata strong { font-weight: 600; }
+.detail-rating { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; font-size: .75rem; margin-bottom: .85rem; }
+.detail-rating-score { display: inline-flex; align-items: baseline; gap: .25rem; font-size: 1rem; }
+.detail-rating-score > i { color: #bc8126; }
+.detail-rating-score > span { color: var(--shop-muted); font-size: .8rem; }
+.detail-rank { padding: .2rem .45rem; background: #eaf0e5; color: var(--shop-green); border-radius: 5px; font-size: .7rem; font-weight: 600; }
+.gameplay-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 .85rem; padding: .65rem 0; border-block: 1px solid var(--shop-line); }
+.gameplay-summary > div { min-width: 0; padding-inline: .85rem; border-left: 1px solid var(--shop-line); }
+.gameplay-summary > div:first-child { padding-left: 0; border-left: 0; }
+.gameplay-summary dt { display: flex; align-items: center; gap: .35rem; color: var(--shop-muted); font-size: .7rem; font-weight: 400; }
+.gameplay-summary dt i { color: var(--shop-green); font-size: .9rem; }
+.gameplay-summary dd { margin: .2rem 0 0; font-size: .95rem; font-weight: 650; overflow-wrap: anywhere; }
+.detail-purchase { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1rem; align-items: center; padding: .9rem 1rem; background: #fff; border: 1px solid #d7dfd1; border-radius: 10px; }
+.detail-purchase .original-price, .detail-purchase .selling-price { font-size: .75rem; gap: .5rem; }
+.detail-purchase .selling-price { color: var(--shop-green); }
+.detail-purchase .selling-price strong { font-size: 1.55rem; letter-spacing: -.6px; }
+.detail-purchase .selling-price .price-pending { font-size: 1rem; letter-spacing: 0; }
+.detail-purchase .savings-label { display: block; margin-top: .1rem; color: #477044; font-size: .7rem; }
+.detail-stock { display: flex; flex-wrap: wrap; gap: .35rem .6rem; margin: .5rem 0 0; font-size: .7rem; }
+.detail-condition { color: #5d695b; padding-right: .6rem; border-right: 1px solid var(--shop-line); }
+.detail-in-stock { color: #367045; }
+.detail-out-of-stock { color: #a33f40; }
+.detail-buy-row { display: flex; align-items: end; gap: .5rem; }
+.detail-quantity { display: grid; gap: .25rem; width: 62px; flex-shrink: 0; font-size: .7rem; color: var(--shop-muted); }
+.detail-quantity input { width: 100%; padding-inline: .5rem; border-radius: 6px; }
+.detail-buy-row .btn { flex: 1; width: auto; border-radius: 6px; }
+.detail-purchase .purchase-controls { min-width: 0; }
+.detail-offers { margin-top: .75rem; padding: .75rem .9rem; background: #eaf0e5; border: 1px solid #dce5d5; border-radius: 8px; color: #36553f; }
+.detail-offers h2 { display: flex; gap: .4rem; align-items: center; margin: 0 0 .35rem; font-size: .8rem; font-weight: 650; }
+.detail-offers p { margin: 0 0 .3rem; font-size: .75rem; line-height: 1.5; }
+.detail-offers .detail-offer-note { margin: 0; color: #60715c; font-size: .7rem; }
+.game-detail-summary > .promotion-terms { margin: .65rem 0 0; font-size: .8rem; }
+.game-detail-content { display: grid; gap: 1.25rem; margin-top: 1.25rem; align-items: start; }
+.game-detail-content.has-game-taxonomy { grid-template-columns: minmax(0, 3fr) minmax(230px, 1fr); }
+.game-detail-reading { display: grid; gap: 1.25rem; min-width: 0; }
+.game-detail .detail-content-card { min-width: 0; border: 1px solid var(--shop-line); border-radius: 10px; box-shadow: none; overflow: hidden; }
+.detail-content-card .card-header { padding: .8rem 1rem; background: #f1f3ec; border-bottom: 1px solid var(--shop-line); }
+.detail-content-card .card-header h2 { font-size: .95rem; font-weight: 650; }
+.detail-content-card .card-header i { margin-right: .25rem; color: var(--shop-green); }
+.detail-content-card .card-body { padding: 1rem; font-size: .9rem; }
+.detail-content-card .game-description { line-height: 1.7; }
+.detail-content-card .game-description > :last-child { margin-bottom: 0; }
+.detail-taxonomy .card-body { color: var(--shop-muted); font-size: .8rem; line-height: 1.65; overflow-wrap: anywhere; }
+.detail-taxonomy strong { display: block; color: var(--shop-ink); margin-bottom: .2rem; font-weight: 600; }
+.detail-back { margin-top: 1rem; font-size: .8rem; }
+@media (max-width: 991.98px) {
+    .game-detail-overview { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 1rem; }
+    .detail-purchase { grid-template-columns: minmax(0, 1fr); gap: .65rem; }
+    .gameplay-summary > div { padding-inline: .45rem; }
+    .gameplay-summary dt { flex-wrap: wrap; gap: .2rem; }
+    .game-detail-content.has-game-taxonomy { grid-template-columns: minmax(0, 2fr) minmax(200px, 1fr); }
+}
+@media (max-width: 767.98px) {
+    .game-detail-overview, .game-detail-content.has-game-taxonomy { grid-template-columns: minmax(0, 1fr); }
+    .detail-breadcrumb { margin-bottom: .75rem; }
+    .game-detail-artwork { aspect-ratio: auto; padding: .75rem; }
+    .game-detail-cover { height: 220px; max-height: none; }
+    .game-detail-placeholder { min-height: 180px; }
+    .detail-title-row h1 { font-size: 1.75rem; }
+    .detail-purchase { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .75rem; }
+    .gameplay-summary { margin-bottom: .75rem; }
+    .gameplay-summary > div { padding-inline: .5rem; }
+    .game-detail-content, .game-detail-reading { gap: 1rem; }
+    .game-detail-content { margin-top: 1rem; }
+}
+@media (max-width: 399.98px) {
+    .detail-purchase { grid-template-columns: minmax(0, 1fr); }
+    .gameplay-summary dt { font-size: .65rem; }
+    .gameplay-summary dd { font-size: .85rem; }
+}
+@media (pointer: coarse) {
+    .detail-breadcrumb a, .detail-back a { min-height: 44px; }
+}
