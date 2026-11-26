@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.core.validators import validate_email
 from django.db import transaction
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from .models import AdminReservationNotification
@@ -72,6 +73,9 @@ def send_reservation_alert(notification_id):
         sent = send_mail(
             subject=f'New reservation — BG Catalog — {notification.quote_id}', message=body,
             from_email=settings.DEFAULT_FROM_EMAIL, recipient_list=[recipient], fail_silently=False,
+            html_message=render_to_string('catalog/emails/reservation.html', {
+                'quote': notification.quote, 'is_admin': True,
+            }),
         )
         if sent != 1:
             raise RuntimeError('Email backend did not accept the message')

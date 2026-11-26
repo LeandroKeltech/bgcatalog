@@ -21,15 +21,20 @@ def whatsapp_url(message):
 def quote_message(quote):
     data = quote.snapshot
     contact = data['contact']
-    lines = [f'Hello! I would like to order these games.', f'Quote: {quote.pk}',
-             f'Name: {contact["full_name"]}', f'Email: {contact["email"]}',
-             f'Phone: {contact["phone"]}', '']
+    lines = ['Hello! I would like to order these games.', f'Quote: {quote.pk}']
+    if contact.get('full_name'):
+        lines.append(f'Name: {contact["full_name"]}')
+    lines.append(f'Email: {contact["email"]}')
+    if contact.get('phone'):
+        lines.append(f'Phone: {contact["phone"]}')
+    lines.append('')
     for line in data['lines']:
         lines.append(f'{line["quantity"]} × {line["name"]} ({line["condition"]}) — €{line["line_total"]}')
         for group in line['price_groups']:
             lines.append(f'  {group["quantity"]} × €{group["unit_price"]}')
     lines += ['', f'Subtotal before offers: €{data["subtotal"]}', f'Discount: €{data["discount"]}',
-              f'Total: €{data["total"]}', 'Delivery/collection and any shipping charge to be agreed.']
+              f'Total: €{data["total"]}',
+              'Prices are for collection. Collection and payment arrangements will be agreed with the shop after your reservation. If you need shipping, availability and any extra cost will also be discussed then.']
     if data.get('offer'):
         lines.append(f'Offer: {data["offer"]}')
     if data.get('offer_rule'):

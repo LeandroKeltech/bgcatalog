@@ -79,11 +79,12 @@ class CustomerCheckoutTests(TestCase):
         response = self.client.post(reverse('customer_register'), self.signup_data)
         self.assertIn('email', response.context['form'].errors)
 
-    def test_anonymous_checkout_requires_login_and_does_not_reserve_stock(self):
+    def test_anonymous_checkout_requires_email_and_does_not_reserve_stock(self):
         response = self.client.post(reverse('checkout'))
-        self.assertRedirects(response, reverse('customer_login') + '?next=' + reverse('checkout'))
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('email', response.context['guest_form'].errors)
         self.assertFalse(StockReservation.objects.exists())
-        self.assertContains(self.client.get(reverse('view_cart')), 'Create account to check out')
+        self.assertContains(self.client.get(reverse('view_cart')), 'No account needed')
 
     def test_missing_profile_redirects_to_contact_form(self):
         user = get_user_model().objects.create_user(username='legacy', email='legacy@example.com')
@@ -97,9 +98,11 @@ class CustomerCheckoutTests(TestCase):
         self.assertEqual(user.email, 'legacy@example.com')
         self.assertEqual(user.customer_profile.full_name, 'Legacy Buyer')
 
-    def test_checkout_uses_account_contact_and_prepares_encoded_whatsapp_without_email(self):
+    @override_settings(RESERVATION_NOTIFICATION_EMAIL='')
+    def test_checkout_uses_account_contact_and_emails_customer_with_account_link(self):
         user = self.register()
-        quote = self.checkout()
+        with self.captureOnCommitCallbacks(execute=True):
+            quote = self.checkout()
         reservation = quote.reservations.get()
         self.assertEqual(quote.user, user)
         self.assertEqual(reservation.customer_name, 'Test Buyer')
@@ -109,7 +112,14 @@ class CustomerCheckoutTests(TestCase):
         self.assertEqual(reservation.quantity, 2)
         self.assertEqual(self.game.available_quantity, 1)
         self.assertEqual(self.client.session['cart'], {})
-        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['buyer@example.com'])
+        self.assertIn(reverse('customer_quote', args=[quote.pk]), mail.outbox[0].body)
+        html, mimetype = mail.outbox[0].alternatives[0]
+        self.assertEqual(mimetype, 'text/html')
+        self.assertIn('A game &amp; friends', html)
+        self.assertIn('Sign in to your account', html)
+        self.assertNotIn('This private link expires', html)
         response = self.client.get(reverse('customer_quote', args=[quote.pk]))
         parsed = urlparse(response.context['whatsapp_url'])
         self.assertEqual((parsed.scheme, parsed.netloc, parsed.path), ('https', 'wa.me', '/353891234567'))

@@ -44,7 +44,7 @@ Leave `DATABASE_URL` empty to use a new local SQLite database. To work with exis
 
 Open http://127.0.0.1:8001/ . Port 8001 avoids the other project's server.
 
-## Pending: activate reservation email alerts
+## Reservation email alerts: configured and verified
 
 The application already uses Django's standard SMTP backend. No custom SSL backend is needed.
 
@@ -61,12 +61,16 @@ DEFAULT_FROM_EMAIL=popperl@gmail.com
 RESERVATION_NOTIFICATION_EMAIL=popperl@gmail.com
 ```
 
-**Email delivery is not active yet.** `EMAIL_HOST_PASSWORD` is missing, and these environment changes have not been applied through a new deployment during the email setup.
+`EMAIL_HOST_PASSWORD` is saved as a Secret in Production and Preview scoped to `staging`. Both environments were redeployed with the Gmail configuration on 2026-11-25. Never copy the app password into Git, documentation, or chat.
 
-1. Sign in as `popperl@gmail.com`, enable Google 2-Step Verification if needed, and create an app password named BG Catalog at https://myaccount.google.com/apppasswords . See [Google's instructions](https://support.google.com/accounts/answer/185833).
-2. Save the app password as `EMAIL_HOST_PASSWORD`, type Secret, in [Vercel environment variables](https://vercel.com/popperl1/bgcatalog/settings/environment-variables) for Production and Preview/staging. Keep it out of Git and chat; do not use the normal Google account password.
-3. Deploy staging with the completed configuration and verify SMTP delivery with an explicitly approved test to the owner. Deploy production after verification. Existing deployments do not pick up newly saved environment variables until redeployed.
-4. Check notification status in Admin Panel > Notifications. Delivery acceptance is recorded as `sent`; confirm actual receipt separately. Missing configuration and SMTP errors preserve the reservation and its inbox notification.
+A single owner-approved test was sent from the staging notification panel to `popperl@gmail.com` at 18:47 UTC on 2026-11-25. SMTP acceptance was recorded as `sent`, and receipt was confirmed in the Gmail inbox. The staging-only test quote is `e907f9f2-2c5b-4d4c-b4ae-7e7ce6944ba3`, labelled `TESTE EMAIL BG CATALOG - SEM RESERVA`; it has no stock reservations and a zero total. No test email was sent from production.
+
+For future credential rotation:
+
+1. Create a new Google app password for `popperl@gmail.com`; Google 2-Step Verification is required. See [Google's instructions](https://support.google.com/accounts/answer/185833).
+2. Replace `EMAIL_HOST_PASSWORD`, type Secret, in [Vercel environment variables](https://vercel.com/popperl1/bgcatalog/settings/environment-variables) for Production and Preview/staging.
+3. Redeploy staging, validate an explicitly approved test, then redeploy production. Existing deployments do not pick up newly saved variables until redeployed.
+4. Check Admin Panel > Notifications. `sent` means accepted by the sending service; verify inbox receipt separately. Missing configuration and SMTP errors preserve the reservation and its inbox notification.
 
 Retry individual failed notifications from the admin interface. `python manage.py send_reservation_alerts` retries pending, failed, and configuration-blocked notifications in bulk and can send real emails; review its scope before running it.
 
@@ -76,4 +80,4 @@ Keep the console email backend from `.env.example` for ordinary local developmen
 
 - The account, phone, login, and cart release passed 159 local Django tests (2 PostgreSQL-only tests skipped locally), with PostgreSQL checks passing in GitHub CI.
 - After preparing the SMTP environment variables, all 9 tests in `catalog.test_notifications` passed against an isolated in-memory SQLite test database.
-- No live SMTP send has been tested yet because the app password is still missing.
+- Live staging SMTP delivery and Gmail inbox receipt were verified on 2026-11-25. Production was redeployed with the configured secret, and its catalog returned HTTP 200.

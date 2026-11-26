@@ -5,9 +5,10 @@ Public catalog views - Browse games, view details, search.
 from django.shortcuts import render, get_object_or_404
 from decimal import Decimal, InvalidOperation
 from django.core.paginator import Paginator
-from django.db.models import Q, F, Case, When, DecimalField, FloatField
-from django.db.models.functions import Cast, Round
-from .models import BoardGame
+from django.db.models import Q, F, Case, When, DecimalField, FloatField, OuterRef, Subquery, Sum
+from django.db.models.functions import Cast, Coalesce, Round
+from django.utils import timezone
+from .models import BoardGame, StockReservation
 from .pricing import with_selling_price
 from .cart_pricing import active_cart_offers
 from .engagement import count_product_click
@@ -73,17 +74,26 @@ def public_catalog(request):
     sort_by = {'msrp_price': 'selling_price', '-msrp_price': '-selling_price'}.get(sort_by, sort_by)
     if sort_by not in ['relevance', 'name', '-name', 'selling_price', '-selling_price', '-created_at', 'year_published']:
         sort_by = 'relevance'
+    active_reservations = StockReservation.objects.filter(
+        game_id=OuterRef('pk'), status='active', expires_at__gt=timezone.now(),
+    ).order_by().values('game_id').annotate(total=Sum('quantity')).values('total')
+    games = games.annotate(active_reserved_units=Coalesce(Subquery(active_reservations), 0))
+    unavailable = Case(When(
+        Q(is_sold=True) | Q(stock_quantity__lte=F('active_reserved_units')), then=1,
+    ), default=0)
     if sort_by == 'relevance':
-        games = games.order_by('-click_count', F('rating_average').desc(nulls_last=True), 'id')
+        games = games.order_by(unavailable, '-click_count', F('rating_average').desc(nulls_last=True), 'id')
     elif sort_by.lstrip('-') == 'selling_price':
         expression = F('selling_price')
-        games = games.order_by(expression.desc(nulls_last=True) if sort_by.startswith('-') else expression.asc(nulls_last=True), 'id')
+        games = games.order_by(unavailable, expression.desc(nulls_last=True) if sort_by.startswith('-') else expression.asc(nulls_last=True), 'id')
     else:
-        games = games.order_by(sort_by, 'id')
+        games = games.order_by(unavailable, sort_by, 'id')
     page = Paginator(games, 24).get_page(request.GET.get('page'))
     
     context = {
-        'hero_offer': active_cart_offers().filter(kind='cart_extra_percent', apply_to_all=True, minimum_quantity=3, value=10).first(),
+        'hero_offer': active_cart_offers().filter(
+            kind='cart_extra_percent', apply_to_all=True, minimum_quantity=3, value__gt=0,
+        ).order_by('-value', 'id').first(),
         'games': page.object_list,
         'page_obj': page,
         'availability': availability,

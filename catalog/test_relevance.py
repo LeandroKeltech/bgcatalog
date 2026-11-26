@@ -1,5 +1,6 @@
 import json
 import tempfile
+from datetime import timedelta
 from io import StringIO
 from pathlib import Path
 
@@ -12,7 +13,7 @@ from django.utils import timezone
 
 from .engagement import CLICK_WINDOW_SECONDS
 from .management.commands.refresh_bgg_ratings import parse_ratings
-from .models import BoardGame
+from .models import BoardGame, StockReservation
 
 
 @override_settings(STORAGES={'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'}})
@@ -30,6 +31,44 @@ class RelevanceTests(TestCase):
             self.assertContains(response, 'value="relevance" selected')
         response = self.client.get(reverse('catalog'), {'sort': 'name'})
         self.assertEqual(list(response.context['games']), [tied, high, low, popular, unknown])
+
+    def test_default_sort_places_sold_out_games_last_before_pagination(self):
+        sold = BoardGame.objects.create(name='Sold', is_sold=True, click_count=100)
+        zero_stock = BoardGame.objects.create(name='Zero stock', stock_quantity=0, click_count=99)
+        available = BoardGame.objects.bulk_create([
+            BoardGame(name=f'Available {i:02}', click_count=i) for i in range(25)
+        ])
+        expected = list(reversed(available)) + [sold, zero_stock]
+        for params in ({}, {'sort': 'relevance'}, {'sort': 'invalid'}):
+            with self.subTest(params=params):
+                first = self.client.get(reverse('catalog'), params)
+                second = self.client.get(reverse('catalog'), {**params, 'page': 2})
+                self.assertEqual(list(first.context['games']), expected[:24])
+                self.assertEqual(list(second.context['games']), expected[24:])
+        response = self.client.get(reverse('catalog'), {'availability': 'sold_out'})
+        self.assertEqual(list(response.context['games']), [sold, zero_stock])
+
+    def test_all_sort_options_put_fully_reserved_and_sold_out_games_last(self):
+        reserved = BoardGame.objects.create(name='A reserved', click_count=100, sale_price=1)
+        sold = BoardGame.objects.create(name='B sold', is_sold=True, click_count=99, sale_price=2)
+        zero = BoardGame.objects.create(name='C zero', stock_quantity=0, sale_price=3)
+        partial = BoardGame.objects.create(name='Partial', stock_quantity=3, sale_price=20)
+        expired = BoardGame.objects.create(name='Expired hold', sale_price=30)
+        cancelled = BoardGame.objects.create(name='Cancelled hold', sale_price=40)
+        for game, quantity, status, expires_at in (
+            (reserved, 1, 'active', timezone.now() + timedelta(hours=1)),
+            (partial, 1, 'active', timezone.now() + timedelta(hours=1)),
+            (partial, 1, 'active', timezone.now() + timedelta(hours=1)),
+            (expired, 1, 'active', timezone.now() - timedelta(hours=1)),
+            (cancelled, 1, 'cancelled', timezone.now() + timedelta(hours=1)),
+        ):
+            StockReservation.objects.create(game=game, quantity=quantity, status=status, expires_at=expires_at)
+        for sort in ('relevance', 'name', '-name', 'selling_price', '-selling_price', '-created_at', 'year_published'):
+            with self.subTest(sort=sort):
+                response = self.client.get(reverse('catalog'), {'sort': sort})
+                games = list(response.context['games'])
+                self.assertEqual(set(games[:3]), {partial, expired, cancelled})
+                self.assertEqual(set(games[3:]), {reserved, sold, zero})
 
     def test_clicks_are_counted_atomically_once_per_session_per_window(self):
         game = BoardGame.objects.create(name='Game')

@@ -19,6 +19,8 @@ urlpatterns = [
     path('account/logout/', customer_views.customer_logout, name='customer_logout'),
     path('account/', customer_views.customer_account, name='customer_account'),
     path('account/quotes/<uuid:quote_id>/', customer_views.customer_quote, name='customer_quote'),
+    path('account/guest-reservations/<str:token>/', customer_views.guest_quote_access, name='guest_quote_access'),
+    path('account/link-reservations/', customer_views.claim_guest_quotes, name='claim_guest_quotes'),
     
     # Admin panel
     path('admin-panel/notifications/', notification_views.notification_list, name='notification_list'),

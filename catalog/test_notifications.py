@@ -47,6 +47,8 @@ class ReservationNotificationTests(TestCase):
         self.assertEqual(notification.quote.reservations.count(), 1)
         self.assertEqual(notification.email_status, 'sent')
         self.assertEqual(mail.outbox[0].to, ['owner@example.com'])
+        self.assertEqual(mail.outbox[1].to, ['buyer@example.com'])
+        self.assertIn('SHOP NOTIFICATION', mail.outbox[0].alternatives[0].content)
         for text in (str(notification.quote_id), 'Example Buyer', '2 × Test game', 'Total: €40.00',
                      'independent of whether they send the WhatsApp message'):
             self.assertIn(text, mail.outbox[0].body)
@@ -54,7 +56,7 @@ class ReservationNotificationTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             self.client.post(reverse('checkout'))
         self.assertEqual(AdminReservationNotification.objects.count(), 1)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(len(mail.outbox), 2)
 
     def test_rollback_discards_notification_and_email_callback(self):
         def fail_after_alert(quote):
@@ -88,7 +90,7 @@ class ReservationNotificationTests(TestCase):
         self.assertIsNotNone(notification.email_sent_at)
         self.assertFalse(send_reservation_alert(notification.pk))
         call_command('send_reservation_alerts', verbosity=0)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(len(mail.outbox), 2)
 
     @override_settings(EMAIL_BACKEND='django.core.mail.backends.console.EmailBackend')
     def test_console_is_setup_required_and_never_claims_email_delivered(self):

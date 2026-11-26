@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{% if is_admin %}New reservation{% else %}Your game reservation{% endif %} — BG Catalog</title></head>
+<body style="margin:0;padding:0;background-color:#f8f7f2;color:#243b34;font-family:'Segoe UI',Arial,sans-serif;">
+<div style="display:none;max-height:0;overflow:hidden;">{% if is_admin %}A new reservation is ready to review.{% else %}Your games are reserved. View your reservation and contact the shop.{% endif %}</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8f7f2;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="600" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;">
+<tr><td style="padding:8px 12px 24px;font-size:27px;letter-spacing:-1px;color:#194e42;"><strong>BG</strong>Catalog<span style="color:#d26939;">.</span></td></tr>
+<tr><td style="padding:28px 24px;background-color:#eaf0e5;border:1px solid #e1e8d9;border-radius:12px 12px 0 0;">
+<p style="margin:0 0 12px;color:#526d5f;font-size:11px;font-weight:bold;letter-spacing:2px;">{% if is_admin %}SHOP NOTIFICATION{% else %}LET’S GET PLAYING{% endif %}</p>
+<h1 style="margin:0 0 12px;font-size:28px;line-height:1.2;color:#194e42;">{% if is_admin %}A new game reservation{% else %}Your games are reserved{% endif %}</h1>
+<p style="margin:0;font-size:15px;line-height:1.6;">{% if is_admin %}A customer has reserved games. This alert is independent of whether they send the WhatsApp message.{% else %}Thanks{% if quote.snapshot.contact.full_name %}, {{ quote.snapshot.contact.full_name }}{% endif %}! Your games are held until <strong>{{ quote.reservation_expires_at|date:'d M Y H:i' }} (Dublin time)</strong>.{% endif %}</p>
+</td></tr>
+<tr><td style="padding:24px;background-color:#ffffff;border:1px solid #e3e6dd;border-top:0;border-radius:0 0 12px 12px;">
+<p style="margin:0 0 20px;font-size:12px;color:#66736c;overflow-wrap:anywhere;">Reference: {{ quote.pk }}</p>
+{% if is_admin %}<p style="font-size:14px;line-height:1.6;"><strong>Customer:</strong> {{ quote.snapshot.contact.full_name|default:'Guest' }}<br>{{ quote.snapshot.contact.email }}<br>{{ quote.snapshot.contact.phone }}<br><strong>Reservation expires:</strong> {{ quote.reservation_expires_at|date:'d M Y H:i' }} (Dublin time)<br><strong>Status:</strong> {{ quote.status }}</p>{% endif %}
+<h2 style="margin:0 0 12px;font-size:18px;">Order summary</h2>
+<table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;font-size:14px;">
+<thead><tr><th scope="col" align="left" style="padding:8px 0;border-bottom:1px solid #e3e6dd;">Game</th><th scope="col" align="right" style="padding:8px 0;border-bottom:1px solid #e3e6dd;">Amount</th></tr></thead>
+<tbody>{% for line in quote.snapshot.lines %}<tr><td style="padding:14px 8px 14px 0;border-bottom:1px solid #e3e6dd;"><strong>{{ line.name }}</strong><br><span style="color:#66736c;font-size:12px;">{{ line.condition }} · Quantity: {{ line.quantity }}</span>{% for group in line.price_groups %}<br><span style="color:#66736c;font-size:12px;">{{ group.quantity }} × €{{ group.unit_price }}</span>{% endfor %}</td><td align="right" style="padding:14px 0;border-bottom:1px solid #e3e6dd;white-space:nowrap;">€{{ line.line_total }}</td></tr>{% endfor %}
+<tr><td style="padding-top:16px;color:#66736c;">Subtotal before offers</td><td align="right" style="padding-top:16px;">€{{ quote.snapshot.subtotal }}</td></tr>
+<tr><td style="padding-top:8px;color:#198754;">Discount{% if quote.snapshot.offer %} · {{ quote.snapshot.offer }}{% endif %}</td><td align="right" style="padding-top:8px;color:#198754;">−€{{ quote.snapshot.discount }}</td></tr>
+<tr><td style="padding-top:16px;font-size:20px;color:#194e42;"><strong>Total</strong></td><td align="right" style="padding-top:16px;font-size:20px;color:#194e42;"><strong>€{{ quote.snapshot.total }}</strong></td></tr>
+</tbody></table>
+{% if quote.snapshot.offer_rule %}<p style="font-size:13px;line-height:1.6;">{{ quote.snapshot.offer_rule }}<br>Promotion bundle items must be confirmed together.</p>{% endif %}
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:24px;"><tr><td style="padding:16px;background-color:#fff3cd;border-left:4px solid #d26939;color:#664d03;font-size:14px;line-height:1.6;"><strong>Prices are for collection.</strong><br>Collection and payment arrangements will be agreed with the shop after your reservation. If you need shipping, availability and any extra cost will also be discussed then.</td></tr></table>
+{% if is_admin %}<p style="font-size:14px;line-height:1.6;">Review this reference in <strong>Admin Panel → Notifications</strong>.</p>{% else %}
+<h2 style="margin:24px 0 8px;font-size:18px;">One more step: contact the shop</h2>
+<p style="margin:0 0 20px;font-size:14px;line-height:1.6;">Open your reservation, select “Open WhatsApp &amp; send order”, then press Send in WhatsApp.</p>
+<table role="presentation" cellspacing="0" cellpadding="0"><tr><td bgcolor="#194e42" style="border-radius:6px;"><a href="{{ reservation_url }}" style="display:inline-block;padding:14px 22px;border:1px solid #194e42;border-radius:6px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:bold;">View your reservation →</a></td></tr></table>
+<p style="font-size:12px;line-height:1.6;color:#66736c;">If the button doesn’t work, open:<br><a href="{{ reservation_url }}" style="color:#194e42;overflow-wrap:anywhere;word-break:break-all;">{{ reservation_url }}</a></p>
+<p style="font-size:12px;line-height:1.6;color:#66736c;">{% if is_guest %}This private link expires in 7 days. It confirms your email so you can link this reservation when you create an account or sign in with the same email. Do not share it.{% else %}Sign in to your account to view this reservation.{% endif %}</p>
+{% endif %}
+<p style="margin:20px 0 0;font-size:12px;line-height:1.6;color:#66736c;">This reservation is not a confirmed sale or payment.</p>
+</td></tr>
+<tr><td align="center" style="padding:24px 12px;font-size:12px;line-height:1.8;color:#66736c;">A good game brings everyone together.<br>&copy; {% now 'Y' %} BG Catalog</td></tr>
+</table>
+</td></tr></table>
+</body></html>

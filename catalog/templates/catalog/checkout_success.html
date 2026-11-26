@@ -17,11 +17,25 @@
         <div class="quote-line mt-3"><span>Subtotal before offers</span><span>€{{ quote.snapshot.subtotal }}</span></div>
         <div class="quote-line text-success mt-2"><span>Discount{% if quote.snapshot.offer %} · {{ quote.snapshot.offer }}{% endif %}</span><span>−€{{ quote.snapshot.discount }}</span></div>
         <div class="quote-line h5 mt-3"><strong>Total</strong><strong>€{{ quote.snapshot.total }}</strong></div>
-        <p class="small text-muted mb-0">Delivery or collection and any shipping charge will be agreed with the shop. Payment is arranged after confirmation.</p>
+        <div class="alert alert-warning mt-3 mb-0">
+            <strong>Prices are for collection.</strong> Collection and payment arrangements will be agreed with the shop after your reservation. If you need shipping, availability and any extra cost will also be discussed then.
+        </div>
     </div></div>
-    {% if whatsapp_url %}<a href="{{ whatsapp_url }}" class="btn btn-success w-100 mb-2" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><i class="bi bi-whatsapp"></i> Open WhatsApp &amp; send order</a><p class="small text-muted">WhatsApp opens with your name, email, phone number, and order details. Press Send in WhatsApp to share them with the shop.</p>{% endif %}
+    {% if whatsapp_url %}<a href="{{ whatsapp_url }}" class="btn btn-success w-100 mb-2" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><i class="bi bi-whatsapp"></i> Open WhatsApp &amp; send order</a><p class="small text-muted">WhatsApp opens with your email, order details{% if quote.snapshot.contact.full_name %}, name and phone number{% endif %}. Press Send in WhatsApp to share them with the shop.</p>{% endif %}
     <details class="card mb-4"><summary class="card-header">View or copy the prepared message</summary><div class="card-body"><label class="form-label" for="whatsapp-message">Order message</label><textarea class="form-control" id="whatsapp-message" readonly rows="12">{{ whatsapp_message }}</textarea><button type="button" class="btn btn-outline-secondary mt-3" id="copy-whatsapp-message">Copy message</button><span class="small ms-2" id="copy-message-status" role="status"></span></div></details>
-    <div class="d-flex gap-2 flex-wrap"><a class="btn btn-outline-primary" href="{% url 'customer_account' %}">My quotes</a><a class="btn btn-outline-secondary" href="{% url 'catalog' %}">Back to catalog</a></div>
+    {% if not quote.user_id %}
+    <section class="card mb-4"><div class="card-body">
+        <h2 class="h5">Save your reservations in an account</h2>
+        <p>We use {{ quote.snapshot.contact.email }} for this reservation. No account has been created.</p>
+        <p class="small">Open the private link in your confirmation email to verify your email, then create an account or sign in with the same email to save your guest reservations.</p>
+        {% if user.is_authenticated %}
+        <form method="post" action="{% url 'claim_guest_quotes' %}">{% csrf_token %}<button class="btn btn-outline-primary" type="submit">Save verified reservations to my account</button></form>
+        {% else %}
+        <a class="btn btn-outline-primary" href="{% url 'customer_register' %}">Create an account</a> <a href="{% url 'customer_login' %}">Sign in</a>
+        {% endif %}
+    </div></section>
+    {% endif %}
+    <div class="d-flex gap-2 flex-wrap">{% if user.is_authenticated %}<a class="btn btn-outline-primary" href="{% url 'customer_account' %}">My quotes</a>{% endif %}<a class="btn btn-outline-secondary" href="{% url 'catalog' %}">Back to catalog</a></div>
 </section>
 {% endblock %}
 {% block extra_js %}<script src="{% static 'catalog/js/quote-message.js' %}"></script>{% endblock %}

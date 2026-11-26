@@ -3,7 +3,26 @@
 A Django-based web application for managing and selling a board game collection with integrated pricing from BoardGameGeek (BGG) and BoardGamePrices APIs.
 
 Continuing from another computer? See the [development handoff](docs/CONTINUE.md)
-for the latest work, local setup on port 8001, and the pending Gmail SMTP setup.
+for the latest work, local setup on port 8001, and the verified Gmail SMTP setup.
+
+Checkout supports guests with just an email address; no user or customer profile
+is created. Guests receive a reservation confirmation with a private recovery link
+valid for seven days, while stock is held for 24 hours. Opening that link verifies
+the email for linking guest reservations after registration or sign-in with the
+same email. Merely registering with a matching email never grants guest history.
+Logged-in customers also receive a confirmation, with a link requiring account sign-in.
+Customer and shop emails include HTML matching the site and a plain-text alternative.
+Customer confirmation emails use the configured email backend, separately from admin
+alerts; production requires a delivering backend such as SMTP. A delivery failure
+is logged and does not undo the reservation or its access from the current session.
+Apply migration `0017_alter_customerquote_user` before running the updated checkout.
+
+Preview fictional reservation emails locally without sending mail or creating reservations:
+`python manage.py preview_reservation_email` (files in `outputs/email-previews/`).
+The console email backend only prints customer messages in the terminal. For actual
+delivery in dev, configure SMTP in your private `.env`, including `EMAIL_HOST_PASSWORD`
+when `EMAIL_HOST_USER` is set, and restart the development server. Customer email
+failures are logged; shop delivery status is visible in Admin Panel > Notifications.
 
 ## 🎯 Features
 
@@ -259,13 +278,13 @@ prices. Extra-percentage cart offers can discount that final item price further.
 Reservations snapshot the quoted unit price, so confirmation honors the quote
 even if a promotion expires before the reservation is confirmed.
 
-Migration `0015` activates **Buy 3+, get an extra 10% off** in each database,
+Migration `0015` creates the offer; migration `0018` updates it to **Buy 3+, get an extra 20% off** in each database,
 including staging and production through the existing migration build hook.
-It counts physical copies and applies 10% once to the final item-price subtotal
+It counts physical copies and applies 20% once to the final item-price subtotal
 (after individual-game discounts), rounded to cents and allocated across the
 quote lines. Other cart offers compete for the lowest total. Staff can pause or
 edit this promotion; the homepage banner appears only while the matching active
-catalog-wide 3+/10% offer is available. No end date is configured.
+catalog-wide 3+ extra-percentage offer is available and reads its percentage from the promotion. No end date is configured.
 
 Cart mechanics are available in the same **Create promotion** screen:
 
@@ -284,7 +303,7 @@ and only selected games count for scoped promotions. Standard cart offers use ba
 prices before promotions; extra-percentage cart offers use final item prices.
 They compete for the lowest total. They do not change the unit prices shown in catalog filters.
 The cart displays eligibility progress, the applied offer, line savings and the
-final total. The 3+/10% extra offer is activated by migration `0015`.
+final total. The 3+/20% extra offer is updated by migration `0018`, preserving its active status and schedule.
 
 Fixed discounts are allocated proportionally in cents. Where copies of the same
 game have different final prices, checkout creates separate paid/free or differently

@@ -1,13 +1,14 @@
 {% extends 'catalog/base.html' %}
 {% load static %}
 {% block title %}Find your next game{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'catalog/css/catalog-discovery.css' %}?v=20261125">{% endblock %}
 {% block content %}
 <section class="catalog-hero" aria-labelledby="catalog-heading">
     <div>
         {% if hero_offer %}
         <span class="eyebrow"><span></span> MORE GAMES. MORE SAVINGS.</span>
-        <h1 id="catalog-heading">Buy 3 or more.<br>Get an extra 10% off<span>.</span></h1>
-        <p>Save an extra 10% on final game prices, including existing game discounts.<br class="d-none d-md-block"> Add 3 or more games to your cart. Your discount applies automatically.</p>
+        <h1 id="catalog-heading">Buy {{ hero_offer.minimum_quantity }} or more.<br>Get an extra {{ hero_offer.value|floatformat:'-2' }}% off<span>.</span></h1>
+        <p>Save an extra {{ hero_offer.value|floatformat:'-2' }}% on final game prices, including existing game discounts.<br class="d-none d-md-block"> Add {{ hero_offer.minimum_quantity }} or more games to your cart. Your discount applies automatically.</p>
         <a href="#catalog-search" class="hero-link">Shop games &amp; save <i class="bi bi-arrow-down-right" aria-hidden="true"></i></a>
         {% else %}
         <span class="eyebrow"><span></span> GOOD GAMES. GREAT COMPANY.</span>
@@ -23,40 +24,44 @@
     </div>
 </section>
 <div class="catalog-benefits"><span><i class="bi bi-box-seam" aria-hidden="true"></i> New &amp; pre-loved games</span><span><i class="bi bi-tag" aria-hidden="true"></i> Clear prices. Real savings.</span><span><i class="bi bi-chat-dots" aria-hidden="true"></i> Order via WhatsApp</span></div>
-<form method="get" class="shop-form" role="search" aria-label="Search and filter games">
-    <div class="catalog-searchbar">
+<form method="get" action="{% url 'catalog' %}#collection" class="catalog-discovery" role="search" aria-label="Search and filter games">
+    <input type="hidden" name="sort" value="{{ sort_by }}">
+    <div class="discovery-header">
+        <div><h2>Find your next game</h2><p>A quick game for two, a big game night, or something in between.</p></div>
+        <span class="discovery-header-icon" aria-hidden="true"><i class="bi bi-dice-5"></i></span>
+    </div>
+    <div class="discovery-search">
         <i class="bi bi-search" aria-hidden="true"></i>
         <label class="visually-hidden" for="catalog-search">Find a game</label>
-        <input type="search" id="catalog-search" name="search" placeholder="Search games, designers, or keywords…" value="{{ search_query }}">
-        <button type="submit" class="btn btn-primary">Find a game <i class="bi bi-arrow-right d-none d-sm-inline" aria-hidden="true"></i></button>
+        <input type="search" id="catalog-search" name="search" placeholder="Search by game, designer or keyword" value="{{ search_query }}">
+        <button type="submit" class="btn btn-primary">Search games <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
     </div>
-    <div class="catalog-shortcuts" aria-label="Quick filters">
-        <span>Start exploring</span>
-        <a href="{% querystring availability='available' page=None %}" {% if availability == 'available' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-check2-circle" aria-hidden="true"></i> In stock</a>
-        <a href="{% querystring max_price='20' page=None %}" {% if max_price == '20' %}class="is-active" aria-current="true"{% endif %}>€20 &amp; under</a>
-        <a href="{% querystring players='2' page=None %}" {% if players == '2' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-people" aria-hidden="true"></i> For two</a>
-        <a href="{% querystring duration='30' page=None %}" {% if duration == '30' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-clock" aria-hidden="true"></i> Quick games</a>
-    </div>
-</form>
-    <div class="catalog-layout" id="collection">
-        <aside class="catalog-sidebar">
-            <form method="get" class="shop-filter-form">
-                <input type="hidden" name="search" value="{{ search_query }}"><input type="hidden" name="sort" value="{{ sort_by }}">
-            <details class="shop-filters" open data-active="{{ has_filters|yesno:'true,false' }}">
-                <summary><span><i class="bi bi-sliders" aria-hidden="true"></i> Filter collection</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
-                <div class="shop-filter-fields">
-                    <div class="filter-heading"><h2>Make it your game</h2><a href="{% url 'catalog' %}">Reset all</a></div>
+    <nav class="discovery-shortcuts" aria-label="Quick filters">
+        <span>Quick picks</span>
+        <a href="{% if availability == 'available' %}{% querystring availability=None page=None %}{% else %}{% querystring availability='available' page=None %}{% endif %}" {% if availability == 'available' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-check2-circle" aria-hidden="true"></i> In stock{% if availability == 'available' %}<span aria-label="Remove in-stock filter">×</span>{% endif %}</a>
+        <a href="{% if max_price == '20' %}{% querystring max_price=None page=None %}{% else %}{% querystring max_price='20' page=None %}{% endif %}" {% if max_price == '20' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-tag" aria-hidden="true"></i> €20 &amp; under{% if max_price == '20' %}<span aria-label="Remove budget filter">×</span>{% endif %}</a>
+        <a href="{% if players == '2' %}{% querystring players=None page=None %}{% else %}{% querystring players='2' page=None %}{% endif %}" {% if players == '2' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-people" aria-hidden="true"></i> For two{% if players == '2' %}<span aria-label="Remove two-player filter">×</span>{% endif %}</a>
+        <a href="{% if duration == '30' %}{% querystring duration=None page=None %}{% else %}{% querystring duration='30' page=None %}{% endif %}" {% if duration == '30' %}class="is-active" aria-current="true"{% endif %}><i class="bi bi-clock" aria-hidden="true"></i> 30 minutes or less{% if duration == '30' %}<span aria-label="Remove playtime filter">×</span>{% endif %}</a>
+    </nav>
+    <details class="shop-filters discovery-options" open data-active="{{ has_filters|yesno:'true,false' }}">
+        <summary><span><i class="bi bi-sliders" aria-hidden="true"></i> Refine your search{% if has_filters %}<span class="discovery-active-indicator">Filters on</span>{% endif %}</span><i class="bi bi-chevron-down" aria-hidden="true"></i></summary>
+        <div class="discovery-filter-content">
+            <div class="discovery-fields">
                     <div><label for="availability">Availability</label><select id="availability" name="availability" class="form-select"><option value="all" {% if availability == 'all' %}selected{% endif %}>All games</option><option value="available" {% if availability == 'available' %}selected{% endif %}>In stock</option><option value="sold_out" {% if availability == 'sold_out' %}selected{% endif %}>Sold out</option></select></div>
                     <div><label for="condition">Condition</label><select id="condition" name="condition" class="form-select"><option value="">Any condition</option>{% for value, label in condition_choices %}<option value="{{ value }}" {% if condition == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
-                    <div><label for="players">Number of players</label><select id="players" name="players" class="form-select"><option value="">Any group size</option>{% for value in player_choices %}<option value="{{ value }}" {% if players == value %}selected{% endif %}>{{ value }} player{{ value|pluralize }}</option>{% endfor %}</select></div>
+                    <div><label for="players">Players</label><select id="players" name="players" class="form-select"><option value="">Any group size</option>{% for value in player_choices %}<option value="{{ value }}" {% if players == value %}selected{% endif %}>{{ value }} player{{ value|pluralize }}</option>{% endfor %}</select></div>
                     <div><label for="duration">Time to play</label><select id="duration" name="duration" class="form-select"><option value="">Any duration</option><option value="30" {% if duration == '30' %}selected{% endif %}>Up to 30 minutes</option><option value="60" {% if duration == '60' %}selected{% endif %}>Up to 1 hour</option><option value="120" {% if duration == '120' %}selected{% endif %}>Up to 2 hours</option></select></div>
-                    <fieldset><legend>Our price (€)</legend><div class="price-range"><div><label class="visually-hidden" for="min-price">Minimum price</label><input type="number" id="min-price" name="min_price" class="form-control" min="0" step="0.01" placeholder="Min" value="{{ min_price }}"></div><span>–</span><div><label class="visually-hidden" for="max-price">Maximum price</label><input type="number" id="max-price" name="max_price" class="form-control" min="0" step="0.01" placeholder="Max" value="{{ max_price }}"></div></div></fieldset>
-                    <button class="btn btn-primary w-100" type="submit">Apply filters <i class="bi bi-arrow-right" aria-hidden="true"></i></button>
-                    <p class="filter-note"><i class="bi bi-info-circle" aria-hidden="true"></i> Gameplay filters show games with matching, known details.</p>
-                </div>
-            </details>
-            </form>
-        </aside>
+                    <fieldset><legend>Budget (€)</legend><div class="price-range"><div><label class="visually-hidden" for="min-price">Minimum price</label><input type="number" id="min-price" name="min_price" class="form-control" min="0" step="0.01" placeholder="Min" value="{{ min_price }}"></div><span>–</span><div><label class="visually-hidden" for="max-price">Maximum price</label><input type="number" id="max-price" name="max_price" class="form-control" min="0" step="0.01" placeholder="Max" value="{{ max_price }}"></div></div></fieldset>
+            </div>
+            <div class="discovery-footer">
+                <p><i class="bi bi-info-circle" aria-hidden="true"></i> Choose what matters. Leave the rest open.</p>
+                <div><a href="{% url 'catalog' %}" class="discovery-reset">Clear all</a><button class="btn btn-primary" type="submit">Show games <i class="bi bi-arrow-right" aria-hidden="true"></i></button></div>
+            </div>
+        </div>
+    </details>
+</form>
+    <p id="catalog-status" class="catalog-status" role="status" aria-live="polite" aria-atomic="true"></p>
+    <div class="catalog-layout" id="collection" aria-busy="false">
         <section class="catalog-results" aria-labelledby="results-heading">
             <div class="results-toolbar"><div><span class="eyebrow">FIND YOUR NEXT FAVOURITE</span><h2 id="results-heading">{% if search_query %}Results for “{{ search_query }}”{% else %}The collection{% endif %}</h2><p>{{ page_obj.paginator.count }} game{{ page_obj.paginator.count|pluralize }}{% if games %} · Showing {{ page_obj.start_index }}–{{ page_obj.end_index }}{% endif %}</p></div><form method="get" class="catalog-sort"><input type="hidden" name="search" value="{{ search_query }}"><input type="hidden" name="availability" value="{{ availability }}"><input type="hidden" name="condition" value="{{ condition }}"><input type="hidden" name="players" value="{{ players }}"><input type="hidden" name="duration" value="{{ duration }}"><input type="hidden" name="min_price" value="{{ min_price }}"><input type="hidden" name="max_price" value="{{ max_price }}"><label for="sort">Sort by</label><select id="sort" name="sort" class="form-select"><option value="relevance" {% if sort_by == 'relevance' %}selected{% endif %}>Relevance</option><option value="-created_at" {% if sort_by == '-created_at' %}selected{% endif %}>Newest</option><option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name (A–Z)</option><option value="-name" {% if sort_by == '-name' %}selected{% endif %}>Name (Z–A)</option><option value="selling_price" {% if sort_by == 'selling_price' %}selected{% endif %}>Price: low to high</option><option value="-selling_price" {% if sort_by == '-selling_price' %}selected{% endif %}>Price: high to low</option></select><button type="submit" class="btn btn-outline-primary">Go</button></form></div>
             {% if search_query or has_filters %}<div class="active-filters" aria-label="Active filters">
@@ -80,7 +85,7 @@
                         <div class="game-stock {% if game.is_sold or game.stock_quantity == 0 %}stock-unavailable{% elif game.available_quantity == 0 %}stock-reserved{% endif %}"><span></span>{% if game.is_sold or game.stock_quantity == 0 %}Sold out{% elif game.available_quantity == 0 %}Temporarily reserved{% else %}{{ game.available_quantity }} available{% endif %}</div>
                         <h3 class="card-title"><a href="{% url 'game_detail' game.id %}">{{ game.name }}</a></h3>
                         <p class="game-designer">{% if game.designer %}{{ game.designer|truncatewords:4 }}{% elif game.year_published %}Published {{ game.year_published }}{% else %}Find your next game-night favourite{% endif %}</p>
-                        <div class="game-facts"><span><i class="bi bi-people" aria-hidden="true"></i> {{ game.players_display }}</span><span><i class="bi bi-clock" aria-hidden="true"></i> {{ game.playtime_display }}</span>{% if game.average_weight %}<span aria-label="Difficulty {{ game.average_weight|floatformat:1 }} out of 5"><i class="bi bi-puzzle" aria-hidden="true"></i> {{ game.average_weight|floatformat:1 }}/5</span>{% endif %}{% if game.rating_average %}<span class="game-rating"><i class="bi bi-star-fill" aria-hidden="true"></i> {{ game.rating_average|floatformat:1 }}<span class="visually-hidden"> out of 10</span></span>{% endif %}</div>
+                        <div class="game-facts"><span><i class="bi bi-people" aria-hidden="true"></i> {{ game.players_display }}</span><span><i class="bi bi-clock" aria-hidden="true"></i> {{ game.playtime_display }}</span>{% if game.average_weight %}<span aria-label="Difficulty {{ game.average_weight|floatformat:1 }} out of 5"><i class="bi bi-puzzle" aria-hidden="true"></i> {{ game.average_weight|floatformat:1 }}/5</span>{% endif %}</div>
                         {% include 'catalog/includes/price.html' %}
                         <div class="game-actions">
                             {% if not game.is_sold and game.available_quantity > 0 and game.final_price != None %}<form method="post" action="{% url 'add_to_cart' game.id %}" class="catalog-add-form">{% csrf_token %}<input type="hidden" name="quantity" value="1"><button class="btn btn-primary" type="submit"><i class="bi bi-cart-plus" aria-hidden="true"></i> Add to cart</button></form>{% else %}<button class="btn btn-primary" disabled>{% if game.final_price == None %}Price pending{% else %}Sold out{% endif %}</button>{% endif %}
@@ -94,4 +99,4 @@
         </section>
     </div>
 {% endblock %}
-{% block extra_js %}<script src="{% static 'catalog/js/catalog.js' %}" defer></script>{% endblock %}
+{% block extra_js %}<script src="{% static 'catalog/js/catalog.js' %}?v=20261126-live-search" defer></script>{% endblock %}
