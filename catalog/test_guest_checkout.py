@@ -48,6 +48,11 @@ class GuestCheckoutTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         self.assertEqual(mail.outbox[0].to, ['guest@example.com'])
         self.assertIn('http://testserver/account/guest-reservations/', mail.outbox[0].body)
+        html, mimetype = mail.outbox[0].alternatives[0]
+        self.assertEqual(mimetype, 'text/html')
+        self.assertIn('Prices are for collection.', html)
+        self.assertIn('This private link expires in 7 days.', html)
+        self.assertIn('Guest game', html)
         response = self.client.get(reverse('checkout_success'))
         self.assertContains(response, 'No account has been created')
         self.assertContains(response, 'Open WhatsApp &amp; send order')

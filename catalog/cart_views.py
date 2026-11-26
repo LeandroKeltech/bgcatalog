@@ -19,6 +19,7 @@ from .notifications import create_reservation_notification
 from .whatsapp import shop_whatsapp_number
 from .customer_forms import GuestCheckoutForm
 from .guest_quotes import guest_recovery_url, send_guest_confirmation
+from django.urls import reverse
 
 
 def get_cart(request):
@@ -271,9 +272,12 @@ def checkout(request):
             
             # The alert commits with the stock holds, even if WhatsApp is never opened.
             create_reservation_notification(saved_quote)
+            recovery_url = (
+                request.build_absolute_uri(reverse('customer_quote', args=[saved_quote.pk]))
+                if user else guest_recovery_url(request, saved_quote)
+            )
+            transaction.on_commit(lambda: send_guest_confirmation(saved_quote.pk, recovery_url), robust=True)
             if not user:
-                recovery_url = guest_recovery_url(request, saved_quote)
-                transaction.on_commit(lambda: send_guest_confirmation(saved_quote.pk, recovery_url), robust=True)
                 guest_ids = request.session.get('guest_quote_ids', [])
                 request.session['guest_quote_ids'] = (guest_ids + [str(saved_quote.pk)])[-50:]
 

@@ -10,11 +10,19 @@ is created. Guests receive a reservation confirmation with a private recovery li
 valid for seven days, while stock is held for 24 hours. Opening that link verifies
 the email for linking guest reservations after registration or sign-in with the
 same email. Merely registering with a matching email never grants guest history.
-Logged-in customers retain their saved contact details and existing checkout flow.
-Guest confirmation emails use the configured email backend, separately from admin
+Logged-in customers also receive a confirmation, with a link requiring account sign-in.
+Customer and shop emails include HTML matching the site and a plain-text alternative.
+Customer confirmation emails use the configured email backend, separately from admin
 alerts; production requires a delivering backend such as SMTP. A delivery failure
 is logged and does not undo the reservation or its access from the current session.
 Apply migration `0017_alter_customerquote_user` before running the updated checkout.
+
+Preview fictional reservation emails locally without sending mail or creating reservations:
+`python manage.py preview_reservation_email` (files in `outputs/email-previews/`).
+The console email backend only prints customer messages in the terminal. For actual
+delivery in dev, configure SMTP in your private `.env`, including `EMAIL_HOST_PASSWORD`
+when `EMAIL_HOST_USER` is set, and restart the development server. Customer email
+failures are logged; shop delivery status is visible in Admin Panel > Notifications.
 
 ## 🎯 Features
 

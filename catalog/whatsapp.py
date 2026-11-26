@@ -33,7 +33,8 @@ def quote_message(quote):
         for group in line['price_groups']:
             lines.append(f'  {group["quantity"]} × €{group["unit_price"]}')
     lines += ['', f'Subtotal before offers: €{data["subtotal"]}', f'Discount: €{data["discount"]}',
-              f'Total: €{data["total"]}', 'Delivery/collection and any shipping charge to be agreed.']
+              f'Total: €{data["total"]}',
+              'Prices are for collection. Collection and payment arrangements will be agreed with the shop after your reservation. If you need shipping, availability and any extra cost will also be discussed then.']
     if data.get('offer'):
         lines.append(f'Offer: {data["offer"]}')
     if data.get('offer_rule'):

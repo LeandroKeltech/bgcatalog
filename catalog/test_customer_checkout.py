@@ -98,9 +98,11 @@ class CustomerCheckoutTests(TestCase):
         self.assertEqual(user.email, 'legacy@example.com')
         self.assertEqual(user.customer_profile.full_name, 'Legacy Buyer')
 
-    def test_checkout_uses_account_contact_and_prepares_encoded_whatsapp_without_email(self):
+    @override_settings(RESERVATION_NOTIFICATION_EMAIL='')
+    def test_checkout_uses_account_contact_and_emails_customer_with_account_link(self):
         user = self.register()
-        quote = self.checkout()
+        with self.captureOnCommitCallbacks(execute=True):
+            quote = self.checkout()
         reservation = quote.reservations.get()
         self.assertEqual(quote.user, user)
         self.assertEqual(reservation.customer_name, 'Test Buyer')
@@ -110,7 +112,14 @@ class CustomerCheckoutTests(TestCase):
         self.assertEqual(reservation.quantity, 2)
         self.assertEqual(self.game.available_quantity, 1)
         self.assertEqual(self.client.session['cart'], {})
-        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ['buyer@example.com'])
+        self.assertIn(reverse('customer_quote', args=[quote.pk]), mail.outbox[0].body)
+        html, mimetype = mail.outbox[0].alternatives[0]
+        self.assertEqual(mimetype, 'text/html')
+        self.assertIn('A game &amp; friends', html)
+        self.assertIn('Sign in to your account', html)
+        self.assertNotIn('This private link expires', html)
         response = self.client.get(reverse('customer_quote', args=[quote.pk]))
         parsed = urlparse(response.context['whatsapp_url'])
         self.assertEqual((parsed.scheme, parsed.netloc, parsed.path), ('https', 'wa.me', '/353891234567'))
