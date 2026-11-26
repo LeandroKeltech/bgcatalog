@@ -79,6 +79,15 @@ def add_to_cart(request, game_id):
     new_total = current_cart_qty + quantity
     
     if new_total > game.available_quantity:
+        if current_cart_qty == game.available_quantity:
+            message = 'This game is already in your cart. All available copies are in your cart.'
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'ok': True, 'already_in_cart': True, 'message': message,
+                    'cart_count': sum(cart.values()),
+                })
+            messages.info(request, message)
+            return redirect('view_cart')
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
             return JsonResponse({'ok': False, 'message': f'Only {game.available_quantity} available in stock'}, status=400)
         messages.error(request, f'Only {game.available_quantity} available in stock')

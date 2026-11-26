@@ -4,6 +4,14 @@
     const drawer = bootstrap.Offcanvas.getOrCreateInstance(drawerElement);
     const content = drawerElement.querySelector('.cart-drawer-content');
     const badge = document.querySelector('[data-cart-count]');
+    const feedback = document.getElementById('cart-drawer-message');
+    const showFeedback = (message = '', isError = false) => {
+        if (!feedback) return;
+        feedback.textContent = message;
+        feedback.hidden = !message;
+        feedback.classList.toggle('alert-warning', isError);
+        feedback.classList.toggle('alert-info', !isError);
+    };
     const announce = (message) => {
         let live = document.getElementById('shop-live-message');
         if (!live) {
@@ -13,6 +21,7 @@
         live.textContent = message;
     };
     const loadCart = async (open = false) => {
+        showFeedback();
         content.setAttribute('aria-busy', 'true');
         try {
             const response = await fetch(`${drawerElement.dataset.cartUrl}?drawer=1`, {headers: {'X-Requested-With': 'XMLHttpRequest'}});
@@ -53,7 +62,11 @@
             if (!response.ok || !data.ok) throw new Error(data.message || 'Could not update your selection');
             if (button) button.disabled = false;
             announce(data.message);
-            if (addForm) { updateCount(data.cart_count); await loadCart(true); }
+            if (addForm) {
+                updateCount(data.cart_count);
+                await loadCart(true);
+                if (data.already_in_cart) showFeedback(data.message);
+            }
             if (cartForm) { updateCount(data.cart_count); await loadCart(false); }
             if (wishForm) {
                 const heart = button.querySelector('i');
@@ -68,6 +81,10 @@
             }
         } catch (error) {
             announce(error.message);
+            if (addForm || cartForm) {
+                await loadCart(true);
+                showFeedback(error.message, true);
+            }
             if (button) button.disabled = false;
         }
     });
