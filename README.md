@@ -141,6 +141,30 @@ or set a PostgreSQL connection URL for production. Startup applies migrations
 without dropping existing tables. Create administrators explicitly with
 `python manage.py createsuperuser`; startup does not create default credentials.
 
+### Microsoft Clarity
+
+The site uses the public Clarity project ID `zjljk7do8k` by default. Override
+`CLARITY_PROJECT_ID` in the deployment environment to use another project, or set
+it to an empty string to disable Clarity. Redeploy after changing the variable.
+Use a separate project ID for staging if you want to keep preview traffic separate
+from production.
+
+The shared page template loads the tracking script asynchronously when
+`DEBUG=False`, excluding staff and members of the admin group. Local development
+with `DEBUG=True` never loads Clarity.
+
+The integration sends `consentv2` with both `ad_Storage` and `analytics_Storage`
+set to `denied`, so Clarity operates without cookies and with limited tracking.
+No cookie consent banner is included. To enable tracking across pages and sessions,
+connect a consent manager that sends the visitor's actual choices through
+`window.clarity('consentv2', {ad_Storage: 'denied', analytics_Storage: 'granted'})`
+after analytics consent, and restores `denied` if it is withdrawn. See the
+[Microsoft consent API documentation](https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarity-consent-api-v2).
+
+After deployment, check for requests to `https://www.clarity.ms/tag/<project-id>`
+and `/collect` in browser developer tools, then verify incoming data in the Clarity
+dashboard. See [Microsoft's installation guide](https://learn.microsoft.com/en-us/clarity/setup-and-installation/clarity-setup).
+
 ### Production Settings
 
 Production deployment targets Vercel with an external PostgreSQL database.
@@ -599,8 +623,9 @@ page open counts once per game/browser session in a rolling 30-minute window.
 Refreshes within that window, staff views, HEAD requests and explicit browser
 prefetches do not count. Increments use a database expression to avoid lost updates.
 This is a lightweight popularity signal, not a count of authenticated unique people.
-No IP addresses or external analytics service are recorded. Staff can see **Clicks**
-in the inventory table.
+The popularity counter does not store IP addresses or use an external analytics
+service. Optional Microsoft Clarity tracking is configured separately as described
+above. Staff can see **Clicks** in the inventory table.
 
 Populate or refresh the BGG rating tie-break after importing verified identities:
 

@@ -100,6 +100,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'catalog.access.admin_access',
+                'catalog.context_processors.analytics',
             ],
         },
     },
@@ -211,6 +212,9 @@ EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False').lower() == 'true'
 EMAIL_TIMEOUT = 10
 WHATSAPP_SHOP_NUMBER = os.environ.get('WHATSAPP_SHOP_NUMBER', '')
+
+# Public Clarity project ID; an empty override or DEBUG disables tracking.
+CLARITY_PROJECT_ID = os.environ.get('CLARITY_PROJECT_ID', 'zjljk7do8k').strip()
 
 # Session configuration
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
