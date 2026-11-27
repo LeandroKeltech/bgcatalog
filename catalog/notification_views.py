@@ -2,6 +2,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Exists, OuterRef
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -19,7 +20,7 @@ def notification_list(request):
     receipts = AdminReservationNotification.read_by.through.objects.filter(
         adminreservationnotification_id=OuterRef('pk'), user_id=request.user.pk,
     )
-    notifications = AdminReservationNotification.objects.select_related('quote').annotate(is_read=Exists(receipts))
+    notifications = AdminReservationNotification.objects.exclude(dismissed_by=request.user).select_related('quote').annotate(is_read=Exists(receipts))
     page = Paginator(notifications, 30).get_page(request.GET.get('page'))
     return render(request, 'catalog/notifications.html', {
         'notifications': page, 'notification_email_ready': email_alerts_ready(),
@@ -37,7 +38,7 @@ def notification_status(request):
         return JsonResponse({'error': 'Invalid notification cursor.'}, status=400)
     # Use a stable upper bound so concurrent arrivals appear on the following poll.
     latest = AdminReservationNotification.objects.values_list('pk', flat=True).first() or 0
-    unread = AdminReservationNotification.objects.filter(pk__lte=latest).exclude(read_by=request.user)
+    unread = AdminReservationNotification.objects.filter(pk__lte=latest).exclude(read_by=request.user).exclude(dismissed_by=request.user)
     return JsonResponse({'unread_count': unread.count(), 'latest_id': latest,
                          'new_count': unread.filter(pk__gt=after).count()})
 
@@ -48,6 +49,17 @@ def notification_open(request, notification_id):
     notification = get_object_or_404(AdminReservationNotification, pk=notification_id)
     notification.read_by.add(request.user)
     return redirect(reverse('reservation_management') + '?' + urlencode({'quote': notification.quote_id, 'status': ''}))
+
+
+@admin_group_required
+@require_POST
+def notification_dismiss(request, notification_id):
+    notification = get_object_or_404(AdminReservationNotification, pk=notification_id)
+    with transaction.atomic():
+        notification.read_by.add(request.user)
+        notification.dismissed_by.add(request.user)
+    messages.success(request, 'Notification dismissed. The reservation is unchanged.')
+    return redirect('notification_list')
 
 
 @admin_group_required

@@ -130,7 +130,8 @@ class ReservationNotificationTests(TestCase):
     def test_new_alert_poll_cursor_and_private_access(self):
         notification = self.reserve()
         for route, args in [('notification_status', []), ('notification_list', []),
-                            ('notification_open', [notification.pk]), ('notification_retry_email', [notification.pk])]:
+                            ('notification_open', [notification.pk]), ('notification_retry_email', [notification.pk]),
+                            ('notification_dismiss', [notification.pk])]:
             self.assertEqual(self.client.get(reverse(route, args=args)).status_code, 403)
         self.client.force_login(self.admin)
         status_url = reverse('notification_status')
@@ -142,6 +143,39 @@ class ReservationNotificationTests(TestCase):
         self.assertIn('private', response.headers['Cache-Control'])
         self.assertEqual(self.client.get(reverse('notification_open', args=[notification.pk])).status_code, 405)
         self.assertEqual(self.client.get(reverse('notification_retry_email', args=[notification.pk])).status_code, 405)
+        self.assertEqual(self.client.get(reverse('notification_dismiss', args=[notification.pk])).status_code, 405)
+
+    def test_dismiss_hides_alert_only_for_current_admin_and_preserves_reservation(self):
+        notification = self.reserve()
+        self.client.force_login(self.admin)
+        url = reverse('notification_dismiss', args=[notification.pk])
+        self.assertContains(self.client.get(reverse('notification_list')), 'Dismiss notification')
+        for _ in range(2):
+            self.assertRedirects(self.client.post(url), reverse('notification_list'))
+        self.assertEqual(list(self.client.get(reverse('notification_list')).context['notifications']), [])
+        self.assertEqual(self.client.get(reverse('notification_status')).json(), {
+            'unread_count': 0, 'new_count': 0, 'latest_id': notification.pk,
+        })
+        self.assertEqual(self.client.get(reverse('catalog')).context['reservation_unread_count'], 0)
+        self.assertEqual(AdminReservationNotification.objects.count(), 1)
+        self.assertEqual(notification.quote.reservations.get().status, 'active')
+        self.assertEqual(self.game.available_quantity, 1)
+        self.assertEqual(len(mail.outbox), 2)
+        self.client.force_login(self.other_admin)
+        self.assertContains(self.client.get(reverse('notification_list')), str(notification.quote_id))
+        self.assertEqual(self.client.get(reverse('notification_status')).json()['unread_count'], 1)
+
+    def test_dismiss_requires_admin_and_csrf_and_handles_missing_alert(self):
+        notification = self.reserve()
+        url = reverse('notification_dismiss', args=[notification.pk])
+        self.assertEqual(self.client.post(url).status_code, 403)
+        from django.test import Client
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(self.admin)
+        self.assertEqual(csrf_client.post(url).status_code, 403)
+        self.assertFalse(notification.dismissed_by.exists())
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.post(reverse('notification_dismiss', args=[notification.pk + 1])).status_code, 404)
 
     def test_quote_filter_and_admin_badge(self):
         notification = self.reserve()

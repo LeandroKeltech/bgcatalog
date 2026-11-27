@@ -26,6 +26,7 @@ urlpatterns = [
     path('admin-panel/notifications/', notification_views.notification_list, name='notification_list'),
     path('admin-panel/notifications/status/', notification_views.notification_status, name='notification_status'),
     path('admin-panel/notifications/<int:notification_id>/open/', notification_views.notification_open, name='notification_open'),
+    path('admin-panel/notifications/<int:notification_id>/dismiss/', notification_views.notification_dismiss, name='notification_dismiss'),
     path('admin-panel/notifications/<int:notification_id>/retry-email/', notification_views.notification_retry_email, name='notification_retry_email'),
     path('admin-panel/', admin_views.admin_panel, name='admin_panel'),
     path('admin-panel/promotions/', promotion_views.promotion_list, name='promotion_list'),

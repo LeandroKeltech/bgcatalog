@@ -281,6 +281,7 @@ class AdminReservationNotification(models.Model):
     quote = models.OneToOneField(CustomerQuote, on_delete=models.PROTECT, related_name='admin_notification')
     created_at = models.DateTimeField(auto_now_add=True)
     read_by = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='read_reservation_notifications')
+    dismissed_by = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name='dismissed_reservation_notifications')
     email_recipient = models.EmailField(blank=True)
     email_status = models.CharField(max_length=20, default='pending', choices=[
         ('pending', 'Pending'), ('sending', 'Sending'), ('sent', 'Sent'),

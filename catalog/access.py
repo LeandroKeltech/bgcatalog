@@ -30,6 +30,6 @@ def admin_access(request):
     context = {'can_access_admin': allowed}
     if allowed:
         from .models import AdminReservationNotification
-        context['reservation_unread_count'] = AdminReservationNotification.objects.exclude(read_by=request.user).count()
+        context['reservation_unread_count'] = AdminReservationNotification.objects.exclude(read_by=request.user).exclude(dismissed_by=request.user).count()
         context['reservation_notification_cursor'] = AdminReservationNotification.objects.values_list('pk', flat=True).first() or 0
     return context

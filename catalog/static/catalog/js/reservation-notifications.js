@@ -42,6 +42,9 @@
             const data = await response.json();
             badge.textContent = String(data.unread_count);
             badge.hidden = data.unread_count === 0;
+            if (data.unread_count === 0) {
+                document.getElementById('reservation-live-alert').hidden = true;
+            }
             cursor = data.latest_id;
             if (data.new_count > 0) {
                 const text = `${data.new_count} new reservation${data.new_count === 1 ? '' : 's'} received.`;

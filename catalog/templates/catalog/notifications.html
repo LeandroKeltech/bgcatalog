@@ -14,8 +14,9 @@
     <p><strong>Total: €{{ notification.quote.snapshot.total }}</strong> · Current reservation status: {{ notification.quote.status }}</p>
     <p class="small text-muted">Email alert: {{ notification.get_email_status_display }}{% if notification.email_sent_at %} · {{ notification.email_sent_at|date:'d M Y H:i' }}{% endif %}</p>
     <form method="post" action="{% url 'notification_open' notification.pk %}">{% csrf_token %}<button class="btn btn-primary" type="submit">View reservation{% if not notification.is_read %} &amp; mark as read{% endif %}</button></form>
+    <form class="mt-2" method="post" action="{% url 'notification_dismiss' notification.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">Dismiss notification</button><span class="small text-muted ms-2">Removes this alert from your list. The reservation stays unchanged.</span></form>
     {% if notification.email_status == 'failed' or notification.email_status == 'not_configured' or notification.email_status == 'pending' %}<form class="mt-2" method="post" action="{% url 'notification_retry_email' notification.pk %}">{% csrf_token %}<button class="btn btn-outline-secondary" type="submit">Retry email alert</button></form>{% endif %}
 </div></article>
-{% empty %}<div class="alert alert-info">No reservation notifications yet. New customer checkouts will appear here automatically.</div>{% endfor %}
+{% empty %}<div class="alert alert-info">No reservation notifications to review. New customer checkouts will appear here automatically.</div>{% endfor %}
 {% if notifications.has_other_pages %}<nav aria-label="Notification pages" class="d-flex flex-wrap gap-3 align-items-center">{% if notifications.has_previous %}<a href="?page={{ notifications.previous_page_number }}">Previous</a>{% endif %}<span>Page {{ notifications.number }} of {{ notifications.paginator.num_pages }}</span>{% if notifications.has_next %}<a href="?page={{ notifications.next_page_number }}">Next</a>{% endif %}</nav>{% endif %}
 {% endblock %}
